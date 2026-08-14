@@ -1,6 +1,10 @@
+import { useHeaderScroll } from '../hooks/useHeaderScroll'
+
 export function Header(){
+  const scrolled = useHeaderScroll()
+
   return (
-      <header>
+      <header className={scrolled ? 'scrolled' : ''}>
         <a href="#top" className="brand"><span className="mark">&gt;_</span> RUNTIME.</a>
         <div className="nav-right">
           <nav>
