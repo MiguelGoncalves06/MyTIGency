@@ -1,0 +1,193 @@
+#landing {
+  --landing-white: #fafafa;
+  --landing-black: #050505;
+  --font-display: "Archivo Black", "Inter", sans-serif;
+  --font-mono: "Source Code Pro", "Courier New", monospace;
+  --container-padding: 48px;
+  --ascii-overscan: 1.08;
+
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  width: 100vw;
+  height: 100dvh;
+  background-color: var(--landing-white);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#ascii-logo-landing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+#ascii-logo-landing > div {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#ascii-logo-landing table {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  letter-spacing: -0.6px !important;
+  font-family: var(--font-mono) !important;
+  border-collapse: collapse;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none;
+}
+
+#ascii-logo-landing td {
+  text-align: left !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.landing-mark {
+  position: absolute;
+  z-index: 2;
+  top: 40px;
+  left: var(--container-padding);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: -0.5px;
+  color: var(--landing-black);
+  pointer-events: none;
+}
+
+.landing-wordmark {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: -0.09em;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(40px, 11vw, 176px);
+  line-height: 0.82;
+  letter-spacing: -0.045em;
+  color: var(--landing-black);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.lang-toggle {
+  position: absolute;
+  z-index: 3;
+  top: 36px;
+  right: var(--container-padding);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background-color: var(--landing-white);
+  border: 1.5px solid var(--landing-black);
+  border-radius: 999px;
+  padding: 4px;
+  font-family: var(--font-mono);
+}
+
+.lang-toggle button {
+  all: unset;
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(5, 5, 5, 0.35);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.lang-toggle button.active {
+  color: var(--landing-white);
+  background-color: var(--landing-black);
+}
+
+.lang-toggle .divider {
+  color: rgba(5, 5, 5, 0.18);
+  font-size: 12px;
+}
+
+#landing .scroll-down {
+  all: unset;
+  position: absolute;
+  z-index: 2;
+  bottom: 40px;
+  left: var(--container-padding);
+  width: 24px;
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background-color: var(--landing-white);
+  border-radius: 16px;
+  border: 2px solid var(--landing-black);
+  padding: 6px 0;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+#landing .scroll-down .scroll-wheel {
+  width: 4px;
+  height: 10px;
+  border-radius: 12px;
+  background-color: var(--landing-black);
+  animation: landing-scroll-wheel 1.6s ease-in-out infinite;
+}
+
+@keyframes landing-scroll-wheel {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  60% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  61% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 860px) {
+  #landing {
+    --container-padding: 32px;
+  }
+
+  .landing-mark {
+    top: 24px;
+    font-size: 18px;
+  }
+
+  .lang-toggle {
+    top: 22px;
+  }
+
+  .landing-wordmark {
+    font-size: clamp(32px, 15vw, 96px);
+  }
+}

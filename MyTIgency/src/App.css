@@ -10,6 +10,17 @@
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
+
+html.landing-active {
+  overflow: hidden;
+  height: 100%;
+}
+
+html.landing-active body {
+  overflow: hidden;
+  height: 100%;
+}
+
   body{
     background:var(--bg);
     color:var(--ink);

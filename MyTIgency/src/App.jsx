@@ -1,4 +1,5 @@
 // src/App.jsx
+import { Landing } from './components/Landing'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
 import { Marquee } from './components/Marquee'
@@ -15,6 +16,7 @@ function App() {
   return (
     <>
       <ContextualCursor />
+      <Landing />
       <Header />
       <div className="app-shell">
         <Hero />
