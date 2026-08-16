@@ -16,6 +16,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1),
+              opacity 0.9s cubic-bezier(0.76, 0, 0.24, 1),
+              box-shadow 0.9s ease;
+  will-change: transform, opacity;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+#landing.landing-exiting {
+  transform: translateY(-100%);
+  pointer-events: none;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.14);
 }
 
 #ascii-logo-landing {
@@ -26,6 +37,14 @@
   overflow: hidden;
   user-select: none;
   pointer-events: none;
+  transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1),
+              opacity 0.75s ease;
+  will-change: transform, opacity;
+}
+
+#landing.landing-exiting #ascii-logo-landing {
+  transform: scale(0.92);
+  opacity: 0.15;
 }
 
 #ascii-logo-landing > div {
@@ -69,6 +88,14 @@
   letter-spacing: -0.5px;
   color: var(--landing-black);
   pointer-events: none;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.5s ease;
+  will-change: transform, opacity;
+}
+
+#landing.landing-exiting .landing-mark {
+  transform: translateY(-28px);
+  opacity: 0;
 }
 
 .landing-wordmark {
@@ -86,6 +113,14 @@
   color: var(--landing-black);
   pointer-events: none;
   white-space: nowrap;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.55s ease;
+  will-change: transform, opacity;
+}
+
+#landing.landing-exiting .landing-wordmark {
+  transform: translateY(35px) scale(0.98);
+  opacity: 0;
 }
 
 .lang-toggle {
@@ -101,6 +136,14 @@
   border-radius: 999px;
   padding: 4px;
   font-family: var(--font-mono);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.5s ease;
+  will-change: transform, opacity;
+}
+
+#landing.landing-exiting .lang-toggle {
+  transform: translateY(-28px);
+  opacity: 0;
 }
 
 .lang-toggle button {
@@ -144,6 +187,14 @@
   padding: 6px 0;
   cursor: pointer;
   box-sizing: border-box;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.5s ease;
+  will-change: transform, opacity;
+}
+
+#landing.landing-exiting .scroll-down {
+  transform: translateY(28px) scale(0.9);
+  opacity: 0;
 }
 
 #landing .scroll-down .scroll-wheel {

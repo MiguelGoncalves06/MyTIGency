@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useAsciiLogo } from '../hooks/useAsciiLogo'
 import './Landing.css'
 
@@ -12,10 +12,33 @@ const LANDING_SCENE_OPTIONS = {
 export function Landing() {
   const logoRef = useRef(null)
   const [lang, setLang] = useState('pt')
+  const [isExiting, setIsExiting] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
 
-  useAsciiLogo(logoRef, LANDING_SCENE_OPTIONS)
+  useAsciiLogo(isDismissed ? { current: null } : logoRef, LANDING_SCENE_OPTIONS)
+
+  const triggerTransition = useCallback(() => {
+    if (isExiting || isDismissed) return
+    setIsExiting(true)
+
+    // Libera a rolagem nativa antes do fim da animação para um fluxo contínuo
+    setTimeout(() => {
+      const root = document.documentElement
+      const { body } = document
+      root.classList.remove('landing-active')
+      root.style.overflow = ''
+      body.style.overflow = ''
+    }, 650)
+
+    // Desmonta a landing e pausa o loop 3D
+    setTimeout(() => {
+      setIsDismissed(true)
+    }, 950)
+  }, [isExiting, isDismissed])
 
   useEffect(() => {
+    if (isDismissed) return
+
     const root = document.documentElement
     const { body } = document
 
@@ -23,19 +46,55 @@ export function Landing() {
     root.style.overflow = 'hidden'
     body.style.overflow = 'hidden'
 
+    let touchStartY = 0
+    let lastWheelTime = 0
+
+    function onWheel(e) {
+      if (e.deltaY > 15) {
+        const now = Date.now()
+        if (now - lastWheelTime < 200) return
+        lastWheelTime = now
+        triggerTransition()
+      }
+    }
+
+    function onTouchStart(e) {
+      touchStartY = e.touches[0].clientY
+    }
+
+    function onTouchMove(e) {
+      const deltaY = touchStartY - e.touches[0].clientY
+      if (deltaY > 35) {
+        triggerTransition()
+      }
+    }
+
+    function onKeyDown(e) {
+      if (['ArrowDown', 'PageDown', 'Space', 'Enter'].includes(e.code)) {
+        triggerTransition()
+      }
+    }
+
+    window.addEventListener('wheel', onWheel, { passive: true })
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('keydown', onKeyDown)
+
     return () => {
       root.classList.remove('landing-active')
       root.style.overflow = ''
       body.style.overflow = ''
+      window.removeEventListener('wheel', onWheel)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('keydown', onKeyDown)
     }
-  }, [])
+  }, [isDismissed, triggerTransition])
 
-  function handleScrollDown() {
-    // transição para Hero será implementada em seguida
-  }
+  if (isDismissed) return null
 
   return (
-    <section id="landing">
+    <section id="landing" className={isExiting ? 'landing-exiting' : ''}>
       <span className="landing-mark">myt.</span>
 
       <div className="lang-toggle" role="group" aria-label="idioma">
@@ -64,7 +123,7 @@ export function Landing() {
         type="button"
         className="scroll-down"
         aria-label="Rolar para baixo"
-        onClick={handleScrollDown}
+        onClick={triggerTransition}
       >
         <div className="scroll-wheel" />
       </button>
