@@ -15,13 +15,8 @@ function resolveTarget(x, y) {
 }
 
 function shouldHideCursor(element) {
-  if (!element || element === document.body || element === document.documentElement) {
-    return true
-  }
-
-  const root = document.getElementById('root')
-  if (!root?.contains(element)) return true
-  if (element.closest('[data-cursor="hidden"]')) return true
+  if (!element) return true
+  if (element.closest?.('[data-cursor="hidden"]')) return true
 
   return false
 }

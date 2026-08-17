@@ -175,21 +175,24 @@
   z-index: 2;
   bottom: 40px;
   left: var(--container-padding);
-  width: 24px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   background-color: var(--landing-white);
-  border-radius: 16px;
-  border: 2px solid var(--landing-black);
-  padding: 6px 0;
+  border-radius: 50%;
   cursor: pointer;
   box-sizing: border-box;
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 0.5s ease;
+              opacity 0.5s ease,
+              box-shadow 0.25s ease;
   will-change: transform, opacity;
+}
+
+#landing .scroll-down:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(5, 5, 5, 0.08);
 }
 
 #landing.landing-exiting .scroll-down {
@@ -197,29 +200,77 @@
   opacity: 0;
 }
 
-#landing .scroll-down .scroll-wheel {
-  width: 4px;
-  height: 10px;
-  border-radius: 12px;
-  background-color: var(--landing-black);
-  animation: landing-scroll-wheel 1.6s ease-in-out infinite;
+#landing .progress-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
 }
 
-@keyframes landing-scroll-wheel {
+#landing .progress-ring-track {
+  fill: none;
+  stroke: rgba(5, 5, 5, 0.12);
+  stroke-width: 2px;
+}
+
+#landing .progress-ring-fill {
+  fill: none;
+  stroke: var(--landing-black);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-dasharray: 113.1;
+  stroke-dashoffset: 113.1;
+  transform-origin: center;
+  animation: landing-ring-progress 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+#landing .scroll-chevron {
+  color: var(--landing-black);
+  pointer-events: none;
+  transition: transform 0.2s ease;
+  animation: landing-chevron-pulse 2.4s ease-in-out infinite;
+}
+
+#landing .scroll-down:hover .scroll-chevron {
+  transform: translateY(2px);
+}
+
+@keyframes landing-ring-progress {
   0% {
+    stroke-dashoffset: 113.1;
+    opacity: 0.6;
+  }
+  68% {
+    stroke-dashoffset: 0;
     opacity: 1;
-    transform: translateY(0);
   }
-  60% {
-    opacity: 0;
-    transform: translateY(10px);
+  82% {
+    stroke-dashoffset: 0;
+    opacity: 1;
   }
-  61% {
-    opacity: 0;
-    transform: translateY(0);
+  92% {
+    stroke-dashoffset: 0;
+    opacity: 0.2;
   }
   100% {
-    opacity: 1;
+    stroke-dashoffset: 113.1;
+    opacity: 0;
+  }
+}
+
+@keyframes landing-chevron-pulse {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1.5px);
+  }
+  75% {
+    transform: translateY(3px);
+  }
+  85% {
     transform: translateY(0);
   }
 }

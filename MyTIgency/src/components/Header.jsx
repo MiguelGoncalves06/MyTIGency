@@ -5,7 +5,7 @@ export function Header(){
 
   return (
       <header className={scrolled ? 'scrolled' : ''}>
-        <a href="#top" className="brand"><span className="mark">&gt;_</span> RUNTIME.</a>
+        <a href="#top" className="brand"><span className="mark">&gt;_</span> MyTigency.</a>
         <div className="nav-right">
           <nav>
             <ul>

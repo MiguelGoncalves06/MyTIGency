@@ -125,7 +125,24 @@ export function Landing() {
         aria-label="Rolar para baixo"
         onClick={triggerTransition}
       >
-        <div className="scroll-wheel" />
+        <svg className="progress-ring" viewBox="0 0 44 44" aria-hidden="true">
+          <circle className="progress-ring-track" cx="22" cy="22" r="18" />
+          <circle className="progress-ring-fill" cx="22" cy="22" r="18" />
+        </svg>
+        <svg
+          className="scroll-chevron"
+          viewBox="0 0 24 24"
+          width="15"
+          height="15"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </button>
 
       <div id="ascii-logo-landing" ref={logoRef} />
