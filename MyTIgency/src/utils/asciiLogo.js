@@ -60,18 +60,24 @@ class AsciiLogoSceneEffect {
     this.domElement.style.overflow = 'hidden'
     this.domElement.style.pointerEvents = 'none'
     this.domElement.style.backgroundColor = 'var(--landing-white, #fafafa)'
-    this.domElement.style.color = 'var(--landing-black, #050505)'
 
-    this.oAscii = document.createElement('table')
-    this.domElement.appendChild(this.oAscii)
+    // Canvas 2D de alta performance para desenhar o grid ASCII
+    this.displayCanvas = document.createElement('canvas')
+    this.displayCanvas.style.position = 'absolute'
+    this.displayCanvas.style.inset = '0'
+    this.displayCanvas.style.width = '100%'
+    this.displayCanvas.style.height = '100%'
+    this.displayCanvas.style.pointerEvents = 'none'
+    this.displayCtx = this.displayCanvas.getContext('2d', { alpha: false })
+    this.domElement.appendChild(this.displayCanvas)
 
+    // Canvas offscreen pequeno para amostragem do 3D
     this.oCanvas = document.createElement('canvas')
     this.oCtx = this.oCanvas.getContext('2d', { willReadFrequently: true })
 
     this.width = 0
     this.height = 0
-    this.iWidth = 0
-    this.iHeight = 0
+    this.dpr = 1
     this.cols = 0
     this.rows = 0
 
@@ -80,16 +86,8 @@ class AsciiLogoSceneEffect {
 
     this.decayBuffer = null
     this.lastMouseGrid = null
-
-    this.probe = document.createElement('span')
-    this.probe.style.fontFamily = 'var(--font-mono, "Source Code Pro", "Courier New", monospace)'
-    this.probe.style.letterSpacing = '-0.6px'
-    this.probe.style.whiteSpace = 'pre'
-    this.probe.style.position = 'absolute'
-    this.probe.style.visibility = 'hidden'
-    this.probe.style.pointerEvents = 'none'
-    this.probe.textContent = '01234567890123456789012345678901234567890123456789'
-    this.domElement.appendChild(this.probe)
+    this.rowChars = null
+    this.accents = []
 
     if (document.fonts?.ready) {
       document.fonts.ready.then(() => {
@@ -101,50 +99,44 @@ class AsciiLogoSceneEffect {
   updateCharMetrics() {
     const fFontSize = (2 / this.fResolution) * this.iScale
     const fLineHeight = (2 / this.fResolution) * this.iScale
+    this.charHeight = fLineHeight
 
-    this.probe.style.fontSize = `${fFontSize}px`
-    this.probe.style.lineHeight = `${fLineHeight}px`
-
-    const rect = this.probe.getBoundingClientRect()
-    if (rect.width > 0) {
-      this.charWidth = rect.width / 50
+    if (this.displayCtx) {
+      this.displayCtx.font = `600 ${fFontSize}px "Source Code Pro", "Courier New", monospace`
+      if ('letterSpacing' in this.displayCtx) {
+        this.displayCtx.letterSpacing = '-0.6px'
+      }
+      const metrics = this.displayCtx.measureText('M')
+      this.charWidth = metrics.width || (fFontSize * 0.6 - 0.6)
     } else {
       this.charWidth = fFontSize * 0.6 - 0.6
     }
-    this.charHeight = fLineHeight
   }
 
   setSize(w, h) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    this.dpr = dpr
     this.width = w
     this.height = h
-    this.renderer.setSize(w, h)
 
-    this.iWidth = Math.floor(w * this.fResolution)
-    this.iHeight = Math.floor(h * this.fResolution)
-    this.cols = this.iWidth
-    this.rows = Math.floor(this.iHeight / 2)
+    this.displayCanvas.width = Math.round(w * dpr)
+    this.displayCanvas.height = Math.round(h * dpr)
+    this.displayCanvas.style.width = `${w}px`
+    this.displayCanvas.style.height = `${h}px`
 
-    this.oCanvas.width = this.iWidth
-    this.oCanvas.height = this.iHeight
+    const iWidth = Math.floor(w * this.fResolution)
+    const iHeight = Math.floor(h * this.fResolution)
+    this.cols = iWidth
+    this.rows = Math.floor(iHeight / 2)
+
+    // O Three.js renderiza exatamente na resolução do grid ASCII
+    this.renderer.setSize(this.cols, this.rows * 2)
+    this.oCanvas.width = this.cols
+    this.oCanvas.height = this.rows * 2
 
     this.decayBuffer = new Float32Array(this.cols * this.rows)
     this.lastMouseGrid = null
-
-    this.oAscii.cellSpacing = '0'
-    this.oAscii.cellPadding = '0'
-
-    const fFontSize = (2 / this.fResolution) * this.iScale
-    const fLineHeight = (2 / this.fResolution) * this.iScale
-
-    const oStyle = this.oAscii.style
-    oStyle.whiteSpace = 'pre'
-    oStyle.margin = '0px'
-    oStyle.padding = '0px'
-    oStyle.letterSpacing = '-0.6px'
-    oStyle.fontFamily = 'var(--font-mono, "Source Code Pro", monospace)'
-    oStyle.fontSize = `${fFontSize}px`
-    oStyle.lineHeight = `${fLineHeight}px`
-    oStyle.textAlign = 'left'
+    this.rowChars = new Array(this.cols)
 
     this.updateCharMetrics()
   }
@@ -220,13 +212,13 @@ class AsciiLogoSceneEffect {
   render(scene, camera) {
     this.renderer.render(scene, camera)
 
-    if (!this.oCtx || !this.decayBuffer) return
+    if (!this.oCtx || !this.decayBuffer || !this.displayCtx) return
 
-    this.oCtx.clearRect(0, 0, this.iWidth, this.iHeight)
-    this.oCtx.drawImage(this.renderer.domElement, 0, 0, this.iWidth, this.iHeight)
-    const imgData = this.oCtx.getImageData(0, 0, this.iWidth, this.iHeight).data
+    // 1. Lê a amostragem do 3D renderizado na resolução exata do grid
+    this.oCtx.drawImage(this.renderer.domElement, 0, 0, this.cols, this.rows * 2)
+    const imgData = this.oCtx.getImageData(0, 0, this.cols, this.rows * 2).data
 
-    // Decaimento suave do rastro (~2.5 a 3.5 segundos)
+    // 2. Decaimento do rastro do mouse
     const total = this.cols * this.rows
     for (let i = 0; i < total; i++) {
       if (this.decayBuffer[i] > 0.005) {
@@ -237,78 +229,89 @@ class AsciiLogoSceneEffect {
     }
 
     const timeTick = Math.floor(performance.now() / 140)
-    let strChars = ''
-    let inAccentSpan = false
+    const ctx = this.displayCtx
+    const dpr = this.dpr
+    const fFontSize = (2 / this.fResolution) * this.iScale
 
+    ctx.save()
+    ctx.scale(dpr, dpr)
+
+    // Fundo limpo em #fafafa
+    ctx.fillStyle = '#fafafa'
+    ctx.fillRect(0, 0, this.width, this.height)
+
+    ctx.font = `600 ${fFontSize}px "Source Code Pro", "Courier New", monospace`
+    if ('letterSpacing' in ctx) {
+      ctx.letterSpacing = '-0.6px'
+    }
+    ctx.textBaseline = 'top'
+    ctx.textAlign = 'left'
+
+    const accents = this.accents
+    accents.length = 0
+    const rowChars = this.rowChars
+
+    // 3. Monta e desenha cada linha no canvas com aceleração direta por hardware
     for (let row = 0; row < this.rows; row++) {
-      const y = row * 2
+      const y3D = row * 2
+      const rowOffset = row * this.cols
+      const imgOffsetBase = y3D * this.cols * 4
+
       for (let col = 0; col < this.cols; col++) {
-        const x = col
-        const offset = (y * this.iWidth + x) * 4
+        const offset = imgOffsetBase + col * 4
 
         const r = imgData[offset]
         const g = imgData[offset + 1]
         const b = imgData[offset + 2]
         const a = imgData[offset + 3]
 
-        // Identifica com precisão se o pixel pertence à malha 3D
         const is3DLogo = a > 0 && (r > 10 || g > 10 || b > 10)
-
-        const corruption = this.decayBuffer[row * this.cols + col]
-        let char = '.'
-        let isAccent = false
+        const corruption = this.decayBuffer[rowOffset + col]
 
         if (is3DLogo) {
-          // A LOGO 3D MANTÉM SUA RENDERIZAÇÃO E SOMBREAMENTO ORIGINAL INTOCADA
           const brightness = (0.3 * r + 0.59 * g + 0.11 * b) / 255
           let charIdx = Math.floor((1 - brightness) * (this.charSet.length - 1))
           if (this.bInvert) {
             charIdx = this.charSet.length - charIdx - 1
           }
-          char = this.charSet[charIdx] || '.'
-          isAccent = false
-        } else {
-          // FUNDO: MICRO-GEOMETRIA SOB O MOUSE
-          if (corruption > 0.03) {
-            const micro = getMicroGeom(row, col, corruption, timeTick)
-            char = micro.char
-            isAccent = micro.isRed
-          } else {
-            char = '.'
-            isAccent = false
+          rowChars[col] = this.charSet[charIdx] || '.'
+        } else if (corruption > 0.03) {
+          const micro = getMicroGeom(row, col, corruption, timeTick)
+          rowChars[col] = micro.char
+          if (micro.isRed) {
+            accents.push({ char: micro.char, col, row })
           }
+        } else {
+          rowChars[col] = '.'
         }
-
-        if (char === ' ') char = '&nbsp;'
-
-        if (isAccent && !inAccentSpan) {
-          strChars += '<span style="color:var(--accent,#FF4438);font-weight:600">'
-          inAccentSpan = true
-        } else if (!isAccent && inAccentSpan) {
-          strChars += '</span>'
-          inAccentSpan = false
-        }
-
-        strChars += char
       }
 
-      if (inAccentSpan) {
-        strChars += '</span>'
-        inAccentSpan = false
-      }
-
-      strChars += '<br/>'
+      // Desenha a linha inteira de caracteres escuros em uma única chamada de GPU
+      ctx.fillStyle = '#050505'
+      ctx.fillText(rowChars.join(''), 0, row * this.charHeight)
     }
 
-    this.oAscii.innerHTML = `<tr><td style="display:block;width:${this.width}px;height:${this.height}px;overflow:hidden">${strChars}</td></tr>`
+    // 4. Desenha os caracteres de destaque vermelho sobre as posições correspondentes
+    if (accents.length > 0) {
+      ctx.fillStyle = '#FF4438'
+      for (let i = 0; i < accents.length; i++) {
+        const acc = accents[i]
+        ctx.fillText(acc.char, acc.col * this.charWidth, acc.row * this.charHeight)
+      }
+    }
+
+    ctx.restore()
   }
 
   dispose() {
     this.decayBuffer = null
+    this.rowChars = null
+    this.accents = null
     this.oCtx = null
     this.oCanvas = null
-    if (this.probe?.parentNode) {
-      this.probe.parentNode.removeChild(this.probe)
+    this.displayCtx = null
+    if (this.displayCanvas?.parentNode) {
+      this.displayCanvas.parentNode.removeChild(this.displayCanvas)
     }
   }
 }
@@ -344,9 +347,13 @@ export function createAsciiLogoScene(container, options = {}) {
   keyLight.position.set(2, 3, 5)
   scene.add(keyLight)
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.setSize(initialSize.width, initialSize.height)
+  // Three.js configurado para alta performance sem MSAA desnecessário
+  const renderer = new THREE.WebGLRenderer({
+    antialias: false,
+    alpha: false,
+    powerPreference: 'high-performance',
+  })
+  renderer.setPixelRatio(1)
 
   const effect = new AsciiLogoSceneEffect(renderer, CHAR_SET, {
     resolution: getAsciiResolution(),
@@ -480,7 +487,6 @@ export function createAsciiLogoScene(container, options = {}) {
     camera.aspect = w / h
     camera.updateProjectionMatrix()
 
-    renderer.setSize(w, h)
     effect.setSize(w, h)
   }
 
