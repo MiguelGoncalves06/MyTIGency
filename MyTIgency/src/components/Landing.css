@@ -1,10 +1,10 @@
 #landing {
-  --landing-white: #fafafa;
-  --landing-black: #050505;
-  --font-display: "Archivo Black", "Inter", sans-serif;
-  --font-mono: "Source Code Pro", "Courier New", monospace;
-  --container-padding: 48px;
-  --ascii-overscan: 1.08;
+  --landing-white: #fafaf8;
+  --landing-black: #0b0b0c;
+  --landing-accent: #ff4438;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", "Source Code Pro", monospace;
+  --container-padding: clamp(20px, 4vw, 48px);
 
   position: fixed;
   inset: 0;
@@ -29,6 +29,34 @@
   box-shadow: 0 32px 64px rgba(0, 0, 0, 0.14);
 }
 
+/* ---------- Ambient Glow (Ideia C) ---------- */
+.landing-ambient-glow {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(85vw, 680px);
+  height: min(85vw, 680px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 68, 56, 0.058) 0%, rgba(255, 68, 56, 0.018) 44%, transparent 72%);
+  filter: blur(45px);
+  pointer-events: none;
+  z-index: 1;
+  animation: ambient-glow-breathe 8s ease-in-out infinite alternate;
+}
+
+@keyframes ambient-glow-breathe {
+  0% {
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 1;
+  }
+}
+
+/* ---------- 3D ASCII Canvas Container ---------- */
 #ascii-logo-landing {
   position: absolute;
   inset: 0;
@@ -37,6 +65,7 @@
   overflow: hidden;
   user-select: none;
   pointer-events: none;
+  z-index: 2;
   transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1),
               opacity 0.75s ease;
   will-change: transform, opacity;
@@ -66,56 +95,55 @@
   user-select: none;
 }
 
-.landing-mark {
+/* ---------- Marca no Canto Superior Esquerdo com Fundo Limpo ---------- */
+.landing-brand-header {
   position: absolute;
-  z-index: 2;
-  top: 40px;
+  z-index: 10;
+  top: 20px;
   left: var(--container-padding);
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 22px;
-  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--landing-black);
+  background-color: var(--landing-white);
+  border: 1.5px solid var(--landing-black);
+  border-radius: 999px;
+  padding: 4px 14px 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   pointer-events: none;
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
               opacity 0.5s ease;
   will-change: transform, opacity;
 }
 
-#landing.landing-exiting .landing-mark {
+.landing-brand-header .mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--landing-black);
+  background-color: var(--landing-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+}
+
+#landing.landing-exiting .landing-brand-header {
   transform: translateY(-28px);
   opacity: 0;
 }
 
-.landing-wordmark {
-  position: absolute;
-  z-index: 2;
-  left: 0;
-  right: 0;
-  bottom: -0.09em;
-  text-align: center;
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(40px, 11vw, 176px);
-  line-height: 0.82;
-  letter-spacing: -0.045em;
-  color: var(--landing-black);
-  pointer-events: none;
-  white-space: nowrap;
-  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 0.55s ease;
-  will-change: transform, opacity;
-}
-
-#landing.landing-exiting .landing-wordmark {
-  transform: translateY(35px) scale(0.98);
-  opacity: 0;
-}
-
+/* ---------- Seletor de Idioma (Alinhado à Direita) ---------- */
 .lang-toggle {
   position: absolute;
-  z-index: 3;
-  top: 36px;
+  z-index: 10;
+  top: 20px;
   right: var(--container-padding);
   display: flex;
   align-items: center;
@@ -125,6 +153,7 @@
   border-radius: 999px;
   padding: 4px;
   font-family: var(--font-mono);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
               opacity 0.5s ease;
   will-change: transform, opacity;
@@ -144,7 +173,7 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  color: rgba(5, 5, 5, 0.35);
+  color: rgba(11, 11, 12, 0.35);
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
@@ -154,14 +183,104 @@
 }
 
 .lang-toggle .divider {
-  color: rgba(5, 5, 5, 0.18);
+  color: rgba(11, 11, 12, 0.18);
   font-size: 12px;
 }
 
+/* ---------- Masthead Editorial Limpo ---------- */
+.landing-masthead {
+  position: absolute;
+  top: clamp(62px, 9.5vh, 92px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  pointer-events: none;
+  width: max-content;
+  max-width: 90vw;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.6s ease;
+  will-change: transform, opacity;
+}
+
+#landing.landing-exiting .landing-masthead {
+  transform: translateX(-50%) translateY(-35px) scale(0.96);
+  opacity: 0;
+}
+
+.masthead-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  background: var(--landing-white);
+  border: 1px solid rgba(11, 11, 12, 0.14);
+  border-radius: 999px;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--landing-black);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.masthead-badge .badge-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--landing-accent);
+  box-shadow: 0 0 8px rgba(255, 68, 56, 0.65);
+  animation: badge-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-dot-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(255, 68, 56, 0.9);
+  }
+}
+
+.masthead-badge .badge-divider {
+  color: rgba(11, 11, 12, 0.25);
+}
+
+.masthead-badge .badge-year {
+  font-weight: 700;
+  color: var(--landing-black);
+}
+
+.landing-brand-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(34px, 5.2vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: var(--landing-black);
+  margin: 0;
+  white-space: nowrap;
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 2px rgba(250, 250, 248, 0.8);
+}
+
+.brand-accent-dot {
+  color: var(--landing-accent);
+}
+
+/* ---------- Scroll Down Button ---------- */
 #landing .scroll-down {
   all: unset;
   position: absolute;
-  z-index: 2;
+  z-index: 10;
   bottom: 40px;
   left: var(--container-padding);
   width: 44px;
@@ -264,21 +383,19 @@
   }
 }
 
+/* ---------- Responsividade ---------- */
 @media (max-width: 860px) {
-  #landing {
-    --container-padding: 32px;
-  }
-
-  .landing-mark {
-    top: 24px;
-    font-size: 18px;
-  }
-
   .lang-toggle {
-    top: 22px;
+    top: 18px;
   }
 
-  .landing-wordmark {
-    font-size: clamp(32px, 15vw, 96px);
+  .landing-masthead {
+    top: clamp(65px, 10vh, 90px);
+  }
+
+  .landing-brand-name {
+    font-size: clamp(26px, 6.5vw, 42px);
   }
 }
+
+

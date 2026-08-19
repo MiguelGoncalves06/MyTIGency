@@ -95,8 +95,16 @@ export function Landing() {
 
   return (
     <section id="landing" className={isExiting ? 'landing-exiting' : ''}>
-      <span className="landing-mark">myt.</span>
+      {/* Glow atmosférico suave ao fundo */}
+      <div className="landing-ambient-glow" aria-hidden="true" />
 
+      {/* Marca no canto superior esquerdo idêntica à Header para transição perfeita */}
+      <div className="landing-brand-header">
+        <span className="mark">&gt;_</span>
+        <span className="brand-text">MyT.</span>
+      </div>
+
+      {/* Seletor de Idioma */}
       <div className="lang-toggle" role="group" aria-label="idioma">
         <button
           type="button"
@@ -117,8 +125,21 @@ export function Landing() {
         </button>
       </div>
 
-      <h1 className="landing-wordmark">mytigency</h1>
+      {/* Masthead Editorial com Tipografia Refinada */}
+      <div className="landing-masthead">
+        <div className="masthead-badge">
+          <span className="badge-pulse" />
+          <span className="badge-label">DIGITAL PRODUCT STUDIO</span>
+          <span className="badge-divider">—</span>
+          <span className="badge-year">2026</span>
+        </div>
 
+        <h1 className="landing-brand-name">
+          MyTigency<span className="brand-accent-dot">.</span>
+        </h1>
+      </div>
+
+      {/* Botão de Scroll no rodapé */}
       <button
         type="button"
         className="scroll-down"
@@ -145,6 +166,7 @@ export function Landing() {
         </svg>
       </button>
 
+      {/* Renderizador 3D ASCII do Logo */}
       <div id="ascii-logo-landing" ref={logoRef} />
     </section>
   )

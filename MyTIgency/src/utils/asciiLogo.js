@@ -119,15 +119,19 @@ class AsciiLogoSceneEffect {
     this.width = w
     this.height = h
 
+    this.updateCharMetrics()
+
     this.displayCanvas.width = Math.round(w * dpr)
     this.displayCanvas.height = Math.round(h * dpr)
     this.displayCanvas.style.width = `${w}px`
     this.displayCanvas.style.height = `${h}px`
 
-    const iWidth = Math.floor(w * this.fResolution)
-    const iHeight = Math.floor(h * this.fResolution)
-    this.cols = iWidth
-    this.rows = Math.floor(iHeight / 2)
+    // Grid dimension calculations based on actual charWidth & charHeight
+    this.cols = Math.ceil(w / this.charWidth) + 1
+    this.rows = Math.ceil(h / this.charHeight) + 1
+
+    this.offsetX = (w - this.cols * this.charWidth) / 2
+    this.offsetY = (h - this.rows * this.charHeight) / 2
 
     // O Three.js renderiza exatamente na resolução do grid ASCII
     this.renderer.setSize(this.cols, this.rows * 2)
@@ -137,13 +141,11 @@ class AsciiLogoSceneEffect {
     this.decayBuffer = new Float32Array(this.cols * this.rows)
     this.lastMouseGrid = null
     this.rowChars = new Array(this.cols)
-
-    this.updateCharMetrics()
   }
 
   screenToGrid(screenX, screenY) {
-    const col = screenX / this.charWidth
-    const row = screenY / this.charHeight
+    const col = (screenX - this.offsetX) / this.charWidth
+    const row = (screenY - this.offsetY) / this.charHeight
     return { col, row }
   }
 
@@ -286,9 +288,13 @@ class AsciiLogoSceneEffect {
         }
       }
 
-      // Desenha a linha inteira de caracteres escuros em uma única chamada de GPU
+      // Desenha a linha inteira de caracteres perfeitamente centralizada
       ctx.fillStyle = '#050505'
-      ctx.fillText(rowChars.join(''), 0, row * this.charHeight)
+      ctx.fillText(
+        rowChars.join(''),
+        this.offsetX,
+        this.offsetY + row * this.charHeight
+      )
     }
 
     // 4. Desenha os caracteres de destaque vermelho sobre as posições correspondentes
@@ -296,7 +302,11 @@ class AsciiLogoSceneEffect {
       ctx.fillStyle = '#FF4438'
       for (let i = 0; i < accents.length; i++) {
         const acc = accents[i]
-        ctx.fillText(acc.char, acc.col * this.charWidth, acc.row * this.charHeight)
+        ctx.fillText(
+          acc.char,
+          this.offsetX + acc.col * this.charWidth,
+          this.offsetY + acc.row * this.charHeight
+        )
       }
     }
 
@@ -484,10 +494,10 @@ export function createAsciiLogoScene(container, options = {}) {
     const { width: w, height: h } = getContainerSize()
     if (!w || !h) return
 
-    camera.aspect = w / h
-    camera.updateProjectionMatrix()
-
     effect.setSize(w, h)
+
+    camera.aspect = (effect.cols * effect.charWidth) / (effect.rows * effect.charHeight)
+    camera.updateProjectionMatrix()
   }
 
   applySize()
