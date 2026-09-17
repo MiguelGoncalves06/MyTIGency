@@ -23,6 +23,7 @@ function shouldHideCursor(element) {
 
 function getCursorKind(element) {
   if (shouldHideCursor(element)) return 'hidden'
+  if (document.documentElement.dataset.scene === 'transitioning') return 'default'
 
   let el = element
 

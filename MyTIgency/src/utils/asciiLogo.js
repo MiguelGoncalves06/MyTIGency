@@ -50,6 +50,10 @@ class AsciiLogoSceneEffect {
     this.fResolution = options.resolution || 0.16
     this.iScale = options.scale || 1
     this.bInvert = options.invert !== undefined ? options.invert : true
+    this.backgroundColor = options.backgroundColor || '#fafafa'
+    this.foregroundColor = options.foregroundColor || '#050505'
+    this.fillScene = options.fillScene !== undefined ? options.fillScene : true
+    this.density = options.density !== undefined ? options.density : 1.0
 
     this.domElement = document.createElement('div')
     this.domElement.style.cursor = 'default'
@@ -59,7 +63,7 @@ class AsciiLogoSceneEffect {
     this.domElement.style.height = '100%'
     this.domElement.style.overflow = 'hidden'
     this.domElement.style.pointerEvents = 'none'
-    this.domElement.style.backgroundColor = 'var(--landing-white, #fafafa)'
+    this.domElement.style.backgroundColor = this.backgroundColor
 
     // Canvas 2D de alta performance para desenhar o grid ASCII
     this.displayCanvas = document.createElement('canvas')
@@ -94,6 +98,10 @@ class AsciiLogoSceneEffect {
         this.updateCharMetrics()
       })
     }
+  }
+
+  setDensity(val) {
+    this.density = Math.max(0, Math.min(1, val))
   }
 
   updateCharMetrics() {
@@ -238,8 +246,7 @@ class AsciiLogoSceneEffect {
     ctx.save()
     ctx.scale(dpr, dpr)
 
-    // Fundo limpo em #fafafa
-    ctx.fillStyle = '#fafafa'
+    ctx.fillStyle = this.backgroundColor
     ctx.fillRect(0, 0, this.width, this.height)
 
     ctx.font = `600 ${fFontSize}px "Source Code Pro", "Courier New", monospace`
@@ -277,19 +284,30 @@ class AsciiLogoSceneEffect {
             charIdx = this.charSet.length - charIdx - 1
           }
           rowChars[col] = this.charSet[charIdx] || '.'
-        } else if (corruption > 0.03) {
+        } else if (this.fillScene && corruption > 0.03 && this.density > 0.2) {
           const micro = getMicroGeom(row, col, corruption, timeTick)
           rowChars[col] = micro.char
           if (micro.isRed) {
             accents.push({ char: micro.char, col, row })
           }
         } else {
-          rowChars[col] = '.'
+          if (this.fillScene && this.density > 0.01) {
+            if (this.density >= 0.99) {
+              rowChars[col] = '.'
+            } else {
+              // Dissolução orgânica determinística por célula
+              const cellHash = Math.sin(row * 12.9898 + col * 78.233) * 43758.5453
+              const seed = Math.abs(cellHash - Math.floor(cellHash))
+              rowChars[col] = seed < this.density ? '.' : ' '
+            }
+          } else {
+            rowChars[col] = ' '
+          }
         }
       }
 
       // Desenha a linha inteira de caracteres perfeitamente centralizada
-      ctx.fillStyle = '#050505'
+      ctx.fillStyle = this.foregroundColor
       ctx.fillText(
         rowChars.join(''),
         this.offsetX,
@@ -335,15 +353,26 @@ export function createAsciiLogoScene(container, options = {}) {
     rotationStrength = 0.5,
     rotationSmoothing = 0.06,
     autoRotateSpeed = 0,
+    fitToContainer = false,
+    fillScene = true,
+    pointerTrail = true,
+    resolution,
+    backgroundColor,
+    foregroundColor,
   } = options
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0x000000)
 
-  const initialSize = {
-    width: Math.max(container.clientWidth, window.innerWidth),
-    height: Math.max(container.clientHeight, window.innerHeight),
-  }
+  const initialSize = fitToContainer
+    ? {
+        width: Math.max(container.clientWidth, 1),
+        height: Math.max(container.clientHeight, 1),
+      }
+    : {
+        width: Math.max(container.clientWidth, window.innerWidth),
+        height: Math.max(container.clientHeight, window.innerHeight),
+      }
 
   const camera = new THREE.PerspectiveCamera(
     70,
@@ -366,8 +395,11 @@ export function createAsciiLogoScene(container, options = {}) {
   renderer.setPixelRatio(1)
 
   const effect = new AsciiLogoSceneEffect(renderer, CHAR_SET, {
-    resolution: getAsciiResolution(),
+    resolution: resolution ?? getAsciiResolution(),
     invert: true,
+    backgroundColor,
+    foregroundColor,
+    fillScene,
   })
   effect.setSize(initialSize.width, initialSize.height)
   container.appendChild(effect.domElement)
@@ -378,22 +410,53 @@ export function createAsciiLogoScene(container, options = {}) {
   const targetRotation = { x: MODEL_BASE_ROTATION.x, y: MODEL_BASE_ROTATION.y }
   let isVisible = true
   let frameId = 0
+  let isFrozen = false
+  let sceneProgress = 0
+  let mouseWeight = 1.0
+  let isReconnecting = false
+  let reconnectStartTime = 0
+  let loadedMeshLargestDimension = 0
 
-  const mouse = {
+  const actualMouse = {
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
     isInside: false,
   }
 
+  const activeMouse = {
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2,
+  }
+
+  function getLocalPointer(e) {
+    if (!fitToContainer) {
+      return { x: e.clientX, y: e.clientY, isInside: true }
+    }
+
+    const rect = container.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const isInside =
+      x >= 0 && y >= 0 && x <= rect.width && y <= rect.height
+
+    return { x, y, isInside }
+  }
+
   function onPointerMove(e) {
-    mouse.x = e.clientX
-    mouse.y = e.clientY
-    mouse.isInside = true
-    effect.addPointerPoint(e.clientX, e.clientY)
+    actualMouse.x = e.clientX
+    actualMouse.y = e.clientY
+    actualMouse.isInside = true
+
+    if (!isFrozen && sceneProgress <= 0.005) {
+      const point = getLocalPointer(e)
+      if (pointerTrail && point.isInside) {
+        effect.addPointerPoint(point.x, point.y)
+      }
+    }
   }
 
   function onPointerLeave() {
-    mouse.isInside = false
+    actualMouse.isInside = false
   }
 
   window.addEventListener('pointermove', onPointerMove, { passive: true })
@@ -422,7 +485,9 @@ export function createAsciiLogoScene(container, options = {}) {
     logoMesh.position.sub(center)
 
     const largestDimension = Math.max(size.x, size.y, size.z)
-    logoRig.scale.setScalar(targetSize / largestDimension)
+    loadedMeshLargestDimension = largestDimension
+    const currentScaleBoost = 1 + sceneProgress * 0.35
+    logoRig.scale.setScalar((targetSize / largestDimension) * currentScaleBoost)
 
     logoRig.rotation.set(
       MODEL_BASE_ROTATION.x,
@@ -442,16 +507,21 @@ export function createAsciiLogoScene(container, options = {}) {
   observer.observe(container)
 
   function updateTargetRotation() {
-    const vw = window.innerWidth
-    const vh = window.innerHeight
+    const vw = Math.max(window.innerWidth, 1)
+    const vh = Math.max(window.innerHeight, 1)
+    const cx = vw / 2
+    const cy = vh / 2
+
+    const effectiveX = cx + (activeMouse.x - cx) * mouseWeight
+    const effectiveY = cy + (activeMouse.y - cy) * mouseWeight
 
     targetRotation.x =
       MODEL_BASE_ROTATION.x +
-      (Math.PI * (mouse.y / vh) * 2 - Math.PI) * rotationStrength * 0.15
+      (Math.PI * (effectiveY / vh) * 2 - Math.PI) * rotationStrength * 0.15
 
     targetRotation.y =
       MODEL_BASE_ROTATION.y +
-      (Math.PI * (mouse.x / vw) * 2 - Math.PI) * rotationStrength * 0.15
+      (Math.PI * (effectiveX / vw) * 2 - Math.PI) * rotationStrength * 0.15
   }
 
   const clock = new THREE.Clock()
@@ -462,8 +532,34 @@ export function createAsciiLogoScene(container, options = {}) {
 
     const delta = clock.getDelta()
 
-    if (autoRotateSpeed) {
+    if (autoRotateSpeed && !isFrozen) {
       targetRotation.y += autoRotateSpeed * delta
+    }
+
+    // Gerenciamento suave de física e retorno do mouse
+    if (isReconnecting) {
+      const elapsed = performance.now() - reconnectStartTime
+      const t = Math.min(1, elapsed / 450)
+      const smoothstep = t * t * (3 - 2 * t)
+      mouseWeight = smoothstep
+      activeMouse.x += (actualMouse.x - activeMouse.x) * 0.12
+      activeMouse.y += (actualMouse.y - activeMouse.y) * 0.12
+      if (t >= 1) {
+        isReconnecting = false
+        mouseWeight = 1.0
+      }
+    } else if (isFrozen || (sceneProgress > 0.005 && sceneProgress < 0.995)) {
+      mouseWeight += (0 - mouseWeight) * 0.18
+      activeMouse.x += (window.innerWidth / 2 - activeMouse.x) * 0.15
+      activeMouse.y += (window.innerHeight / 2 - activeMouse.y) * 0.15
+    } else if (sceneProgress >= 0.995) {
+      mouseWeight += (1.0 - mouseWeight) * 0.12
+      activeMouse.x += (actualMouse.x - activeMouse.x) * 0.12
+      activeMouse.y += (actualMouse.y - activeMouse.y) * 0.12
+    } else {
+      mouseWeight = 1.0
+      activeMouse.x += (actualMouse.x - activeMouse.x) * 0.2
+      activeMouse.y += (actualMouse.y - activeMouse.y) * 0.2
     }
 
     updateTargetRotation()
@@ -472,9 +568,13 @@ export function createAsciiLogoScene(container, options = {}) {
       logoRig.rotation.y += (targetRotation.y - logoRig.rotation.y) * rotationSmoothing
     }
 
-    // Mantém o ponto ativo onde o mouse estiver descansando
-    if (mouse.isInside) {
-      effect.addPointerPoint(mouse.x, mouse.y, true)
+    // Mantém rastro suave se estiver ativo
+    if (pointerTrail && actualMouse.isInside && !isFrozen && sceneProgress <= 0.005) {
+      effect.addPointerPoint(
+        fitToContainer ? activeMouse.x : activeMouse.x,
+        fitToContainer ? activeMouse.y : activeMouse.y,
+        true,
+      )
     }
 
     effect.render(scene, camera)
@@ -484,6 +584,13 @@ export function createAsciiLogoScene(container, options = {}) {
 
   function getContainerSize() {
     const rect = container.getBoundingClientRect()
+    if (fitToContainer) {
+      return {
+        width: Math.max(Math.round(rect.width), 1),
+        height: Math.max(Math.round(rect.height), 1),
+      }
+    }
+
     return {
       width: Math.max(Math.round(rect.width), window.innerWidth),
       height: Math.max(Math.round(rect.height), window.innerHeight),
@@ -507,7 +614,49 @@ export function createAsciiLogoScene(container, options = {}) {
 
   window.addEventListener('resize', applySize)
 
-  return () => {
+  function setProgress(progress) {
+    const p = Math.max(0, Math.min(1, progress))
+    const prev = sceneProgress
+    sceneProgress = p
+
+    // Curva de perda de densidade: 0.15 -> 0.70 desmancha os pontos de fundo
+    const density = 1 - Math.min(1, Math.max(0, (p - 0.15) / 0.55))
+    effect.setDensity(density)
+
+    // Ajuste dinâmico calibrado de escala 3D
+    if (loadedMeshLargestDimension && logoRig.children.length) {
+      const scaleBoost = 1 + p * 0.35
+      logoRig.scale.setScalar((targetSize / loadedMeshLargestDimension) * scaleBoost)
+    }
+
+    if (p <= 0.005) {
+      if (prev > 0.005) {
+        isFrozen = false
+        isReconnecting = false
+        mouseWeight = 1.0
+        effect.setDensity(1.0)
+      }
+    } else if (p >= 0.995) {
+      if (prev < 0.995) {
+        isFrozen = false
+        isReconnecting = true
+        reconnectStartTime = performance.now()
+      }
+    } else {
+      isFrozen = true
+      isReconnecting = false
+    }
+  }
+
+  function setFreeze(frozen) {
+    isFrozen = Boolean(frozen)
+  }
+
+  function setDensity(density) {
+    effect.setDensity(density)
+  }
+
+  function destroy() {
     cancelAnimationFrame(frameId)
     window.removeEventListener('pointermove', onPointerMove)
     document.removeEventListener('mouseleave', onPointerLeave)
@@ -527,5 +676,12 @@ export function createAsciiLogoScene(container, options = {}) {
         obj.material?.dispose()
       }
     })
+  }
+
+  return {
+    destroy,
+    setProgress,
+    setFreeze,
+    setDensity,
   }
 }

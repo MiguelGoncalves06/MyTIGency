@@ -8,25 +8,26 @@
 
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 40;
   width: 100vw;
   height: 100dvh;
-  background-color: var(--landing-white);
+  background-color: transparent;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1),
-              opacity 0.9s cubic-bezier(0.76, 0, 0.24, 1),
-              box-shadow 0.9s ease;
-  will-change: transform, opacity;
-  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  pointer-events: none;
+  opacity: clamp(0, calc(1 - var(--scene-progress) * 2.8), 1);
+  transition: opacity 80ms linear;
 }
 
-#landing.landing-exiting {
-  transform: translateY(-100%);
+html:not([data-scene="intro"]) #landing {
   pointer-events: none;
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.14);
+}
+
+html[data-scene="hero"] #landing {
+  display: none !important;
+  visibility: hidden !important;
 }
 
 /* ---------- Ambient Glow (Ideia C) ---------- */
@@ -56,89 +57,6 @@
   }
 }
 
-/* ---------- 3D ASCII Canvas Container ---------- */
-#ascii-logo-landing {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  user-select: none;
-  pointer-events: none;
-  z-index: 2;
-  transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1),
-              opacity 0.75s ease;
-  will-change: transform, opacity;
-}
-
-#landing.landing-exiting #ascii-logo-landing {
-  transform: scale(0.92);
-  opacity: 0.15;
-}
-
-#ascii-logo-landing > div {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-#ascii-logo-landing canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  user-select: none;
-}
-
-/* ---------- Marca no Canto Superior Esquerdo com Fundo Limpo ---------- */
-.landing-brand-header {
-  position: absolute;
-  z-index: 10;
-  top: 20px;
-  left: var(--container-padding);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--landing-black);
-  background-color: var(--landing-white);
-  border: 1.5px solid var(--landing-black);
-  border-radius: 999px;
-  padding: 4px 14px 4px 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  pointer-events: none;
-  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 0.5s ease;
-  will-change: transform, opacity;
-}
-
-.landing-brand-header .mark {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 1.5px solid var(--landing-black);
-  background-color: var(--landing-white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-}
-
-#landing.landing-exiting .landing-brand-header {
-  transform: translateY(-28px);
-  opacity: 0;
-}
-
 /* ---------- Seletor de Idioma (Alinhado à Direita) ---------- */
 .lang-toggle {
   position: absolute;
@@ -154,14 +72,11 @@
   padding: 4px;
   font-family: var(--font-mono);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 0.5s ease;
-  will-change: transform, opacity;
+  pointer-events: auto;
 }
 
-#landing.landing-exiting .lang-toggle {
-  transform: translateY(-28px);
-  opacity: 0;
+html:not([data-scene="intro"]) .lang-toggle {
+  pointer-events: none;
 }
 
 .lang-toggle button {
@@ -201,14 +116,6 @@
   pointer-events: none;
   width: max-content;
   max-width: 90vw;
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 0.6s ease;
-  will-change: transform, opacity;
-}
-
-#landing.landing-exiting .landing-masthead {
-  transform: translateX(-50%) translateY(-35px) scale(0.96);
-  opacity: 0;
 }
 
 .masthead-badge {
@@ -292,20 +199,16 @@
   border-radius: 50%;
   cursor: pointer;
   box-sizing: border-box;
-  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 0.5s ease,
-              box-shadow 0.25s ease;
-  will-change: transform, opacity;
+  pointer-events: auto;
+}
+
+html:not([data-scene="intro"]) #landing .scroll-down {
+  pointer-events: none;
 }
 
 #landing .scroll-down:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(5, 5, 5, 0.08);
-}
-
-#landing.landing-exiting .scroll-down {
-  transform: translateY(28px) scale(0.9);
-  opacity: 0;
 }
 
 #landing .progress-ring {
