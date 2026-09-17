@@ -24,7 +24,7 @@ O Art Director (`myt-art-director`) decide o que a experiência deve significar 
 
 # Design tokens / visual foundations
 
-O projeto hoje tem **dois conjuntos de tokens que deveriam ser um só**: `:root` em `src/App.css` (sistema geral) e `#landing` em `src/components/Landing.css` (escopo da intro), com os mesmos valores de cor sob nomes diferentes (`--bg`/`--landing-white`, `--ink`/`--landing-black`, `--accent`/`--landing-accent`). `src/index.css` existe mas está vazio. Até isso ser unificado, trate `App.css:root` como fonte de verdade e `Landing.css` como duplicata a resolver, não como uma segunda decisão legítima.
+**Resolvido:** `Landing.css` tinha um conjunto próprio de tokens duplicados (`--landing-white`/`--landing-black`/`--landing-accent`/`--font-mono`) com os mesmos valores de `App.css:root` sob outro nome. Foram removidos; a intro agora referencia `--bg`/`--ink`/`--accent` diretamente. `src/index.css` existe mas está vazio — sem uso.
 
 Tokens já em uso (extraídos do código):
 
@@ -43,15 +43,14 @@ Não crie um token de cor novo sem antes verificar se um destes já cobre a nece
 
 # Typography
 
-Fontes carregadas (`index.html`): Archivo Black, Inter, JetBrains Mono, Space Grotesk, Syne, Source Code Pro.
+Fontes carregadas (`index.html`): Archivo Black, Inter, JetBrains Mono, Syne, Source Code Pro. (Space Grotesk foi removida do link — era usada só pela intro, que agora usa Archivo Black; ver abaixo.)
 
 Fontes realmente em uso:
-- **Archivo Black** (`.display`) — headline da hero, `h2` de section-head, `h3` de service-card/work-info, `cta-band h2`. É a família de afirmação central.
-- **JetBrains Mono** (`body`) — fonte de sistema: rótulos, eyebrow, navegação, números, corpo de texto pequeno.
-- **Space Grotesk** — usada só em `Landing.css` (`--font-display`) para o nome da marca na intro. Cumpre o mesmo papel de "afirmação central" que Archivo Black cumpre no resto do site, com família diferente — é uma inconsistência a resolver, não a espalhar para novos lugares.
+- **Archivo Black** (`.display`) — headline da hero, `h2` de section-head, `h3` de service-card/work-info, `cta-band h2`, e o nome da marca na intro (`landing-brand-name`, `Landing.jsx`). É a única família de afirmação central do site — **resolvido**: a intro usava Space Grotesk antes, criando duas vozes de display na mesma experiência; agora reutiliza a classe `.display` como todo o resto.
+- **JetBrains Mono** (`body`) — fonte de sistema: rótulos, eyebrow, navegação, números, corpo de texto pequeno. Todo o texto da intro (badge, toggle PT/EN) também herda isso do `body` por padrão — não precisa declarar `font-family` local.
 - **Source Code Pro** — usada só dentro do canvas do logo ASCII (`utils/asciiLogo.js`), nunca como fonte CSS selecionável.
 
-Carregadas mas **não usadas em nenhum lugar do código**: Inter (só existe como fallback dentro de `--font-display`) e Syne (carregada no `index.html`, nenhuma referência em `src/`). Não introduza novos usos dessas duas sem necessidade real; se Syne continuar não usada, é candidata a remoção do link de fontes (custo de performance sem função — ver `DESIGN.md` → Performance).
+Carregadas mas **não usadas em nenhum lugar do código**: Inter (só existe como fallback dentro de declarações de font-family que já não são necessárias) e Syne (nenhuma referência em `src/`). Não introduza novos usos dessas duas sem necessidade real; ambas seguem candidatas a remoção do link de fontes (custo de performance sem função — ver `DESIGN.md` → Performance) — não removidas ainda porque não fazem parte da alteração que motivou esta atualização.
 
 Regra: dois papéis tipográficos, não mais — **afirmação** (display, poucas palavras, grande) e **sistema** (mono, todo o resto). Um novo texto escolhe um dos dois papéis; não introduza uma terceira família porque "combina" com uma seção nova.
 

@@ -41,7 +41,7 @@ export function Landing() {
           <span className="badge-year">2026</span>
         </div>
 
-        <p className="landing-brand-name">
+        <p className="landing-brand-name display">
           MyTigency<span className="brand-accent-dot">.</span>
         </p>
       </div>

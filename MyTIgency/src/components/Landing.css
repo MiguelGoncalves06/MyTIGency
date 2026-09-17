@@ -1,9 +1,4 @@
 #landing {
-  --landing-white: #fafaf8;
-  --landing-black: #0b0b0c;
-  --landing-accent: #ff4438;
-  --font-display: "Space Grotesk", "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", "Source Code Pro", monospace;
   --container-padding: clamp(20px, 4vw, 48px);
 
   position: fixed;
@@ -66,11 +61,10 @@ html[data-scene="hero"] #landing {
   display: flex;
   align-items: center;
   gap: 2px;
-  background-color: var(--landing-white);
-  border: 1.5px solid var(--landing-black);
+  background-color: var(--bg);
+  border: 1.5px solid var(--ink);
   border-radius: 999px;
   padding: 4px;
-  font-family: var(--font-mono);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   pointer-events: auto;
 }
@@ -84,7 +78,6 @@ html[data-scene="hero"] .lang-toggle {
   cursor: pointer;
   padding: 5px 12px;
   border-radius: 999px;
-  font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -93,8 +86,8 @@ html[data-scene="hero"] .lang-toggle {
 }
 
 .lang-toggle button.active {
-  color: var(--landing-white);
-  background-color: var(--landing-black);
+  color: var(--bg);
+  background-color: var(--ink);
 }
 
 .lang-toggle .divider {
@@ -123,15 +116,14 @@ html[data-scene="hero"] .lang-toggle {
   align-items: center;
   gap: 8px;
   padding: 4px 14px;
-  background: var(--landing-white);
+  background: var(--bg);
   border: 1px solid rgba(11, 11, 12, 0.14);
   border-radius: 999px;
   margin-bottom: 8px;
-  font-family: var(--font-mono);
   font-size: 10.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--landing-black);
+  color: var(--ink);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
@@ -139,7 +131,7 @@ html[data-scene="hero"] .lang-toggle {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--landing-accent);
+  background: var(--accent);
   box-shadow: 0 0 8px rgba(255, 68, 56, 0.65);
   animation: badge-dot-pulse 2s ease-in-out infinite;
 }
@@ -162,16 +154,15 @@ html[data-scene="hero"] .lang-toggle {
 
 .masthead-badge .badge-year {
   font-weight: 700;
-  color: var(--landing-black);
+  color: var(--ink);
 }
 
 .landing-brand-name {
-  font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(34px, 5.2vw, 64px);
   line-height: 1.05;
   letter-spacing: -0.035em;
-  color: var(--landing-black);
+  color: var(--ink);
   margin: 0;
   white-space: nowrap;
   position: relative;
@@ -180,7 +171,7 @@ html[data-scene="hero"] .lang-toggle {
 }
 
 .brand-accent-dot {
-  color: var(--landing-accent);
+  color: var(--accent);
 }
 
 /* ---------- Scroll Down Button ---------- */
@@ -195,7 +186,7 @@ html[data-scene="hero"] .lang-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--landing-white);
+  background-color: var(--bg);
   border-radius: 50%;
   cursor: pointer;
   box-sizing: border-box;
@@ -228,7 +219,7 @@ html:not([data-scene="intro"]) #landing .scroll-down {
 
 #landing .progress-ring-fill {
   fill: none;
-  stroke: var(--landing-black);
+  stroke: var(--ink);
   stroke-width: 2px;
   stroke-linecap: round;
   stroke-dasharray: 113.1;
@@ -238,7 +229,7 @@ html:not([data-scene="intro"]) #landing .scroll-down {
 }
 
 #landing .scroll-chevron {
-  color: var(--landing-black);
+  color: var(--ink);
   pointer-events: none;
   transition: transform 0.2s ease;
   animation: landing-chevron-pulse 2.4s ease-in-out infinite;
