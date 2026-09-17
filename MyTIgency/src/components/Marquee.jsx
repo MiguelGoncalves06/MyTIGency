@@ -1,14 +1,8 @@
-import { useState } from 'react'
+import { useLanguage } from '../context/LanguageContext'
 
 export function Marquee() {
-  const [clients] = useState([
-    '[CLIENTE A]',
-    '[CLIENTE B]',
-    '[CLIENTE C]',
-    '[CLIENTE D]',
-    '[CLIENTE E]',
-    '[CLIENTE F]',
-  ])
+  const { t } = useLanguage()
+  const clients = t.marquee.clients
 
   // Repete o array 4 vezes para fazer o loop infinito do Marquee
   const repeatedClients = Array(4).fill(clients).flat()

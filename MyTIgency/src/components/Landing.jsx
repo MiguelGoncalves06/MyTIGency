@@ -1,10 +1,10 @@
-import { useState } from 'react'
 import { useScene } from '../context/SceneContext'
+import { useLanguage } from '../context/LanguageContext'
 import './Landing.css'
 
 export function Landing() {
   const { phase, scrollToHero } = useScene()
-  const [lang, setLang] = useState('pt')
+  const { lang, setLang, t } = useLanguage()
 
   return (
     <section
@@ -13,7 +13,7 @@ export function Landing() {
     >
       <div className="landing-ambient-glow" aria-hidden="true" />
 
-      <div className="lang-toggle" role="group" aria-label="idioma">
+      <div className="lang-toggle" role="group" aria-label={t.landing.langAria}>
         <button
           type="button"
           className={lang === 'pt' ? 'active' : ''}
@@ -36,7 +36,7 @@ export function Landing() {
       <div className="landing-masthead">
         <div className="masthead-badge">
           <span className="badge-pulse" />
-          <span className="badge-label">DIGITAL PRODUCT STUDIO</span>
+          <span className="badge-label">{t.landing.badge}</span>
           <span className="badge-divider">—</span>
           <span className="badge-year">2026</span>
         </div>
@@ -49,7 +49,7 @@ export function Landing() {
       <button
         type="button"
         className="scroll-down"
-        aria-label="Rolar para a hero"
+        aria-label={t.landing.scrollAria}
         onClick={scrollToHero}
       >
         <svg className="progress-ring" viewBox="0 0 44 44" aria-hidden="true">

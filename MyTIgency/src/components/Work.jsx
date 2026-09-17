@@ -1,42 +1,31 @@
 import { RedText } from './RedText'
+import { useLanguage } from '../context/LanguageContext'
 
 export function Work(){
+  const { t } = useLanguage()
+
   return (
         <section className="work" id="trabalhos">
         <div className="section-head reveal">
-          <span className="eyebrow">Trabalhos selecionados</span>
-          <h2>Alguns dos produtos que ajudamos a vencer.</h2>
+          <span className="eyebrow">{t.work.eyebrow}</span>
+          <h2>{t.work.heading}</h2>
         </div>
         <div className="work-grid">
-          <div className="work-card reveal">
-            <div className="work-thumb">[ CASE 01 ]</div>
-            <div className="work-info">
-              <div className="tag">Placeholder</div>
-              <h3>[Nome do projeto]</h3>
-              <p>[Placeholder] Descrição curta do case — problema, abordagem e resultado.</p>
+          {t.work.cases.map((item, i) => (
+            <div className="work-card reveal" key={i}>
+              <div className="work-thumb">{item.thumb}</div>
+              <div className="work-info">
+                <div className="tag">{item.tag}</div>
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+              </div>
             </div>
-          </div>
-          <div className="work-card reveal">
-            <div className="work-thumb">[ CASE 02 ]</div>
-            <div className="work-info">
-              <div className="tag">Placeholder</div>
-              <h3>[Nome do projeto]</h3>
-              <p>[Placeholder] Descrição curta do case — problema, abordagem e resultado.</p>
-            </div>
-          </div>
-          <div className="work-card reveal">
-            <div className="work-thumb">[ CASE 03 ]</div>
-            <div className="work-info">
-              <div className="tag">Placeholder</div>
-              <h3>[Nome do projeto]</h3>
-              <p>[Placeholder] Descrição curta do case — problema, abordagem e resultado.</p>
-            </div>
-          </div>
+          ))}
         </div>
 
               <section className="cta-band" id="contato">
-        <h2>Vamos construir algo que <RedText>vence?</RedText></h2>
-        <a href="#" className="btn solid">Reach out →</a>
+        <h2>{t.work.ctaPre}<RedText>{t.work.ctaAccent}</RedText></h2>
+        <a href="#" className="btn solid">{t.work.ctaButton}</a>
       </section>
       </section>
     )

@@ -87,11 +87,13 @@ Princípios primeiro; expressões específicas atuais estão registradas em **Cu
 - **Regra explícita: nunca simular prova social.** Nenhum nome de cliente fictício, nenhum case fabricado, nenhuma insinuação de uma carteira de clientes que não existe.
 - Onde a prova ainda não existe, isso é dito diretamente como parte da mensagem (ver **Proof & Credibility**), não mascarado com placeholder genérico.
 - Uma promessa visual não cumprida (ex.: uma funcionalidade que aparenta existir mas não existe) é, em escala pequena, o mesmo tipo de simulação que o Princípio 4 rejeita em escala maior.
+- **Regra explícita: bilíngue PT/EN é requisito permanente, não tarefa pontual.** Todo conteúdo novo do site precisa existir em português e inglês (`src/i18n/strings.js`), com português como padrão de carregamento. Isso decorre de uma decisão de produto (PRODUCT.md → Operating Context): alcançar donos de pequenos negócios fora do Brasil. Um toggle de idioma sem tradução real por trás (como o PT/EN era antes desta decisão) volta a violar a regra de "nenhuma promessa visual sem função real" acima.
 
 # Authorship
 
 - Os dois fundadores reais (design + engenharia/produto, fato confirmado em PRODUCT.md) devem aparecer como autoria visível e cedo na experiência — não escondidos atrás de uma marca institucional abstrata.
-- Uma única identidade de marca consistente em toda a página. Qualquer segunda assinatura ou nome paralelo não decidido deliberadamente é uma inconsistência a resolver, não uma variação aceitável.
+- Uma única identidade de marca consistente em toda a página — resolvido: todo o site assina "MyTigency"/"MyT", sem nome paralelo. Qualquer segunda assinatura não decidida deliberadamente volta a ser uma inconsistência a resolver, não uma variação aceitável.
+- O próprio nome já é um sinal de autoria real, não neutro: "MyTigency" é construído a partir das identidades dos dois fundadores (etimologia confirmada em PRODUCT.md → Brand Commitments) — reforça o Princípio 3 estruturalmente, não só na superfície.
 - Diretividade na voz não deve ser confundida com informalidade que reduza a percepção de capacidade — o equilíbrio exato entre "somos só nós dois, diretos" e "somos capazes de algo mais sério que a média" ainda não está resolvido (ver **Design Hypotheses**).
 
 # Proof & Credibility
@@ -150,11 +152,13 @@ Princípios primeiro; expressões específicas atuais estão registradas em **Cu
 - Render ASCII do modelo 3D, o modelo `.glb`, a marca `>_`, o efeito de glitch, JetBrains Mono como fonte única do sistema, o vermelho como matiz específico.
 - Cursor contextual e física do texto vermelho — válidos como expressão do Princípio 2, mas precisam ser reavaliados por essa régua (resposta real), não pela régua de "parecer interessante".
 
-**Precisam ser questionados/resolvidos (contradizem a direção como está hoje):**
-- Marquee de clientes fictícios (`[CLIENTE A]`...) — contradiz **Proof & Credibility**.
-- Copy que insinua clientela já estabelecida ("marcas que já sabem a diferença entre lançar e vencer") — mesma contradição.
-- Footer assinado "RUNTIME." enquanto o restante da página usa "MyTigency" — contradiz **Authorship**.
-- Toggle PT/EN não funcional — contradiz **Content & Copy** (nenhuma promessa visual sem função real).
+**Resolvido:**
+- Footer agora assina "MyTigency" (era "RUNTIME.", resíduo de template — nunca foi um nome de marca real; etimologia confirmada em PRODUCT.md → Brand Commitments).
+- Toggle PT/EN agora é funcional (`LanguageContext` + `src/i18n/strings.js`); bilíngue é regra permanente, não mais pendência (ver Content & Copy).
+
+**Ainda precisa ser questionado/resolvido (contradiz a direção como está hoje):**
+- Marquee de clientes fictícios (`[CLIENTE A]`/`[CLIENT A]`...) — contradiz **Proof & Credibility**. Os rótulos foram traduzidos junto com o resto do site, mas a decisão de fundo (remover / substituir por "case #0" / reescrever) segue em aberto.
+- Copy que insinua clientela já estabelecida ("marcas que já sabem a diferença entre lançar e vencer" / equivalente em inglês) — mesma contradição; traduzida como está, não reescrita.
 - `PrismSection.jsx` e `BackgroundBoxes.jsx` — componentes não importados em `App.jsx`; direções abandonadas fora da direção atual. Decisão de manter, formalizar ou remover ainda pendente.
 
 # Design Hypotheses

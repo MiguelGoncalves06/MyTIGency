@@ -23,7 +23,7 @@ Tagline: "Funcionar é comum. Vencer é raro." (Working is common. Winning is ra
 ## Operating Context
 
 - Single-page site (React + Vite) with a cinematic scroll-driven intro (ASCII/3D logo reveal, smooth scroll via Lenis, Framer Motion transitions) before the standard landing sections: Hero, Marquee, Services, Work, Footer.
-- Content is Portuguese by default. A PT/EN language toggle exists in the landing intro (`src/components/Landing.jsx`) but is currently cosmetic only — no translation logic is wired to it yet. Treat English support as not yet implemented.
+- **Bilingual by rule, PT default.** As of this decision, every piece of user-facing site content must ship with both a Portuguese and an English version — this is a standing product requirement, not a one-off translation task, because it's how the studio intends to reach smaller business owners beyond Brazil. Portuguese remains the default language on load. The PT/EN toggle in the landing intro (`src/components/Landing.jsx`) is functional: language state lives in `LanguageContext` (`src/context/LanguageContext.jsx`) and all copy is sourced from `src/i18n/strings.js`. Any new copy added to the site must be added to both language entries in that file, not hardcoded in a single language.
 - Sections use nav anchors in Portuguese: `#trabalhos` (Work), `#carreiras` (Careers, currently just the footer), `#contato` (Contact/CTA band).
 
 ## Capabilities and Constraints
@@ -34,8 +34,10 @@ Tagline: "Funcionar é comum. Vencer é raro." (Working is common. Winning is ra
 
 ## Brand Commitments
 
-- Confirmed name: MyTigency.
-- No other binding visual/brand references were established in this session; existing visual system (ASCII motifs, red accent glitch text, dark theme, monospace/display type stack) is incumbent implementation, not yet documented in DESIGN.md.
+- Confirmed name: **MyTigency**, abbreviated **MyT**. Both forms are valid; there is no other brand name for the studio.
+- Name etymology (confirmed by the founders, durable fact — do not treat as arbitrary or replaceable): "My" comes from **M**iguel (co-founder) + "y"; "TI" refers to the tech/IT field the studio works in, and also doubles as the initials of **T**h**i**ago (the other co-founder); "gency" comes from "agência" (agency), which is what the studio is building. The name is literally built from both founders' identities plus the field and the business form.
+- "RUNTIME." (previously used in the footer) was never a real brand name — it was leftover placeholder text and has been corrected to MyTigency.
+- Existing visual system (ASCII motifs, red accent, editorial/hairline base, monospace/display type stack) is documented in `DESIGN.md`.
 
 ## Evidence on Hand
 
@@ -52,4 +54,4 @@ This is a known, deliberate gap for a first launch — do not invent client name
 1. Set expectations above typical small-business freelance/agency work — the page's own execution is part of the pitch.
 2. Speak to a business owner's outcome ("vencer"/winning), not just deliverables ("funcionar"/working).
 3. Keep the studio's real two-person scope credible — avoid copy that implies a larger team or agency than actually exists.
-4. Portuguese is the primary language today; do not assume English parity until the toggle is actually wired.
+4. Every piece of content ships in Portuguese and English; Portuguese is the default on load, but English is not an afterthought — it's how the studio reaches smaller business owners outside Brazil.

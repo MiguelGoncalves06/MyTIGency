@@ -75,7 +75,7 @@ html[data-scene="hero"] #landing {
   pointer-events: auto;
 }
 
-html:not([data-scene="intro"]) .lang-toggle {
+html[data-scene="hero"] .lang-toggle {
   pointer-events: none;
 }
 

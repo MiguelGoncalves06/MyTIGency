@@ -8,6 +8,7 @@ import { Footer } from './components/Footer'
 import { ContextualCursor } from './components/ContextualCursor'
 import { SmoothScroll } from './components/SmoothScroll'
 import { SceneProvider } from './context/SceneContext'
+import { LanguageProvider } from './context/LanguageContext'
 import { AsciiStage } from './components/AsciiStage'
 import { useRedPhysics } from './hooks/useRedPhysics'
 import './App.css'
@@ -17,20 +18,22 @@ function App() {
 
   return (
     <SmoothScroll>
-      <SceneProvider>
-        <ContextualCursor />
-        <AsciiStage />
-        <Landing />
-        <Header />
-        <div className="intro-scroll-space" aria-hidden="true" />
-        <div className="app-shell">
-          <Hero />
-          <Marquee />
-          <Services />
-          <Work />
-          <Footer />
-        </div>
-      </SceneProvider>
+      <LanguageProvider>
+        <SceneProvider>
+          <ContextualCursor />
+          <AsciiStage />
+          <Landing />
+          <Header />
+          <div className="intro-scroll-space" aria-hidden="true" />
+          <div className="app-shell">
+            <Hero />
+            <Marquee />
+            <Services />
+            <Work />
+            <Footer />
+          </div>
+        </SceneProvider>
+      </LanguageProvider>
     </SmoothScroll>
   )
 }

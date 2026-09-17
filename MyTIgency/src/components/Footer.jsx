@@ -1,40 +1,44 @@
+import { useLanguage } from '../context/LanguageContext'
+
 export function Footer(){
+  const { t } = useLanguage()
+
   return (
         <footer id="carreiras">
         <div className="footer-grid">
           <div>
             <a href="#top" className="brand" style={{ marginBottom: '14px', display: 'inline-flex' }}>
-              <span className="mark">&gt;_</span> RUNTIME.
+              <span className="mark">&gt;_</span> {t.footer.brand}
             </a>
             <p style={{ color: 'var(--ink-dim)', fontSize: '13px', lineHeight: '1.6', maxWidth: '32ch', marginTop: '14px' }}>
-              [Placeholder] Uma linha curta sobre o studio — quem somos e o que nos move.
+              {t.footer.desc}
             </p>
           </div>
           <div>
-            <h5>Studio</h5>
+            <h5>{t.footer.studioLabel}</h5>
             <ul>
-              <li><a href="#servicos">Serviços</a></li>
-              <li><a href="#trabalhos">Trabalhos</a></li>
-              <li><a href="#carreiras">Carreiras</a></li>
+              <li><a href="#servicos">{t.footer.navServices}</a></li>
+              <li><a href="#trabalhos">{t.footer.navWork}</a></li>
+              <li><a href="#carreiras">{t.footer.navCareers}</a></li>
             </ul>
           </div>
           <div>
-            <h5>Social</h5>
+            <h5>{t.footer.socialLabel}</h5>
             <ul>
               <li><a href="#">[Instagram]</a></li>
               <li><a href="#">[LinkedIn]</a></li>
             </ul>
           </div>
           <div>
-            <h5>Contato</h5>
+            <h5>{t.footer.contactLabel}</h5>
             <ul>
-              <li><a href="#">placeholder@runtime.studio</a></li>
+              <li><a href="#">{t.footer.email}</a></li>
             </ul>
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 RUNTIME. — placeholder</span>
-          <span>Feito com café e commits tardios.</span>
+          <span>{t.footer.copyright}</span>
+          <span>{t.footer.tagline}</span>
         </div>
       </footer>
     )

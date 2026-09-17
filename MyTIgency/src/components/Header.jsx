@@ -1,7 +1,9 @@
 import { useHeaderScroll } from '../hooks/useHeaderScroll'
+import { useLanguage } from '../context/LanguageContext'
 
 export function Header() {
   const scrolled = useHeaderScroll()
+  const { t } = useLanguage()
 
   return (
     <header className={scrolled ? 'scrolled' : ''}>
@@ -16,12 +18,12 @@ export function Header() {
       <div className="nav-right">
         <nav>
           <ul>
-            <li><a href="#top" className="active">Home</a></li>
-            <li><a href="#trabalhos">Trabalhos</a></li>
-            <li><a href="#carreiras">Carreiras</a></li>
+            <li><a href="#top" className="active">{t.header.home}</a></li>
+            <li><a href="#trabalhos">{t.header.work}</a></li>
+            <li><a href="#carreiras">{t.header.careers}</a></li>
           </ul>
         </nav>
-        <a href="#contato" className="btn">Fale conosco →</a>
+        <a href="#contato" className="btn">{t.header.cta}</a>
       </div>
     </header>
   )

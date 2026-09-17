@@ -1,0 +1,138 @@
+export const strings = {
+  pt: {
+    header: {
+      home: 'Home',
+      work: 'Trabalhos',
+      careers: 'Carreiras',
+      cta: 'Fale conosco →',
+    },
+    landing: {
+      badge: 'STUDIO DE PRODUTO DIGITAL',
+      scrollAria: 'Rolar para a hero',
+      langAria: 'idioma',
+    },
+    hero: {
+      eyebrow: 'Studio de produto digital — desde 2026',
+      headline: ['FUNCIONAR', 'É COMUM.', 'VENCER', 'É RARO.'],
+      p1: [
+        { text: 'Produto que funciona é o mínimo. ' },
+        { text: 'Produto que vence', bold: true },
+        { text: ' é o que muda o número no fim do trimestre — e isso não acontece por acidente.' },
+      ],
+      p2: [
+        { text: 'Somos um time de ' },
+        { text: 'design, engenharia e produto', bold: true },
+        { text: ', construindo para marcas que já sabem a diferença entre lançar e vencer. [Placeholder] Clientes: ' },
+        { text: '[Cliente A], [Cliente B], [Cliente C]', bold: true },
+        { text: '.' },
+      ],
+    },
+    services: {
+      eyebrow: 'O que fazemos',
+      headingAccent: 'Duas',
+      headingLine1: 'pessoas.',
+      headingLine2: 'Um único time.',
+      cards: [
+        { num: '01', title: 'Design', desc: '[Placeholder] Identidade visual, produto e interface — decisões de design que carregam a marca em cada pixel.' },
+        { num: '02', title: 'Engenharia', desc: '[Placeholder] Front-end, back-end e infraestrutura construídos para durar — sem gambiarra, sem dívida técnica escondida.' },
+        { num: '03', title: 'Produto', desc: '[Placeholder] Estratégia e priorização — o que construir, na ordem certa, com o motivo certo.' },
+      ],
+    },
+    work: {
+      eyebrow: 'Trabalhos selecionados',
+      heading: 'Alguns dos produtos que ajudamos a vencer.',
+      cases: [
+        { thumb: '[ CASE 01 ]', tag: 'Placeholder', title: '[Nome do projeto]', desc: '[Placeholder] Descrição curta do case — problema, abordagem e resultado.' },
+        { thumb: '[ CASE 02 ]', tag: 'Placeholder', title: '[Nome do projeto]', desc: '[Placeholder] Descrição curta do case — problema, abordagem e resultado.' },
+        { thumb: '[ CASE 03 ]', tag: 'Placeholder', title: '[Nome do projeto]', desc: '[Placeholder] Descrição curta do case — problema, abordagem e resultado.' },
+      ],
+      ctaPre: 'Vamos construir algo que ',
+      ctaAccent: 'vence?',
+      ctaButton: 'Fale conosco →',
+    },
+    marquee: {
+      clients: ['[CLIENTE A]', '[CLIENTE B]', '[CLIENTE C]', '[CLIENTE D]', '[CLIENTE E]', '[CLIENTE F]'],
+    },
+    footer: {
+      brand: 'MyTigency.',
+      desc: '[Placeholder] Uma linha curta sobre o studio — quem somos e o que nos move.',
+      studioLabel: 'Studio',
+      navServices: 'Serviços',
+      navWork: 'Trabalhos',
+      navCareers: 'Carreiras',
+      socialLabel: 'Social',
+      contactLabel: 'Contato',
+      email: 'placeholder@mytigency.studio',
+      copyright: '© 2026 MyTigency — placeholder',
+      tagline: 'Feito com café e commits tardios.',
+    },
+  },
+  en: {
+    header: {
+      home: 'Home',
+      work: 'Work',
+      careers: 'Careers',
+      cta: 'Get in touch →',
+    },
+    landing: {
+      badge: 'DIGITAL PRODUCT STUDIO',
+      scrollAria: 'Scroll to hero',
+      langAria: 'language',
+    },
+    hero: {
+      eyebrow: 'Digital product studio — since 2026',
+      headline: ['WORKING', 'IS COMMON.', 'WINNING', 'IS RARE.'],
+      p1: [
+        { text: 'A product that works is the bare minimum. ' },
+        { text: 'A product that wins', bold: true },
+        { text: " is the one that moves the number at the end of the quarter — and that doesn't happen by accident." },
+      ],
+      p2: [
+        { text: "We're a team of " },
+        { text: 'design, engineering and product', bold: true },
+        { text: ', building for brands that already know the difference between launching and winning. [Placeholder] Clients: ' },
+        { text: '[Client A], [Client B], [Client C]', bold: true },
+        { text: '.' },
+      ],
+    },
+    services: {
+      eyebrow: 'What we do',
+      headingAccent: 'Two',
+      headingLine1: 'people.',
+      headingLine2: 'One single team.',
+      cards: [
+        { num: '01', title: 'Design', desc: '[Placeholder] Visual identity, product and interface — design decisions that carry the brand in every pixel.' },
+        { num: '02', title: 'Engineering', desc: '[Placeholder] Front-end, back-end and infrastructure built to last — no shortcuts, no hidden technical debt.' },
+        { num: '03', title: 'Product', desc: '[Placeholder] Strategy and prioritization — what to build, in the right order, for the right reason.' },
+      ],
+    },
+    work: {
+      eyebrow: 'Selected work',
+      heading: "Some of the products we've helped win.",
+      cases: [
+        { thumb: '[ CASE 01 ]', tag: 'Placeholder', title: '[Project name]', desc: '[Placeholder] Short case description — problem, approach and result.' },
+        { thumb: '[ CASE 02 ]', tag: 'Placeholder', title: '[Project name]', desc: '[Placeholder] Short case description — problem, approach and result.' },
+        { thumb: '[ CASE 03 ]', tag: 'Placeholder', title: '[Project name]', desc: '[Placeholder] Short case description — problem, approach and result.' },
+      ],
+      ctaPre: "Let's build something that ",
+      ctaAccent: 'wins?',
+      ctaButton: 'Get in touch →',
+    },
+    marquee: {
+      clients: ['[CLIENT A]', '[CLIENT B]', '[CLIENT C]', '[CLIENT D]', '[CLIENT E]', '[CLIENT F]'],
+    },
+    footer: {
+      brand: 'MyTigency.',
+      desc: '[Placeholder] A short line about the studio — who we are and what drives us.',
+      studioLabel: 'Studio',
+      navServices: 'Services',
+      navWork: 'Work',
+      navCareers: 'Careers',
+      socialLabel: 'Social',
+      contactLabel: 'Contact',
+      email: 'placeholder@mytigency.studio',
+      copyright: '© 2026 MyTigency — placeholder',
+      tagline: 'Made with coffee and late-night commits.',
+    },
+  },
+}
