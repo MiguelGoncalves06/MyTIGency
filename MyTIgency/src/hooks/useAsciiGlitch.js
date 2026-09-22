@@ -1,15 +1,16 @@
 import { useEffect } from 'react'
 
-const GLITCH_CHARS = '.,-~:;=!*#$@'
+// Matches the reference decode effect: one flat symbol set, no weighting by position.
+const GLYPHS = '-=+*/\\<>▓_█▒░'
+const START_DELAY_MS = 460 // brief full-scramble "wind up" before the reveal starts
+const MS_PER_CHAR = 101 // constant linear reveal speed
+const TICK_MS = 86 // calm, steady refresh — faster reads as jittery
 
-function glitchChar(original, intensity) {
-  if (original === ' ') return original
-  if (Math.random() > intensity) return original
-  if (Math.random() < 0.35) return original
-  return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)]
+function randomGlyph() {
+  return GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
 }
 
-export function useAsciiGlitch({ active, originalChars, cursorRef, onUpdate }) {
+export function useAsciiGlitch({ active, originalChars, onUpdate }) {
   useEffect(() => {
     if (!active) {
       onUpdate([...originalChars])
@@ -19,32 +20,40 @@ export function useAsciiGlitch({ active, originalChars, cursorRef, onUpdate }) {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduceMotion) return
 
+    const len = originalChars.length
+    const totalDuration = START_DELAY_MS + len * MS_PER_CHAR
+
     let frameId
     let lastTick = 0
+    const startTime = performance.now()
 
     function loop(now) {
+      const elapsed = now - startTime
+
+      if (elapsed >= totalDuration) {
+        onUpdate([...originalChars])
+        return
+      }
+
       frameId = requestAnimationFrame(loop)
-      if (now - lastTick < 180) return
+      if (now - lastTick < TICK_MS) return
       lastTick = now
 
-      const { x } = cursorRef.current
-      const len = originalChars.length
+      const revealCount = Math.max(0, Math.floor((elapsed - START_DELAY_MS) / MS_PER_CHAR))
 
       const chars = originalChars.map((orig, i) => {
-        const charPos = len > 1 ? i / (len - 1) : 0.5
-        const dist = Math.abs(charPos - x)
-        const intensity = Math.max(0.15, 1 - dist * 1.6) * 0.65
-        return glitchChar(orig, intensity)
+        if (orig === ' ') return orig
+        return i < revealCount ? orig : randomGlyph()
       })
 
       onUpdate(chars)
     }
 
-    loop(0)
+    loop(startTime)
 
     return () => {
       cancelAnimationFrame(frameId)
       onUpdate([...originalChars])
     }
-  }, [active, originalChars, cursorRef, onUpdate])
+  }, [active, originalChars, onUpdate])
 }

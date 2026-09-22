@@ -144,13 +144,11 @@
 
   .headline .accent{color:var(--accent);}
 
-  /* ---------- Red text physics + ASCII glitch hover ---------- */
+  /* ---------- Red text ASCII glitch hover ---------- */
   .red-text{
     position:relative;
     display:inline-block;
     color:var(--accent);
-    transition:transform .12s ease-out;
-    will-change:transform;
   }
   .red-text--block{display:block;}
   .red-text-char{
@@ -162,15 +160,10 @@
     letter-spacing:inherit;
   }
   .red-text--hovering .red-text-char{
-    font-family:'JetBrains Mono',monospace;
     text-shadow:0 0 8px rgba(255,68,56,0.35);
   }
   .headline .red-text--hovering .red-text-char{
-    font-family:inherit;
     text-shadow:none;
-  }
-  @media (prefers-reduced-motion: reduce){
-    .red-text{transition:none;}
   }
 
   .hero-right{

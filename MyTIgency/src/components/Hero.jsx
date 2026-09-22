@@ -4,13 +4,16 @@ import { useLanguage } from '../context/LanguageContext'
 import { useAsciiLogo } from '../hooks/useAsciiLogo'
 
 const ASCII_LOGO_OPTIONS = {
-  targetSize: 9.0,
+  targetSize: 9.5,
   cameraZ: 10.5,
   rotationStrength: 0.35,
   autoRotateSpeed: 0.08,
   fitToContainer: true,
   fillScene: true,
   pointerTrail: false,
+  // Resolução mais alta que o padrão (tunado para intro em tela cheia): o painel
+  // da Hero é pequeno, então precisa de caracteres menores para não ficar "blocudo"
+  resolution: 0.22,
   backgroundColor: '#FAFAF8',
   foregroundColor: '#0B0B0C',
 }

@@ -7,12 +7,9 @@ import { Footer } from './components/Footer'
 import { ContextualCursor } from './components/ContextualCursor'
 import { SmoothScroll } from './components/SmoothScroll'
 import { LanguageProvider } from './context/LanguageContext'
-import { useRedPhysics } from './hooks/useRedPhysics'
 import './App.css'
 
 function App() {
-  useRedPhysics()
-
   return (
     <SmoothScroll>
       <LanguageProvider>

@@ -54,6 +54,9 @@ class AsciiLogoSceneEffect {
     this.foregroundColor = options.foregroundColor || '#050505'
     this.fillScene = options.fillScene !== undefined ? options.fillScene : true
     this.density = options.density !== undefined ? options.density : 1.0
+    // Quanto o brilho de uma célula é reduzido conforme a face vira de lado
+    // (normal.z baixo no passe de normais) — 0 desliga a modulação
+    this.normalContrast = options.normalContrast !== undefined ? options.normalContrast : 0.45
 
     this.domElement = document.createElement('div')
     this.domElement.style.cursor = 'default'
@@ -219,7 +222,7 @@ class AsciiLogoSceneEffect {
     this.lastMouseGrid.y = targetY
   }
 
-  render(scene, camera) {
+  render(scene, camera, normalMaterial) {
     this.renderer.render(scene, camera)
 
     if (!this.oCtx || !this.decayBuffer || !this.displayCtx) return
@@ -227,6 +230,18 @@ class AsciiLogoSceneEffect {
     // 1. Lê a amostragem do 3D renderizado na resolução exata do grid
     this.oCtx.drawImage(this.renderer.domElement, 0, 0, this.cols, this.rows * 2)
     const imgData = this.oCtx.getImageData(0, 0, this.cols, this.rows * 2).data
+
+    // 1b. Passe extra com as normais da cena (mesma resolução minúscula, barato)
+    // para saber a orientação de cada célula e diferenciar frente vs lateral
+    let normalData = null
+    if (normalMaterial) {
+      const prevOverride = scene.overrideMaterial
+      scene.overrideMaterial = normalMaterial
+      this.renderer.render(scene, camera)
+      scene.overrideMaterial = prevOverride
+      this.oCtx.drawImage(this.renderer.domElement, 0, 0, this.cols, this.rows * 2)
+      normalData = this.oCtx.getImageData(0, 0, this.cols, this.rows * 2).data
+    }
 
     // 2. Decaimento do rastro do mouse
     const total = this.cols * this.rows
@@ -274,11 +289,21 @@ class AsciiLogoSceneEffect {
         const b = imgData[offset + 2]
         const a = imgData[offset + 3]
 
+        const cellIdx = rowOffset + col
         const is3DLogo = a > 0 && (r > 10 || g > 10 || b > 10)
-        const corruption = this.decayBuffer[rowOffset + col]
+        const corruption = this.decayBuffer[cellIdx]
 
         if (is3DLogo) {
-          const brightness = (0.3 * r + 0.59 * g + 0.11 * b) / 255
+          let brightness = (0.3 * r + 0.59 * g + 0.11 * b) / 255
+
+          // A normal modula o próprio brilho (não troca de família de caractere):
+          // face virada de lado escurece um pouco e cai pra um char mais leve na
+          // mesma rampa, como um fresnel simples — leitura de volume contínua
+          if (normalData) {
+            const facing = normalData[offset + 2] / 255
+            brightness *= 1 - this.normalContrast * (1 - facing)
+          }
+
           let charIdx = Math.floor((1 - brightness) * (this.charSet.length - 1))
           if (this.bInvert) {
             charIdx = this.charSet.length - charIdx - 1
@@ -357,6 +382,7 @@ export function createAsciiLogoScene(container, options = {}) {
     fillScene = true,
     pointerTrail = true,
     resolution,
+    normalContrast,
     backgroundColor,
     foregroundColor,
   } = options
@@ -382,9 +408,28 @@ export function createAsciiLogoScene(container, options = {}) {
   )
   camera.position.set(0, 0, cameraZ)
 
+  // Sem deslocamento em X: o objeto gira em resposta ao mouse, então qualquer
+  // viés lateral na luz faz girar-pra-esquerda e girar-pra-direita parecerem
+  // iluminados de formas diferentes. Centralizada, a luz lê como "de frente"
+  // independente de pra que lado o cursor levou a rotação.
   const keyLight = new THREE.PointLight(0xffffff, 4, 0, 0)
-  keyLight.position.set(2, 3, 5)
+  keyLight.position.set(0, 3, 5)
   scene.add(keyLight)
+
+  // Luz de preenchimento fraca: sem ela, faces que não encaram a keyLight caem a
+  // preto e somem da máscara de brilho do ASCII (is3DLogo exige r/g/b > 10)
+  const fillLight = new THREE.HemisphereLight(0xffffff, 0x3a3a3a, 0.18)
+  scene.add(fillLight)
+
+  // Luz de rim vindo de trás, também centralizada em X pelo mesmo motivo: acende
+  // as bordas do extrude simetricamente, não só quando o giro favorece um lado
+  const rimLight = new THREE.PointLight(0xffffff, 2.4, 0, 0)
+  rimLight.position.set(0, 1.5, -4)
+  scene.add(rimLight)
+
+  // Material usado só no passe extra de normais (scene.overrideMaterial) para
+  // detectar orientação de superfície por célula, sem afetar o material visível
+  const normalMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide })
 
   // Three.js configurado para alta performance sem MSAA desnecessário
   const renderer = new THREE.WebGLRenderer({
@@ -400,6 +445,7 @@ export function createAsciiLogoScene(container, options = {}) {
     backgroundColor,
     foregroundColor,
     fillScene,
+    normalContrast,
   })
   effect.setSize(initialSize.width, initialSize.height)
   container.appendChild(effect.domElement)
@@ -465,11 +511,15 @@ export function createAsciiLogoScene(container, options = {}) {
   loadModel().then((gltf) => {
     const logoMesh = gltf.scene.clone(true)
 
+    // O GLB tem 2 camadas por letra: malha externa maior ("Texto"/"Texto.002")
+    // e uma malha interna menor deslocada ("Texto.001"/"Texto.003") — o próprio
+    // modelo já foi desenhado com essa dualidade, mas o material único apagava.
     logoMesh.traverse((node) => {
       if (node.isMesh) {
+        const isInnerLayer = node.name.endsWith('.001') || node.name.endsWith('.003')
         node.material = new THREE.MeshPhongMaterial({
-          color: 0xd9d9d9,
-          shininess: 60,
+          color: isInnerLayer ? 0xf3f2ec : 0xbababa,
+          shininess: isInnerLayer ? 85 : 40,
           specular: 0x222222,
           side: THREE.DoubleSide,
         })
@@ -577,7 +627,7 @@ export function createAsciiLogoScene(container, options = {}) {
       )
     }
 
-    effect.render(scene, camera)
+    effect.render(scene, camera, normalMaterial)
   }
 
   animate()
