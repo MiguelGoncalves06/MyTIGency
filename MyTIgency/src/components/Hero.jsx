@@ -1,6 +1,19 @@
+import { useEffect, useRef } from 'react'
 import { RedText } from './RedText'
-import { useScene } from '../context/SceneContext'
 import { useLanguage } from '../context/LanguageContext'
+import { useAsciiLogo } from '../hooks/useAsciiLogo'
+
+const ASCII_LOGO_OPTIONS = {
+  targetSize: 9.0,
+  cameraZ: 10.5,
+  rotationStrength: 0.35,
+  autoRotateSpeed: 0.08,
+  fitToContainer: true,
+  fillScene: true,
+  pointerTrail: false,
+  backgroundColor: '#FAFAF8',
+  foregroundColor: '#0B0B0C',
+}
 
 function Paragraph({ segments }) {
   return (
@@ -11,34 +24,35 @@ function Paragraph({ segments }) {
 }
 
 export function Hero() {
-  const { slotRef } = useScene()
   const { t } = useLanguage()
   const [line1, line2, line3, line4] = t.hero.headline
+  const logoSlotRef = useRef(null)
+  const logoSceneRef = useAsciiLogo(logoSlotRef, ASCII_LOGO_OPTIONS)
+
+  useEffect(() => {
+    logoSceneRef.current?.setProgress(1)
+  }, [logoSceneRef])
 
   return (
-    <div className="hero-pin-wrapper">
-      <div className="hero-sticky-inner">
-        <section className="hero" id="top">
-          <div className="hero-left">
-            <span className="eyebrow">{t.hero.eyebrow}</span>
-            <h1 className="headline display">
-              <span className="headline-line headline-line--1">{line1}</span>
-              <span className="headline-line headline-line--2">{line2}</span>
-              <span className="headline-line headline-line--3">{line3}</span>
-              <span className="headline-line headline-line--4">
-                <RedText className="accent" block>{line4}</RedText>
-              </span>
-            </h1>
-          </div>
-          <div className="hero-right">
-            <div id="ascii-logo-hero" ref={slotRef} aria-hidden="true" />
-            <div className="hero-copy">
-              <Paragraph segments={t.hero.p1} />
-              <Paragraph segments={t.hero.p2} />
-            </div>
-          </div>
-        </section>
+    <section className="hero" id="top">
+      <div className="hero-left">
+        <span className="eyebrow">{t.hero.eyebrow}</span>
+        <h1 className="headline display">
+          <span className="headline-line headline-line--1">{line1}</span>
+          <span className="headline-line headline-line--2">{line2}</span>
+          <span className="headline-line headline-line--3">{line3}</span>
+          <span className="headline-line headline-line--4">
+            <RedText className="accent" block>{line4}</RedText>
+          </span>
+        </h1>
       </div>
-    </div>
+      <div className="hero-right">
+        <div id="ascii-logo-hero" ref={logoSlotRef} aria-hidden="true" />
+        <div className="hero-copy">
+          <Paragraph segments={t.hero.p1} />
+          <Paragraph segments={t.hero.p2} />
+        </div>
+      </div>
+    </section>
   )
 }

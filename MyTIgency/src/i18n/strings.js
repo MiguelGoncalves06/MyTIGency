@@ -5,10 +5,6 @@ export const strings = {
       work: 'Trabalhos',
       careers: 'Carreiras',
       cta: 'Fale conosco →',
-    },
-    landing: {
-      badge: 'STUDIO DE PRODUTO DIGITAL',
-      scrollAria: 'Rolar para a hero',
       langAria: 'idioma',
     },
     hero: {
@@ -73,10 +69,6 @@ export const strings = {
       work: 'Work',
       careers: 'Careers',
       cta: 'Get in touch →',
-    },
-    landing: {
-      badge: 'DIGITAL PRODUCT STUDIO',
-      scrollAria: 'Scroll to hero',
       langAria: 'language',
     },
     hero: {
