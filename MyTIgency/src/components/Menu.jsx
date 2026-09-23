@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { useLenis } from 'lenis/react'
 import { useLanguage } from '../context/LanguageContext'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useClickOutside } from '../hooks/useClickOutside'
@@ -12,6 +13,18 @@ export function Menu({ open, onClose, triggerRef, activeId }) {
   const isMobile = useMediaQuery('(max-width: 820px)')
   const prefersReducedMotion = useReducedMotion()
   const { lang, setLang, t } = useLanguage()
+  const lenis = useLenis()
+
+  // Hero is permanently position:fixed (see useHeroMarqueeReveal), so a
+  // native #top jump would be a no-op — scroll to the real document top.
+  const handleSectionClick = (e, sectionId) => {
+    onClose()
+    if (sectionId === 'top') {
+      e.preventDefault()
+      e.stopPropagation()
+      lenis?.scrollTo(0)
+    }
+  }
 
   useClickOutside(panelRef, onClose, open && !isMobile, triggerRef)
   useEscapeKey(onClose, open)
@@ -53,7 +66,7 @@ export function Menu({ open, onClose, triggerRef, activeId }) {
                   <a
                     href={s.href}
                     aria-current={activeId === s.id ? 'true' : undefined}
-                    onClick={onClose}
+                    onClick={(e) => handleSectionClick(e, s.id)}
                   >
                     <DecodeText value={s.label} animateOnMount className="menu-item-label" />
                   </a>

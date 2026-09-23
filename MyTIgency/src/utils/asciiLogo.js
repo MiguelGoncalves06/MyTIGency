@@ -455,6 +455,7 @@ export function createAsciiLogoScene(container, options = {}) {
 
   const targetRotation = { x: MODEL_BASE_ROTATION.x, y: MODEL_BASE_ROTATION.y }
   let isVisible = true
+  let isScrollPaused = false
   let frameId = 0
   let isFrozen = false
   let sceneProgress = 0
@@ -627,6 +628,13 @@ export function createAsciiLogoScene(container, options = {}) {
       )
     }
 
+    // The sample-and-draw pass below forces a GPU readback (getImageData)
+    // every frame, which stalls the pipeline — cheap enough at rest, but it
+    // competes with the main thread for the scroll-driven reveal transition.
+    // Skipping it while the page is actively scrolling is what keeps that
+    // scroll smooth; the last drawn frame just stays on screen.
+    if (isScrollPaused) return
+
     effect.render(scene, camera, normalMaterial)
   }
 
@@ -702,6 +710,10 @@ export function createAsciiLogoScene(container, options = {}) {
     isFrozen = Boolean(frozen)
   }
 
+  function setScrollPaused(paused) {
+    isScrollPaused = Boolean(paused)
+  }
+
   function setDensity(density) {
     effect.setDensity(density)
   }
@@ -733,5 +745,6 @@ export function createAsciiLogoScene(container, options = {}) {
     setProgress,
     setFreeze,
     setDensity,
+    setScrollPaused,
   }
 }

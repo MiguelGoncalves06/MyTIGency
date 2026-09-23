@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useLenis } from 'lenis/react'
 import { RedText } from './RedText'
 import { useLanguage } from '../context/LanguageContext'
 import { useAsciiLogo } from '../hooks/useAsciiLogo'
@@ -35,6 +36,14 @@ export function Hero() {
   useEffect(() => {
     logoSceneRef.current?.setProgress(1)
   }, [logoSceneRef])
+
+  // The ascii render loop forces a GPU readback every frame — cheap at rest,
+  // but it competes with the reveal transition for the main thread. Pausing
+  // it while the page is actively scrolled away from the top is what keeps
+  // that scroll smooth; it resumes once the user is back at the fold.
+  useLenis(() => {
+    logoSceneRef.current?.setScrollPaused(window.scrollY > 2)
+  })
 
   return (
     <section className="hero" id="top">

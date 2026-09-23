@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLenis } from 'lenis/react'
 import { useHeaderScroll } from '../hooks/useHeaderScroll'
 import { useActiveSection } from '../hooks/useActiveSection'
 import { useLanguage } from '../context/LanguageContext'
@@ -8,6 +9,16 @@ import { Menu } from './Menu'
 export function Header() {
   const scrolled = useHeaderScroll()
   const { t } = useLanguage()
+  const lenis = useLenis()
+
+  // Hero is permanently position:fixed (see useHeroMarqueeReveal), so its
+  // getBoundingClientRect().top never changes — a native #top jump would be
+  // a no-op. Scroll to the real document top instead.
+  const handleHomeClick = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    lenis?.scrollTo(0)
+  }
   const headerRef = useRef(null)
   const triggerRef = useRef(null)
   const toggleTimeoutRef = useRef(null)
@@ -46,7 +57,7 @@ export function Header() {
 
   return (
     <header ref={headerRef} className={scrolled ? 'scrolled' : ''}>
-      <a href="#top" className="brand">
+      <a href="#top" className="brand" onClick={handleHomeClick}>
         <span className="mark">&gt;_</span>
         <span className="brand-text">MyTigency.</span>
       </a>
