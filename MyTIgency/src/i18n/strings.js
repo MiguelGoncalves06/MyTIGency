@@ -6,6 +6,9 @@ export const strings = {
       careers: 'Carreiras',
       cta: 'Fale conosco →',
       langAria: 'idioma',
+      menuOpen: 'Menu',
+      menuClose: 'Fechar',
+      menuAria: 'Menu de navegação',
     },
     hero: {
       eyebrow: 'Studio de produto digital — desde 2026',
@@ -70,6 +73,9 @@ export const strings = {
       careers: 'Careers',
       cta: 'Get in touch →',
       langAria: 'language',
+      menuOpen: 'Menu',
+      menuClose: 'Close',
+      menuAria: 'Navigation menu',
     },
     hero: {
       eyebrow: 'Digital product studio — since 2026',

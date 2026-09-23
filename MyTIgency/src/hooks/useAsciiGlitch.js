@@ -18,7 +18,10 @@ export function useAsciiGlitch({ active, originalChars, onUpdate }) {
     }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduceMotion) return
+    if (reduceMotion) {
+      onUpdate([...originalChars])
+      return
+    }
 
     const len = originalChars.length
     const totalDuration = START_DELAY_MS + len * MS_PER_CHAR

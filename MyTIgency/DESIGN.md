@@ -146,7 +146,25 @@ Princípios primeiro; expressões específicas atuais estão registradas em **Cu
 **Alinhado com a direção (mantém-se, por ora):**
 - Estrutura de scroll intro → transição → hero — expressão direta do Princípio 1 (transformação real).
 - Vermelho reservado ao momento de consequência no headline (acende apenas na etapa final do progresso) — expressão direta do Princípio 2.
-- Base editorial de restrição (hairlines, ausência de glassmorphism/blobs) — já consistente com a linguagem visual desta direção.
+- Base editorial de restrição (hairlines, ausência de glassmorphism/blobs) — já consistente com a linguagem visual desta direção, **exceto pelo Menu da Header**, ver exceção abaixo.
+
+**Exceção deliberada e escopada (Menu da Header):**
+- O painel de navegação (dropdown desktop compacto / overlay fullscreen mobile) e o
+  container flutuante da Header no mobile usam glassmorphism (fundo translúcido claro
+  + `backdrop-filter: blur`, tokens `--menu-glass-bg`/`--menu-glass-blur`) e cantos
+  arredondados (`--menu-radius`) — ambos listados em **Anti-Patterns** como o que
+  evitar no resto do site. Esta é uma decisão consciente do usuário/produto, avaliada
+  contra o Decision Framework e não um desvio silencioso: mantida como exceção
+  **escopada apenas a este componente** (`.menu-panel` e a Header em viewport mobile),
+  não um precedente para cards, seções ou qualquer outra superfície do site.
+- O vermelho (`--accent`) permanece fora deste componente: hover/estado ativo dos
+  itens do menu, e o morph do texto MENU↔CLOSE, usam apenas `--ink-dim`/`--ink` —
+  preservando a regra de "acento único reservado a um momento de consequência" (ver
+  **Visual Language** → Cor). O ícone do botão do Menu reaproveita a marca `>_`
+  (`.brand .mark`) já existente, em vez de introduzir um novo dispositivo visual.
+- Se esta exceção for revisitada no futuro, reavaliar pelo mesmo Decision Framework —
+  não presumir que ela abriu espaço para glass/cantos arredondados em outro lugar do
+  site.
 
 **Apenas ferramentas (substituíveis — não são a tese em si, podem continuar existindo se e enquanto servirem aos princípios):**
 - Render ASCII do modelo 3D, o modelo `.glb`, a marca `>_`, o efeito de glitch, JetBrains Mono como fonte única do sistema, o vermelho como matiz específico.
