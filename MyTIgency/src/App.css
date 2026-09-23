@@ -75,6 +75,11 @@
       -webkit-backdrop-filter:blur(var(--menu-glass-blur));
       opacity:1;
     }
+    /* Menu panel is a child of header with a higher z-index; keep brand + close button above it */
+    .brand,.header-right{
+      position:relative;
+      z-index:80;
+    }
   }
   .brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;letter-spacing:-0.01em;white-space:nowrap;pointer-events:auto;}
   .brand .mark{
@@ -95,13 +100,96 @@
   @media(max-width:820px){ .section-label{display:none;} }
   .menu-trigger{
     all:unset;
-    display:inline-flex;align-items:center;gap:10px;
+    display:inline-flex;align-items:center;gap:6px;
     cursor:pointer;
     pointer-events:auto;
   }
   .menu-trigger-label{
     font-size:12px;letter-spacing:.06em;text-transform:uppercase;
     color:var(--ink);
+  }
+
+  /* ---- Menu trigger icon (>_) ----
+     Dois paths vetoriais (MENU-FECHADO.svg) desenhados uma vez; o estado
+     aberto é o transform exato (rotação -45° + translate) que leva cada
+     path até a posição correspondente em MENU-ABERTO.svg — calculado a
+     partir das coordenadas reais dos dois SVGs, por isso o encaixe é
+     exato em vez de aproximado. */
+  .menu-trigger .mark{
+    width:1.3em;height:1.27em;
+    overflow:visible;
+  }
+  .menu-trigger .mark path{
+    fill:var(--ink);
+    transition:transform .6s cubic-bezier(0.16,1,0.3,1);
+    transform-box:view-box;
+    transform-origin:0 0;
+  }
+
+  /* Fechado (padrão): um respiro entre > e _ (eram quase colados no original) */
+  .menu-trigger .mark:not(.is-open) .underscore{
+    transform:translate(16px,0);
+  }
+
+  /* Fechado + hover: o > inclina uma vez em torno do próprio centro
+     (translate até o centro do path, gira, translate de volta — como
+     transform-box aqui é view-box, isso substitui um transform-origin
+     local) e volta à posição base, sem repetir enquanto o mouse permanece.
+     .just-toggled (classe temporária de .6s aplicada pelo React só no
+     clique, ver Header.jsx) bloqueia esse hover logo após abrir/fechar,
+     porque clicar sempre deixa o mouse em cima do botão e, sem isso, a
+     animação venceria a transição de fechamento e a sequestraria. Fora
+     dessa janela o hover responde na hora. */
+  .menu-trigger.just-toggled:hover .mark:not(.is-open) .chevron{
+    animation:none;
+  }
+  .menu-trigger:hover .mark:not(.is-open) .chevron{
+    animation:menuChevronFlick .5s ease 1;
+  }
+  @keyframes menuChevronFlick{
+    0%{transform:translate(88.5px,99.6px) rotate(0deg) translate(-88.5px,-99.6px);}
+    50%{transform:translate(88.5px,99.6px) rotate(-32deg) translate(-88.5px,-99.6px);}
+    100%{transform:translate(88.5px,99.6px) rotate(0deg) translate(-88.5px,-99.6px);}
+  }
+
+  /* Abrir: os dois giram -45° e se deslocam até a posição exata do desenho
+     MENU-ABERTO.svg (translate recalibrado para recentralizar o conjunto
+     na caixa do ícone, já que a arte aberta é naturalmente mais baixa/
+     larga que a fechada) — transição lenta e fluida, mesma curva usada na
+     abertura do painel do menu. transform-box:view-box (igual ao estado
+     fechado, ver regra acima) é o que garante a transição animada de
+     verdade em vez de um salto — trocar a reference box no meio do
+     caminho impedia o browser de interpolar. */
+  .menu-trigger .mark.is-open .chevron{
+    transform:translate(4.47px,71.67px) rotate(-45deg);
+  }
+  .menu-trigger .mark.is-open .underscore{
+    transform:translate(-96.5px,133.35px) rotate(-45deg);
+  }
+
+  /* Aberto + hover: os dois avançam JUNTOS na direção da seta e voltam — uma
+     vez só. Mesmo bloqueio via .just-toggled logo após abrir (clicar deixa
+     o mouse em cima, e sem isso essa animação sequestraria a transição de
+     abertura desde o primeiro frame). Fora dessa janela, responde na hora. */
+  .menu-trigger.just-toggled:hover .mark.is-open .chevron,
+  .menu-trigger.just-toggled:hover .mark.is-open .underscore{
+    animation:none;
+  }
+  .menu-trigger:hover .mark.is-open .chevron{
+    animation:menuArrowAdvanceChevron .45s ease 1;
+  }
+  .menu-trigger:hover .mark.is-open .underscore{
+    animation:menuArrowAdvanceUnderscore .45s ease 1;
+  }
+  @keyframes menuArrowAdvanceChevron{
+    0%{transform:translate(4.47px,71.67px) rotate(-45deg);}
+    50%{transform:translate(34px,-34px) translate(4.47px,71.67px) rotate(-45deg);}
+    100%{transform:translate(4.47px,71.67px) rotate(-45deg);}
+  }
+  @keyframes menuArrowAdvanceUnderscore{
+    0%{transform:translate(-96.5px,133.35px) rotate(-45deg);}
+    50%{transform:translate(34px,-34px) translate(-96.5px,133.35px) rotate(-45deg);}
+    100%{transform:translate(-96.5px,133.35px) rotate(-45deg);}
   }
   .lang-toggle{
     display:flex;align-items:center;gap:2px;
@@ -152,6 +240,7 @@
   }
   .menu-sections{list-style:none;display:flex;flex-direction:column;gap:6px;}
   .menu-sections a{display:inline-block;}
+  .menu-sections a:focus{outline:none;}
   .menu-item-label{
     font-size:20px;
     text-transform:uppercase;

@@ -13,7 +13,7 @@ export function Menu({ open, onClose, triggerRef, activeId }) {
   const prefersReducedMotion = useReducedMotion()
   const { lang, setLang, t } = useLanguage()
 
-  useClickOutside(panelRef, onClose, open && !isMobile)
+  useClickOutside(panelRef, onClose, open && !isMobile, triggerRef)
   useEscapeKey(onClose, open)
   useBodyScrollLock(open && isMobile)
 
