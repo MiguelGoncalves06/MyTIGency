@@ -7,11 +7,10 @@ import { useAsciiLogo } from '../hooks/useAsciiLogo'
 const ASCII_LOGO_OPTIONS = {
   targetSize: 9.5,
   cameraZ: 10.5,
-  rotationStrength: 0.35,
+  // Constant idle spin — a trophy on display, not tied to the cursor.
   autoRotateSpeed: 0.08,
   fitToContainer: true,
   fillScene: true,
-  pointerTrail: false,
   // Resolução mais alta que o padrão (tunado para intro em tela cheia): o painel
   // da Hero é pequeno, então precisa de caracteres menores para não ficar "blocudo"
   resolution: 0.22,
@@ -38,11 +37,11 @@ export function Hero() {
   }, [logoSceneRef])
 
   // The ascii render loop forces a GPU readback every frame — cheap at rest,
-  // but it competes with the reveal transition for the main thread. Pausing
-  // it while the page is actively scrolled away from the top is what keeps
-  // that scroll smooth; it resumes once the user is back at the fold.
+  // but it competes with the reveal transition for the main thread. Rendering
+  // less often while the page is actively scrolling keeps that scroll smooth
+  // without ever fully freezing the piece (it keeps spinning either way).
   useLenis(() => {
-    logoSceneRef.current?.setScrollPaused(window.scrollY > 2)
+    logoSceneRef.current?.setScrolling(window.scrollY > 2)
   })
 
   return (

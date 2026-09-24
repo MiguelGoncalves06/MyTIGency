@@ -68,14 +68,17 @@ class AsciiLogoSceneEffect {
     this.domElement.style.pointerEvents = 'none'
     this.domElement.style.backgroundColor = this.backgroundColor
 
-    // Canvas 2D de alta performance para desenhar o grid ASCII
+    // Canvas 2D de alta performance para desenhar o grid ASCII.
+    // alpha:true é proposital (não é o mais barato) — resize() limpa o canvas
+    // pra transparente, então até o próximo render ele deixa o backgroundColor
+    // do domElement (abaixo) aparecer em vez de pintar um retângulo preto.
     this.displayCanvas = document.createElement('canvas')
     this.displayCanvas.style.position = 'absolute'
     this.displayCanvas.style.inset = '0'
     this.displayCanvas.style.width = '100%'
     this.displayCanvas.style.height = '100%'
     this.displayCanvas.style.pointerEvents = 'none'
-    this.displayCtx = this.displayCanvas.getContext('2d', { alpha: false })
+    this.displayCtx = this.displayCanvas.getContext('2d', { alpha: true })
     this.domElement.appendChild(this.displayCanvas)
 
     // Canvas offscreen pequeno para amostragem do 3D
@@ -95,6 +98,10 @@ class AsciiLogoSceneEffect {
     this.lastMouseGrid = null
     this.rowChars = null
     this.accents = []
+    // Which cells are actually lit by the 3D glyph this frame — lets hover
+    // logic (see isPointOnLogo) tell "on the MyT" apart from "empty corner
+    // of the container", instead of reacting to the whole bounding box.
+    this.logoMask = null
 
     if (document.fonts?.ready) {
       document.fonts.ready.then(() => {
@@ -152,6 +159,7 @@ class AsciiLogoSceneEffect {
     this.decayBuffer = new Float32Array(this.cols * this.rows)
     this.lastMouseGrid = null
     this.rowChars = new Array(this.cols)
+    this.logoMask = new Uint8Array(this.cols * this.rows)
   }
 
   screenToGrid(screenX, screenY) {
@@ -160,7 +168,21 @@ class AsciiLogoSceneEffect {
     return { col, row }
   }
 
-  addPointerPoint(screenX, screenY, isContinuousAnchor = false) {
+  // Container-relative point → is this cell currently part of the rendered
+  // glyph? Read-only lookup against last frame's mask, cheap enough to call
+  // on every pointermove.
+  isPointOnLogo(screenX, screenY) {
+    if (!this.logoMask || !this.cols || !this.rows) return false
+    const { col, row } = this.screenToGrid(screenX, screenY)
+    const c = Math.floor(col)
+    const r = Math.floor(row)
+    if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return false
+    return this.logoMask[r * this.cols + c] === 1
+  }
+
+  // intensityScale lets callers dial the same brush down for a faint trail
+  // vs a full-strength pulse, without duplicating the falloff math.
+  addPointerPoint(screenX, screenY, isContinuousAnchor = false, intensityScale = 1) {
     if (!this.cols || !this.rows || !this.decayBuffer) return
 
     const { col: targetX, row: targetY } = this.screenToGrid(screenX, screenY)
@@ -176,7 +198,7 @@ class AsciiLogoSceneEffect {
         for (let x = minX; x <= maxX; x++) {
           const d = Math.hypot(x - targetX, (y - targetY) * 1.6)
           if (d < brushRadius) {
-            const power = Math.pow(1 - d / brushRadius, 1.8)
+            const power = Math.pow(1 - d / brushRadius, 1.8) * intensityScale
             const idx = y * this.cols + x
             this.decayBuffer[idx] = Math.min(1.0, Math.max(this.decayBuffer[idx], power))
           }
@@ -210,7 +232,7 @@ class AsciiLogoSceneEffect {
         for (let x = minX; x <= maxX; x++) {
           const d = Math.hypot(x - cx, (y - cy) * 1.6)
           if (d < brushRadius) {
-            const power = Math.pow(1 - d / brushRadius, 2.0)
+            const power = Math.pow(1 - d / brushRadius, 2.0) * intensityScale
             const idx = y * this.cols + x
             this.decayBuffer[idx] = Math.min(1.0, Math.max(this.decayBuffer[idx], power))
           }
@@ -220,6 +242,12 @@ class AsciiLogoSceneEffect {
 
     this.lastMouseGrid.x = targetX
     this.lastMouseGrid.y = targetY
+  }
+
+  // Called when a fresh hover starts so the trail doesn't draw one long
+  // streak connecting wherever the cursor last was to the new entry point.
+  resetTrail() {
+    this.lastMouseGrid = null
   }
 
   render(scene, camera, normalMaterial) {
@@ -292,8 +320,17 @@ class AsciiLogoSceneEffect {
         const cellIdx = rowOffset + col
         const is3DLogo = a > 0 && (r > 10 || g > 10 || b > 10)
         const corruption = this.decayBuffer[cellIdx]
+        this.logoMask[cellIdx] = is3DLogo ? 1 : 0
 
-        if (is3DLogo) {
+        if (is3DLogo && corruption > 0.4) {
+          // Hover-glitch "BUG": strong local corruption overrides the normal
+          // shading right on the letters themselves, not just the backdrop.
+          const micro = getMicroGeom(row, col, 0.9, timeTick)
+          rowChars[col] = micro.char
+          if (micro.isRed) {
+            accents.push({ char: micro.char, col, row })
+          }
+        } else if (is3DLogo) {
           let brightness = (0.3 * r + 0.59 * g + 0.11 * b) / 255
 
           // A normal modula o próprio brilho (não troca de família de caractere):
@@ -309,7 +346,7 @@ class AsciiLogoSceneEffect {
             charIdx = this.charSet.length - charIdx - 1
           }
           rowChars[col] = this.charSet[charIdx] || '.'
-        } else if (this.fillScene && corruption > 0.03 && this.density > 0.2) {
+        } else if (this.fillScene && corruption > 0.03) {
           const micro = getMicroGeom(row, col, corruption, timeTick)
           rowChars[col] = micro.char
           if (micro.isRed) {
@@ -375,12 +412,9 @@ export function createAsciiLogoScene(container, options = {}) {
   const {
     targetSize = 8.5,
     cameraZ = 10,
-    rotationStrength = 0.5,
-    rotationSmoothing = 0.06,
     autoRotateSpeed = 0,
     fitToContainer = false,
     fillScene = true,
-    pointerTrail = true,
     resolution,
     normalContrast,
     backgroundColor,
@@ -408,10 +442,9 @@ export function createAsciiLogoScene(container, options = {}) {
   )
   camera.position.set(0, 0, cameraZ)
 
-  // Sem deslocamento em X: o objeto gira em resposta ao mouse, então qualquer
-  // viés lateral na luz faz girar-pra-esquerda e girar-pra-direita parecerem
-  // iluminados de formas diferentes. Centralizada, a luz lê como "de frente"
-  // independente de pra que lado o cursor levou a rotação.
+  // Sem deslocamento em X: o objeto gira continuamente, então qualquer viés
+  // lateral na luz faria alguns lados da rotação parecerem mais iluminados
+  // que outros. Centralizada, a luz lê como "de frente" o tempo todo.
   const keyLight = new THREE.PointLight(0xffffff, 4, 0, 0)
   keyLight.position.set(0, 3, 5)
   scene.add(keyLight)
@@ -453,61 +486,26 @@ export function createAsciiLogoScene(container, options = {}) {
   const logoRig = new THREE.Group()
   scene.add(logoRig)
 
-  const targetRotation = { x: MODEL_BASE_ROTATION.x, y: MODEL_BASE_ROTATION.y }
+  // Rotation is a simple constant spin (see animate()) — no cursor tracking
+  // drives it anymore, so there's no target/current split to lerp between.
+  let rotationY = MODEL_BASE_ROTATION.y
   let isVisible = true
-  let isScrollPaused = false
+  let isScrolling = false
   let frameId = 0
   let isFrozen = false
   let sceneProgress = 0
-  let mouseWeight = 1.0
-  let isReconnecting = false
-  let reconnectStartTime = 0
   let loadedMeshLargestDimension = 0
 
-  const actualMouse = {
-    x: window.innerWidth / 2,
-    y: window.innerHeight / 2,
-    isInside: false,
-  }
-
-  const activeMouse = {
-    x: window.innerWidth / 2,
-    y: window.innerHeight / 2,
-  }
-
-  function getLocalPointer(e) {
-    if (!fitToContainer) {
-      return { x: e.clientX, y: e.clientY, isInside: true }
-    }
-
-    const rect = container.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const isInside =
-      x >= 0 && y >= 0 && x <= rect.width && y <= rect.height
-
-    return { x, y, isInside }
-  }
-
-  function onPointerMove(e) {
-    actualMouse.x = e.clientX
-    actualMouse.y = e.clientY
-    actualMouse.isInside = true
-
-    if (!isFrozen && sceneProgress <= 0.005) {
-      const point = getLocalPointer(e)
-      if (pointerTrail && point.isInside) {
-        effect.addPointerPoint(point.x, point.y)
-      }
-    }
-  }
-
-  function onPointerLeave() {
-    actualMouse.isInside = false
-  }
-
-  window.addEventListener('pointermove', onPointerMove, { passive: true })
-  document.addEventListener('mouseleave', onPointerLeave)
+  // Hover glitch: a "BUG" pulse local to wherever the cursor is over the
+  // piece — a few corrupted/red-accented characters (reusing the existing
+  // decay-buffer system below, just no longer fed by a continuous trail)
+  // plus a brief freeze + jitter, repeating irregularly while hovered.
+  let isHovering = false
+  let hoverX = 0
+  let hoverY = 0
+  let jitterIntensity = 0
+  let glitchTimeoutId = null
+  let unfreezeTimeoutId = null
 
   loadModel().then((gltf) => {
     const logoMesh = gltf.scene.clone(true)
@@ -549,6 +547,77 @@ export function createAsciiLogoScene(container, options = {}) {
     logoRig.add(logoMesh)
   })
 
+  function fireGlitchPulse() {
+    const bursts = 2 + Math.floor(Math.random() * 2)
+    for (let i = 0; i < bursts; i++) {
+      const jx = hoverX + (Math.random() - 0.5) * 44
+      const jy = hoverY + (Math.random() - 0.5) * 44
+      effect.addPointerPoint(jx, jy, true)
+    }
+
+    jitterIntensity = 0.14
+    isFrozen = true
+    clearTimeout(unfreezeTimeoutId)
+    unfreezeTimeoutId = setTimeout(() => {
+      isFrozen = false
+    }, 220)
+  }
+
+  function scheduleNextGlitch() {
+    clearTimeout(glitchTimeoutId)
+    glitchTimeoutId = setTimeout(() => {
+      if (!isHovering) return
+      fireGlitchPulse()
+      scheduleNextGlitch()
+    }, 1600 + Math.random() * 1400)
+  }
+
+  function stopHovering() {
+    isHovering = false
+    clearTimeout(glitchTimeoutId)
+    clearTimeout(unfreezeTimeoutId)
+    isFrozen = false
+    jitterIntensity = 0
+  }
+
+  // Faint, continuous trail — much weaker than a glitch pulse (see
+  // TRAIL_INTENSITY) so it reads as a subtle wake behind the cursor rather
+  // than competing with the periodic bursts.
+  const TRAIL_INTENSITY = 0.3
+
+  // Tracks pointer position continuously (cheap: grid math + a mask lookup,
+  // no repaint), but only "enters"/"leaves" the hover state when the cursor
+  // crosses onto/off of a cell the glyph itself lights up — an empty corner
+  // of the container never triggers it.
+  function onHoverMove(e) {
+    const rect = container.getBoundingClientRect()
+    hoverX = e.clientX - rect.left
+    hoverY = e.clientY - rect.top
+
+    const onLogo = effect.isPointOnLogo(hoverX, hoverY)
+    if (onLogo && !isHovering) {
+      isHovering = true
+      effect.resetTrail()
+      fireGlitchPulse()
+      scheduleNextGlitch()
+    } else if (!onLogo && isHovering) {
+      stopHovering()
+    }
+
+    if (isHovering) {
+      effect.addPointerPoint(hoverX, hoverY, false, TRAIL_INTENSITY)
+    }
+  }
+
+  // The hover glitch (pulse + trail + tremor) is new pointer-driven motion,
+  // so — unlike the rest of this file today — it checks reduced-motion from
+  // the start: reduced-motion users just get the plain, non-reactive glyph.
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!prefersReducedMotion) {
+    container.addEventListener('pointermove', onHoverMove, { passive: true })
+    container.addEventListener('pointerleave', stopHovering)
+  }
+
   const observer = new IntersectionObserver(
     ([entry]) => {
       isVisible = entry.isIntersecting
@@ -557,25 +626,8 @@ export function createAsciiLogoScene(container, options = {}) {
   )
   observer.observe(container)
 
-  function updateTargetRotation() {
-    const vw = Math.max(window.innerWidth, 1)
-    const vh = Math.max(window.innerHeight, 1)
-    const cx = vw / 2
-    const cy = vh / 2
-
-    const effectiveX = cx + (activeMouse.x - cx) * mouseWeight
-    const effectiveY = cy + (activeMouse.y - cy) * mouseWeight
-
-    targetRotation.x =
-      MODEL_BASE_ROTATION.x +
-      (Math.PI * (effectiveY / vh) * 2 - Math.PI) * rotationStrength * 0.15
-
-    targetRotation.y =
-      MODEL_BASE_ROTATION.y +
-      (Math.PI * (effectiveX / vw) * 2 - Math.PI) * rotationStrength * 0.15
-  }
-
   const clock = new THREE.Clock()
+  let frameCounter = 0
 
   function animate() {
     frameId = requestAnimationFrame(animate)
@@ -583,59 +635,41 @@ export function createAsciiLogoScene(container, options = {}) {
 
     const delta = clock.getDelta()
 
+    // Trophy-style idle spin: a plain constant rotation, no cursor input.
+    // This keeps advancing even while scroll-throttled below, so the piece
+    // never visibly stalls during the hero reveal transition.
     if (autoRotateSpeed && !isFrozen) {
-      targetRotation.y += autoRotateSpeed * delta
+      rotationY += autoRotateSpeed * delta
     }
-
-    // Gerenciamento suave de física e retorno do mouse
-    if (isReconnecting) {
-      const elapsed = performance.now() - reconnectStartTime
-      const t = Math.min(1, elapsed / 450)
-      const smoothstep = t * t * (3 - 2 * t)
-      mouseWeight = smoothstep
-      activeMouse.x += (actualMouse.x - activeMouse.x) * 0.12
-      activeMouse.y += (actualMouse.y - activeMouse.y) * 0.12
-      if (t >= 1) {
-        isReconnecting = false
-        mouseWeight = 1.0
-      }
-    } else if (isFrozen || (sceneProgress > 0.005 && sceneProgress < 0.995)) {
-      mouseWeight += (0 - mouseWeight) * 0.18
-      activeMouse.x += (window.innerWidth / 2 - activeMouse.x) * 0.15
-      activeMouse.y += (window.innerHeight / 2 - activeMouse.y) * 0.15
-    } else if (sceneProgress >= 0.995) {
-      mouseWeight += (1.0 - mouseWeight) * 0.12
-      activeMouse.x += (actualMouse.x - activeMouse.x) * 0.12
-      activeMouse.y += (actualMouse.y - activeMouse.y) * 0.12
-    } else {
-      mouseWeight = 1.0
-      activeMouse.x += (actualMouse.x - activeMouse.x) * 0.2
-      activeMouse.y += (actualMouse.y - activeMouse.y) * 0.2
-    }
-
-    updateTargetRotation()
     if (logoRig.children.length) {
-      logoRig.rotation.x += (targetRotation.x - logoRig.rotation.x) * rotationSmoothing
-      logoRig.rotation.y += (targetRotation.y - logoRig.rotation.y) * rotationSmoothing
-    }
+      logoRig.rotation.x = MODEL_BASE_ROTATION.x
+      logoRig.rotation.y = rotationY
 
-    // Mantém rastro suave se estiver ativo
-    if (pointerTrail && actualMouse.isInside && !isFrozen && sceneProgress <= 0.005) {
-      effect.addPointerPoint(
-        fitToContainer ? activeMouse.x : activeMouse.x,
-        fitToContainer ? activeMouse.y : activeMouse.y,
-        true,
-      )
+      // Hover-glitch tremor: a decaying random shake, back to dead still
+      // once it's spent rather than lingering as a tiny perpetual wobble.
+      if (jitterIntensity > 0.0008) {
+        logoRig.position.x = (Math.random() - 0.5) * jitterIntensity
+        logoRig.position.y = (Math.random() - 0.5) * jitterIntensity
+        jitterIntensity *= 0.82
+      } else if (logoRig.position.x || logoRig.position.y) {
+        jitterIntensity = 0
+        logoRig.position.set(0, 0, 0)
+      }
     }
 
     // The sample-and-draw pass below forces a GPU readback (getImageData)
     // every frame, which stalls the pipeline — cheap enough at rest, but it
     // competes with the main thread for the scroll-driven reveal transition.
-    // Skipping it while the page is actively scrolling is what keeps that
-    // scroll smooth; the last drawn frame just stays on screen.
-    if (isScrollPaused) return
+    // Rather than fully pausing it (which froze the rotation on screen and
+    // could leave the canvas mid-resize/blank), render less often instead —
+    // and while scrolling, also skip the extra normals pass (only used for
+    // the fresnel-ish shading) to roughly halve the cost of the frames that
+    // do render, so the spin stays visibly smooth without a bigger stutter.
+    frameCounter++
+    const everyNth = isScrolling ? 4 : 2
+    if (frameCounter % everyNth !== 0) return
 
-    effect.render(scene, camera, normalMaterial)
+    effect.render(scene, camera, isScrolling ? null : normalMaterial)
   }
 
   animate()
@@ -657,7 +691,13 @@ export function createAsciiLogoScene(container, options = {}) {
 
   function applySize() {
     const { width: w, height: h } = getContainerSize()
-    if (!w || !h) return
+    // A hidden ancestor (Hero gets display:none once docked — see
+    // useHeroMarqueeReveal) collapses this container to ~0, which the
+    // ResizeObserver still reports. Shrinking the renderer down to that and
+    // back once Hero reappears was corrupting the WebGL readback into visible
+    // noise, so degenerate sizes are ignored — the renderer just keeps its
+    // last real dimensions while hidden, and resumes cleanly when shown again.
+    if (w < 10 || h < 10) return
 
     effect.setSize(w, h)
 
@@ -674,7 +714,6 @@ export function createAsciiLogoScene(container, options = {}) {
 
   function setProgress(progress) {
     const p = Math.max(0, Math.min(1, progress))
-    const prev = sceneProgress
     sceneProgress = p
 
     // Curva de perda de densidade: 0.15 -> 0.70 desmancha os pontos de fundo
@@ -686,32 +725,14 @@ export function createAsciiLogoScene(container, options = {}) {
       const scaleBoost = 1 + p * 0.35
       logoRig.scale.setScalar((targetSize / loadedMeshLargestDimension) * scaleBoost)
     }
-
-    if (p <= 0.005) {
-      if (prev > 0.005) {
-        isFrozen = false
-        isReconnecting = false
-        mouseWeight = 1.0
-        effect.setDensity(1.0)
-      }
-    } else if (p >= 0.995) {
-      if (prev < 0.995) {
-        isFrozen = false
-        isReconnecting = true
-        reconnectStartTime = performance.now()
-      }
-    } else {
-      isFrozen = true
-      isReconnecting = false
-    }
   }
 
   function setFreeze(frozen) {
     isFrozen = Boolean(frozen)
   }
 
-  function setScrollPaused(paused) {
-    isScrollPaused = Boolean(paused)
+  function setScrolling(scrolling) {
+    isScrolling = Boolean(scrolling)
   }
 
   function setDensity(density) {
@@ -720,11 +741,13 @@ export function createAsciiLogoScene(container, options = {}) {
 
   function destroy() {
     cancelAnimationFrame(frameId)
-    window.removeEventListener('pointermove', onPointerMove)
-    document.removeEventListener('mouseleave', onPointerLeave)
     window.removeEventListener('resize', applySize)
     resizeObserver.disconnect()
     observer.disconnect()
+    container.removeEventListener('pointermove', onHoverMove)
+    container.removeEventListener('pointerleave', stopHovering)
+    clearTimeout(glitchTimeoutId)
+    clearTimeout(unfreezeTimeoutId)
 
     if (effect.domElement.parentNode === container) {
       container.removeChild(effect.domElement)
@@ -745,6 +768,6 @@ export function createAsciiLogoScene(container, options = {}) {
     setProgress,
     setFreeze,
     setDensity,
-    setScrollPaused,
+    setScrolling,
   }
 }

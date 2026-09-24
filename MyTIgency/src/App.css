@@ -381,7 +381,11 @@
     height:clamp(280px, 24vw, 380px);
     align-self:stretch;
     overflow:hidden;
-    pointer-events:none;
+    /* auto (not none): the hover glitch needs pointer events on this
+       container. Its own children (canvas etc.) stay pointer-events:none so
+       they don't intercept anything themselves — see AsciiLogoSceneEffect. */
+    pointer-events:auto;
+    cursor:default;
   }
   @media(max-width:980px){
     #ascii-logo-hero{height:clamp(240px, 70vw, 360px);}
