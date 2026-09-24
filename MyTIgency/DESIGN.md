@@ -173,9 +173,9 @@ Princípios primeiro; expressões específicas atuais estão registradas em **Cu
 **Resolvido:**
 - Footer agora assina "MyTigency" (era "RUNTIME.", resíduo de template — nunca foi um nome de marca real; etimologia confirmada em PRODUCT.md → Brand Commitments).
 - Toggle PT/EN agora é funcional (`LanguageContext` + `src/i18n/strings.js`); bilíngue é regra permanente, não mais pendência (ver Content & Copy).
+- Marquee de clientes fictícios (`[CLIENTE A]`/`[CLIENT A]`...) substituída por frases reais de autoria dos dois fundadores (tom direto, com humor autodepreciativo — ex.: "Não tem 'time de suporte'. Somos nós dois e o café."), separadas por ícone (`star.svg`, placeholder visual) em vez de "·". Resolve a contradição com **Proof & Credibility** sem inventar prova social; conteúdo definido em `src/i18n/strings.js` → `marquee.phrases` (PT/EN).
 
 **Ainda precisa ser questionado/resolvido (contradiz a direção como está hoje):**
-- Marquee de clientes fictícios (`[CLIENTE A]`/`[CLIENT A]`...) — contradiz **Proof & Credibility**. Os rótulos foram traduzidos junto com o resto do site, mas a decisão de fundo (remover / substituir por "case #0" / reescrever) segue em aberto.
 - Copy que insinua clientela já estabelecida ("marcas que já sabem a diferença entre lançar e vencer" / equivalente em inglês) — mesma contradição; traduzida como está, não reescrita.
 - `PrismSection.jsx` e `BackgroundBoxes.jsx` — componentes não importados em `App.jsx`; direções abandonadas fora da direção atual. Decisão de manter, formalizar ou remover ainda pendente.
 

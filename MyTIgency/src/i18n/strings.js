@@ -50,7 +50,14 @@ export const strings = {
       ctaButton: 'Fale conosco →',
     },
     marquee: {
-      clients: ['[CLIENTE A]', '[CLIENTE B]', '[CLIENTE C]', '[CLIENTE D]', '[CLIENTE E]', '[CLIENTE F]'],
+      phrases: [
+        'Não tem "time de suporte". Somos nós dois e o café.',
+        'A gente só solta o mouse quando fica bom de verdade.',
+        'Cada bug que você não viu, a gente brigou com ele primeiro.',
+        'Se não ficou bom, a gente refaz — sem cobrar de novo.',
+        'Respondemos rápido porque ansiedade também é combustível.',
+        'Não ficamos satisfeitos até você parar de mandar "só mais um ajuste".',
+      ],
     },
     footer: {
       brand: 'MyTigency.',
@@ -117,7 +124,14 @@ export const strings = {
       ctaButton: 'Get in touch →',
     },
     marquee: {
-      clients: ['[CLIENT A]', '[CLIENT B]', '[CLIENT C]', '[CLIENT D]', '[CLIENT E]', '[CLIENT F]'],
+      phrases: [
+        'There\'s no "support team." Just the two of us and coffee.',
+        "We don't let go of the mouse until it's actually good.",
+        'Every bug you never saw, we fought it first.',
+        "If it's not good, we redo it — no extra charge.",
+        'We reply fast because anxiety is fuel too.',
+        'We\'re not satisfied until you stop sending "just one more tweak."',
+      ],
     },
     footer: {
       brand: 'MyTigency.',
