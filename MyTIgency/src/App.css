@@ -419,14 +419,10 @@
   }
   .marquee-track{
     display:inline-flex;align-items:center;
-    font-family:'JetBrains Mono',monospace;font-weight:300;
-    font-size:clamp(14px,1.5vw,20px);letter-spacing:.03em;color:var(--ink-dim);
+    font-size:clamp(14px,1.5vw,20px);letter-spacing:.03em;color:var(--ink);
     animation:scrollLeft 360s linear infinite;
   }
   .marquee-item{display:inline-flex;align-items:center;white-space:nowrap;}
-  .marquee-item:nth-child(odd) > span:first-child{
-    font-weight:700;color:var(--ink);
-  }
   .marquee-mark{
     font-weight:500;color:var(--ink-dim);opacity:.7;
     margin:0 clamp(16px,2.4vw,28px);flex-shrink:0;

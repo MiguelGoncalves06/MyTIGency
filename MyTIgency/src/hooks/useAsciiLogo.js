@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { createAsciiLogoScene } from '../utils/asciiLogo'
+import { createAsciiLogoScene } from '../utils/1asciiLogo'
 
 export function useAsciiLogo(ref, options) {
   const sceneRef = useRef(null)
