@@ -1,5 +1,4 @@
 import { useLanguage } from '../context/LanguageContext'
-import star from '../assets/star.svg'
 
 export function Marquee() {
   const { t } = useLanguage()
@@ -14,7 +13,7 @@ export function Marquee() {
         {repeatedPhrases.map((phrase, index) => (
           <span className="marquee-item" key={index}>
             <span>{phrase}</span>
-            <img src={star} alt="" className="marquee-icon" />
+            <span className="marquee-mark" aria-hidden="true">//</span>
           </span>
         ))}
       </div>

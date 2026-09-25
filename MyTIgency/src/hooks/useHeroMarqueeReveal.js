@@ -35,7 +35,12 @@ export function useHeroMarqueeReveal() {
       return undefined
     }
 
-    document.documentElement.style.setProperty('--marquee-h', `${marquee.offsetHeight}px`)
+    const setMarqueeHeight = () => {
+      document.documentElement.style.setProperty('--marquee-h', `${marquee.offsetHeight}px`)
+    }
+    setMarqueeHeight()
+    const marqueeHeightObserver = new ResizeObserver(setMarqueeHeight)
+    marqueeHeightObserver.observe(marquee)
 
     hero.classList.add('hero--pinned')
     spacer.classList.add('reveal-spacer--active')
@@ -90,6 +95,7 @@ export function useHeroMarqueeReveal() {
     })
 
     return () => {
+      marqueeHeightObserver.disconnect()
       ctx.revert()
       document.documentElement.classList.remove('marquee-docked')
       hero.classList.remove('hero--pinned', 'hero--hidden')

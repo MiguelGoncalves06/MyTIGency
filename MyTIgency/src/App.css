@@ -418,17 +418,23 @@
   /* ---------- Marquee ---------- */
   .marquee{
     border-bottom:1px solid var(--line);
-    background:var(--accent);
-    overflow:hidden;white-space:nowrap;padding:14px 0;
+    background:#efefef;
+    overflow:hidden;white-space:nowrap;padding:8px 0;
   }
   .marquee-track{
     display:inline-flex;align-items:center;
-    font-family:'JetBrains Mono',monospace;font-weight:700;text-transform:uppercase;
-    font-size:clamp(18px,2.4vw,30px);letter-spacing:.02em;color:var(--ink);
+    font-family:'JetBrains Mono',monospace;font-weight:300;
+    font-size:clamp(14px,1.5vw,20px);letter-spacing:.03em;color:var(--ink-dim);
     animation:scrollLeft 360s linear infinite;
   }
   .marquee-item{display:inline-flex;align-items:center;white-space:nowrap;}
-  .marquee-icon{width:clamp(14px,1.6vw,22px);height:clamp(14px,1.6vw,22px);margin:0 clamp(20px,3vw,36px);flex-shrink:0;}
+  .marquee-item:nth-child(odd) > span:first-child{
+    font-weight:700;color:var(--ink);
+  }
+  .marquee-mark{
+    font-weight:500;color:var(--ink-dim);opacity:.7;
+    margin:0 clamp(16px,2.4vw,28px);flex-shrink:0;
+  }
   @keyframes scrollLeft{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
 
   /* Reveal transition — see useHeroMarqueeReveal.
