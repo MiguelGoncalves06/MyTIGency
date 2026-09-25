@@ -307,6 +307,34 @@
   .hero.hero--hidden{
     display:none;
   }
+  /* A marquee "espia" fixa no rodapé desde o primeiro frame (ver
+     useHeroMarqueeReveal), então os 100vh nunca são moldura real — a faixa
+     dela já toma espaço de baixo mesmo sem overlap de texto, deixando o
+     conjunto centralizado meio "pesado embaixo". Corrigimos deslocando
+     headline e ASCII+copy pra cima com transform (não padding): padding
+     tenta encolher a linha do grid, mas todo item de grid/flex tem
+     min-height:auto por padrão — ele se recusa a ficar mais espremido que o
+     próprio conteúdo, então padding trava de subir a partir de um certo
+     ponto (~130px testado). transform não participa desse cálculo de
+     espaço, então desloca sem limite. Só ≥981px: abaixo disso o layout de
+     mobile/tablet já foi ajustado à parte (align-items:start). */
+  @media(min-width:981px){
+    .hero-left, .hero-right{
+      transform:translateY(-60px);   /* ajuste este valor */
+    }
+  }
+  /* Mesma ideia, faixa de notebook maior — ajuste independente do de cima. */
+  @media(min-width:1650px){
+    .hero-left, .hero-right{
+      transform:translateY(-80px);   /* ajuste este valor */
+    }
+  }
+  /* Telas de desktop grandes — ajuste independente das duas de cima. */
+  @media(min-width:2560px){
+    .hero-left, .hero-right{
+      transform:translateY(-50px);   /* ajuste este valor */
+    }
+  }
   @media(max-width:980px){
     .hero{
       grid-template-columns:1fr;
