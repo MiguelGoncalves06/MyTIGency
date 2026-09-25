@@ -11,7 +11,7 @@ export const strings = {
       menuAria: 'Menu de navegação',
     },
     hero: {
-      eyebrow: 'Studio de produto digital — desde 2026',
+      eyebrow: 'MyTigency — studio de produto digital, desde 2026',
       headline: ['FUNCIONAR', 'É COMUM.', 'VENCER', 'É RARO.'],
       p1: [
         { text: 'Produto que funciona é o mínimo. ' },
@@ -19,11 +19,11 @@ export const strings = {
         { text: ' é o que muda o número no fim do trimestre — e isso não acontece por acidente.' },
       ],
       p2: [
-        { text: 'Somos um time de ' },
-        { text: 'design, engenharia e produto', bold: true },
-        { text: ', construindo para marcas que já sabem a diferença entre lançar e vencer. [Placeholder] Clientes: ' },
-        { text: '[Cliente A], [Cliente B], [Cliente C]', bold: true },
-        { text: '.' },
+        { text: 'Somos a ' },
+        { text: 'MyTigency', bold: true },
+        { text: ': um time de design, engenharia e produto. A gente não entrega só um produto que funciona — entrega a ' },
+        { text: 'experiência inteira', bold: true },
+        { text: ' ao redor dele.' },
       ],
     },
     services: {
@@ -85,7 +85,7 @@ export const strings = {
       menuAria: 'Navigation menu',
     },
     hero: {
-      eyebrow: 'Digital product studio — since 2026',
+      eyebrow: 'MyTigency — digital product studio, since 2026',
       headline: ['WORKING', 'IS COMMON.', 'WINNING', 'IS RARE.'],
       p1: [
         { text: 'A product that works is the bare minimum. ' },
@@ -93,11 +93,11 @@ export const strings = {
         { text: " is the one that moves the number at the end of the quarter — and that doesn't happen by accident." },
       ],
       p2: [
-        { text: "We're a team of " },
-        { text: 'design, engineering and product', bold: true },
-        { text: ', building for brands that already know the difference between launching and winning. [Placeholder] Clients: ' },
-        { text: '[Client A], [Client B], [Client C]', bold: true },
-        { text: '.' },
+        { text: "We're " },
+        { text: 'MyTigency', bold: true },
+        { text: ": a team of design, engineering and product. We don't just ship a product that works — we build the " },
+        { text: 'entire experience', bold: true },
+        { text: ' around it.' },
       ],
     },
     services: {

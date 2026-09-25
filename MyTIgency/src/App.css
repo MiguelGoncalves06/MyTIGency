@@ -330,7 +330,12 @@
     color:var(--ink-dim);
     display:flex;align-items:center;gap:10px;margin-bottom:20px;
   }
-  .hero-left .eyebrow::before{content:'';width:16px;height:1px;background:var(--accent);}
+  .hero-left .eyebrow::before{
+    content:'>_';
+    color: var(--accent);
+    letter-spacing:normal;
+    font-weight:700;
+  }
   @media(max-width:820px){ .hero-left .eyebrow{margin-bottom:12px;} }
 
   .headline{
@@ -341,6 +346,13 @@
     display:block;
     font-size:clamp(36px,9.6vw,132px);
   }
+  /* Entre 981px (Hero vira 2 colunas) e ~1790px, 9.6vw cresce mais rápido que a
+     coluna .hero-left (1.3fr de um grid, não a viewport inteira) — "IS COMMON."
+     (EN) estoura a coluna e quebra em duas linhas nessa faixa inteira. 7vw
+     resolve com folga testada em toda a faixa (medido via Playwright); abaixo
+     de 981px (coluna única) e acima de ~1885px (onde já bate no teto de
+     132px) o comportamento fica igual ao de antes. */
+  @media(min-width:981px){ .headline-line{font-size:clamp(36px,7vw,132px);} }
   @media(max-width:820px){ .headline-line{font-size:clamp(32px,9.6vw,132px);} }
 
   .headline .accent{color:var(--accent);}
@@ -429,7 +441,6 @@
     /* pre (não nowrap): o estágio "vazio" da decodificação é um espaço, e
        espaços colapsados encolheriam a frase — ver useMarqueeDecode */
     display:inline-flex;align-items:center;white-space:pre;
-    margin-right:clamp(32px,4.8vw,56px);
   }
   /* Metadado apagado, conteúdo em destaque: os dois tons têm função, não
      posição. No fundo escuro, --ink-dim some (contraste ~3:1), então o
@@ -437,6 +448,10 @@
   .marquee-num{
     color:color-mix(in srgb, var(--bg) 55%, transparent);
     margin-right:.8em;flex-shrink:0;
+  }
+  .marquee-icon{
+    height:1.4em;width:auto;
+    margin:0 clamp(20px,3vw,36px);flex-shrink:0;
   }
   .sr-only{
     position:absolute;width:1px;height:1px;padding:0;margin:-1px;
