@@ -5,6 +5,7 @@ import { useActiveSection } from '../hooks/useActiveSection'
 import { useLanguage } from '../context/LanguageContext'
 import { DecodeText } from './DecodeText'
 import { Menu } from './Menu'
+import logo from '../assets/logo.svg'
 
 export function Header() {
   const scrolled = useHeaderScroll()
@@ -58,8 +59,7 @@ export function Header() {
   return (
     <header ref={headerRef} className={scrolled ? 'scrolled' : ''}>
       <a href="#top" className="brand" onClick={handleHomeClick}>
-        <span className="mark">&gt;_</span>
-        <span className="brand-text">MyTigency.</span>
+        <img src={logo} alt="MyTigency" className="brand-logo" />
       </a>
 
       <div className="header-right">

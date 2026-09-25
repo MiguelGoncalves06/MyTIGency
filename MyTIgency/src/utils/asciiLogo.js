@@ -2,12 +2,91 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 const MODEL_URL = new URL('../models/myt.glb', import.meta.url).href
-const CHAR_SET = '.:-+*=%@#&'
+// Rampa monotônica (menos tinta → mais tinta) para o interior das faces.
+// Sem '-', '|', '/', '\' de propósito: traços ficam reservados a contornos
+const CHAR_SET = '.,:;+*#%@'
+// Contorno (Sobel na grade, eixo y da tela para baixo): gradiente → traço
+// perpendicular a ele
+const OUTLINE_CHARS = ['|', '/', '-', '\\']
+// Hachura das laterais pela normal (eixo y da view para cima)
+const HATCH_CHARS = ['|', '\\', '-', '/']
+// Laterais encarando a câmera: textura esparsa, lê como "escuro"
+const SIDE_FILL = '.:'
 const MODEL_BASE_ROTATION = { x: 0, y: 0, z: 0 }
 
-const CORE_CHARS = ['▪', '▫', '■', '□', '1', '0', '▪']
-const MID_CHARS = ['+', '×', '÷', '▫', '1', '0', '°', '+']
-const NOISE_CHARS = ['+', '×', '°', '^', ':', '·', '+']
+// Limiares de dithering ordenado (Bayer 4×4). Cada célula tem um limiar fixo,
+// então quando o brilho de uma face muda as células trocam de caractere aos
+// poucos, num padrão estável — sem a face inteira "popar" junto. Comprimido
+// em torno de 0.5 (DITHER_SPREAD): a mistura só acontece perto de cada corte
+// da rampa, e o miolo de uma faixa fica limpo em vez de virar xadrez
+const DITHER_SPREAD = 0.5
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+  .map((v) => 0.5 + ((v + 0.5) / 16 - 0.5) * DITHER_SPREAD)
+
+const KIND_EMPTY = 0
+const KIND_SIDE = 1
+const KIND_FACE = 2
+
+// Todo modelo é renderizado com este shader, que não desenha cor e sim dados
+// por pixel lidos de volta no passo ASCII (renderer sem antialias, então os
+// valores chegam intactos):
+//   R = iluminação (luz pontual + especular)
+//   G = face branca? (>= FACE_FLAG) + o quanto a superfície está de perfil
+//   B = máscara (>0) + ângulo da normal no plano da tela
+// Assim a convenção do Blender (Base Color branco na frente/verso, preto nas
+// laterais) é o único contrato — nomes de malha e número de objetos não importam.
+const FACE_FLAG = 136
+const EDGE_RANGE = 112
+const GLYPH_VERTEX = /* glsl */ `
+  varying vec3 vNormal;
+  varying vec3 vViewPos;
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vNormal = normalize(normalMatrix * normal);
+    vViewPos = mvPosition.xyz;
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`
+const GLYPH_FRAGMENT = /* glsl */ `
+  uniform float uFace;
+  varying vec3 vNormal;
+  varying vec3 vViewPos;
+  void main() {
+    // Normais invertidas no Blender ou verso visto por dentro: vira pra câmera
+    vec3 n = normalize(vNormal) * (gl_FrontFacing ? 1.0 : -1.0);
+    vec3 v = normalize(-vViewPos);
+    // Luz pontual presa à câmera, perto do objeto: o brilho varia AO LONGO de
+    // uma face plana (não só com a normal), então a transição entre chars
+    // varre a face enquanto ela gira. Centralizada em X: o objeto gira, e
+    // qualquer viés lateral faria um lado da rotação parecer mais iluminado
+    vec3 l = normalize(vec3(0.0, 2.5, -5.0) - vViewPos);
+    float diffuse = max(dot(n, l), 0.0);
+    float specular = pow(max(dot(n, normalize(l + v)), 0.0), 24.0);
+    float shade = clamp(0.3 + 0.7 * diffuse + 0.35 * specular, 0.0, 1.0);
+    // Perfil real em relação ao olho (varia com a perspectiva, ao contrário
+    // da normal pura de uma face plana)
+    float edge = 1.0 - clamp(dot(n, v), 0.0, 1.0);
+    float angle = atan(n.y, n.x) / 6.2831853 + 0.5;
+    gl_FragColor = vec4(
+      shade,
+      (uFace * ${FACE_FLAG}.0 + edge * ${EDGE_RANGE}.0) / 255.0,
+      (1.0 + angle * 254.0) / 255.0,
+      1.0
+    );
+  }
+`
+
+// Luminância do Base Color que veio do GLB (sem material = branco, padrão glTF)
+function createGlyphMaterial(source) {
+  const c = source?.color
+  const luminance = c ? 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b : 1
+  return new THREE.ShaderMaterial({
+    uniforms: { uFace: { value: luminance > 0.35 ? 1 : 0 } },
+    vertexShader: GLYPH_VERTEX,
+    fragmentShader: GLYPH_FRAGMENT,
+    side: THREE.DoubleSide,
+  })
+}
 
 let modelLoadPromise = null
 
@@ -24,38 +103,19 @@ function getAsciiResolution() {
   return Math.max(0.12, Math.min(0.22, resolution))
 }
 
-function getMicroGeom(row, col, intensity, timeTick) {
-  const hash = Math.sin(row * 17.13 + col * 37.91 + timeTick * 0.12) * 43758.5453
-  const seed = Math.abs(hash - Math.floor(hash))
-
-  if (intensity > 0.65) {
-    const char = CORE_CHARS[Math.floor(seed * CORE_CHARS.length)]
-    const isRed = seed > 0.35
-    return { char, isRed }
-  } else if (intensity > 0.28) {
-    const char = MID_CHARS[Math.floor(seed * MID_CHARS.length)]
-    const isRed = seed > 0.70
-    return { char, isRed }
-  } else {
-    const char = NOISE_CHARS[Math.floor(seed * NOISE_CHARS.length)]
-    const isRed = seed > 0.88
-    return { char, isRed }
-  }
-}
-
 class AsciiLogoSceneEffect {
   constructor(renderer, charSet = CHAR_SET, options = {}) {
     this.renderer = renderer
     this.charSet = charSet
     this.fResolution = options.resolution || 0.16
     this.iScale = options.scale || 1
-    this.bInvert = options.invert !== undefined ? options.invert : true
     this.backgroundColor = options.backgroundColor || '#fafafa'
     this.foregroundColor = options.foregroundColor || '#050505'
+    this.edgeColor = options.edgeColor || '#6B6B64'
     this.fillScene = options.fillScene !== undefined ? options.fillScene : true
     this.density = options.density !== undefined ? options.density : 1.0
-    // Quanto o brilho de uma célula é reduzido conforme a face vira de lado
-    // (normal.z baixo no passe de normais) — 0 desliga a modulação
+    // Quanto o brilho de uma face é reduzido conforme ela vira de perfil
+    // (fresnel simples) — 0 desliga a modulação
     this.normalContrast = options.normalContrast !== undefined ? options.normalContrast : 0.45
 
     this.domElement = document.createElement('div')
@@ -94,14 +154,9 @@ class AsciiLogoSceneEffect {
     this.charWidth = 7.5
     this.charHeight = 12.5
 
-    this.decayBuffer = null
-    this.lastMouseGrid = null
     this.rowChars = null
-    this.accents = []
-    // Which cells are actually lit by the 3D glyph this frame — lets hover
-    // logic (see isPointOnLogo) tell "on the MyT" apart from "empty corner
-    // of the container", instead of reacting to the whole bounding box.
-    this.logoMask = null
+    this.edgeChars = null
+    this.kinds = null
 
     if (document.fonts?.ready) {
       document.fonts.ready.then(() => {
@@ -156,132 +211,32 @@ class AsciiLogoSceneEffect {
     this.oCanvas.width = this.cols
     this.oCanvas.height = this.rows * 2
 
-    this.decayBuffer = new Float32Array(this.cols * this.rows)
-    this.lastMouseGrid = null
     this.rowChars = new Array(this.cols)
-    this.logoMask = new Uint8Array(this.cols * this.rows)
+    this.edgeChars = new Array(this.cols)
+    this.kinds = new Uint8Array(this.cols * this.rows)
   }
 
-  screenToGrid(screenX, screenY) {
-    const col = (screenX - this.offsetX) / this.charWidth
-    const row = (screenY - this.offsetY) / this.charHeight
-    return { col, row }
-  }
-
-  // Container-relative point → is this cell currently part of the rendered
-  // glyph? Read-only lookup against last frame's mask, cheap enough to call
-  // on every pointermove.
-  isPointOnLogo(screenX, screenY) {
-    if (!this.logoMask || !this.cols || !this.rows) return false
-    const { col, row } = this.screenToGrid(screenX, screenY)
-    const c = Math.floor(col)
-    const r = Math.floor(row)
-    if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return false
-    return this.logoMask[r * this.cols + c] === 1
-  }
-
-  // intensityScale lets callers dial the same brush down for a faint trail
-  // vs a full-strength pulse, without duplicating the falloff math.
-  addPointerPoint(screenX, screenY, isContinuousAnchor = false, intensityScale = 1) {
-    if (!this.cols || !this.rows || !this.decayBuffer) return
-
-    const { col: targetX, row: targetY } = this.screenToGrid(screenX, screenY)
-
-    if (isContinuousAnchor) {
-      const brushRadius = 3.6
-      const minX = Math.max(0, Math.floor(targetX - brushRadius))
-      const maxX = Math.min(this.cols - 1, Math.ceil(targetX + brushRadius))
-      const minY = Math.max(0, Math.floor(targetY - brushRadius))
-      const maxY = Math.min(this.rows - 1, Math.ceil(targetY + brushRadius))
-
-      for (let y = minY; y <= maxY; y++) {
-        for (let x = minX; x <= maxX; x++) {
-          const d = Math.hypot(x - targetX, (y - targetY) * 1.6)
-          if (d < brushRadius) {
-            const power = Math.pow(1 - d / brushRadius, 1.8) * intensityScale
-            const idx = y * this.cols + x
-            this.decayBuffer[idx] = Math.min(1.0, Math.max(this.decayBuffer[idx], power))
-          }
-        }
-      }
-      return
-    }
-
-    if (!this.lastMouseGrid) {
-      this.lastMouseGrid = { x: targetX, y: targetY }
-    }
-
-    const dx = targetX - this.lastMouseGrid.x
-    const dy = targetY - this.lastMouseGrid.y
-    const distance = Math.hypot(dx, dy)
-    const steps = Math.max(1, Math.ceil(distance / 0.8))
-
-    const brushRadius = 3.8
-
-    for (let s = 0; s <= steps; s++) {
-      const t = s / steps
-      const cx = this.lastMouseGrid.x + dx * t
-      const cy = this.lastMouseGrid.y + dy * t
-
-      const minX = Math.max(0, Math.floor(cx - brushRadius))
-      const maxX = Math.min(this.cols - 1, Math.ceil(cx + brushRadius))
-      const minY = Math.max(0, Math.floor(cy - brushRadius))
-      const maxY = Math.min(this.rows - 1, Math.ceil(cy + brushRadius))
-
-      for (let y = minY; y <= maxY; y++) {
-        for (let x = minX; x <= maxX; x++) {
-          const d = Math.hypot(x - cx, (y - cy) * 1.6)
-          if (d < brushRadius) {
-            const power = Math.pow(1 - d / brushRadius, 2.0) * intensityScale
-            const idx = y * this.cols + x
-            this.decayBuffer[idx] = Math.min(1.0, Math.max(this.decayBuffer[idx], power))
-          }
-        }
-      }
-    }
-
-    this.lastMouseGrid.x = targetX
-    this.lastMouseGrid.y = targetY
-  }
-
-  // Called when a fresh hover starts so the trail doesn't draw one long
-  // streak connecting wherever the cursor last was to the new entry point.
-  resetTrail() {
-    this.lastMouseGrid = null
-  }
-
-  render(scene, camera, normalMaterial) {
+  render(scene, camera) {
     this.renderer.render(scene, camera)
 
-    if (!this.oCtx || !this.decayBuffer || !this.displayCtx) return
+    if (!this.oCtx || !this.kinds || !this.displayCtx) return
 
-    // 1. Lê a amostragem do 3D renderizado na resolução exata do grid
+    // 1. Lê de volta os dados do shader (ver GLYPH_FRAGMENT) na resolução do grid
     this.oCtx.drawImage(this.renderer.domElement, 0, 0, this.cols, this.rows * 2)
     const imgData = this.oCtx.getImageData(0, 0, this.cols, this.rows * 2).data
 
-    // 1b. Passe extra com as normais da cena (mesma resolução minúscula, barato)
-    // para saber a orientação de cada célula e diferenciar frente vs lateral
-    let normalData = null
-    if (normalMaterial) {
-      const prevOverride = scene.overrideMaterial
-      scene.overrideMaterial = normalMaterial
-      this.renderer.render(scene, camera)
-      scene.overrideMaterial = prevOverride
-      this.oCtx.drawImage(this.renderer.domElement, 0, 0, this.cols, this.rows * 2)
-      normalData = this.oCtx.getImageData(0, 0, this.cols, this.rows * 2).data
-    }
-
-    // 2. Decaimento do rastro do mouse
-    const total = this.cols * this.rows
+    // 1b. Classifica cada célula (vazia / lateral / face) — o contorno abaixo
+    // precisa olhar as vizinhas, então isso vem antes de escolher qualquer char
+    const { cols, rows, kinds } = this
+    const total = cols * rows
     for (let i = 0; i < total; i++) {
-      if (this.decayBuffer[i] > 0.005) {
-        this.decayBuffer[i] *= 0.978
-      } else {
-        this.decayBuffer[i] = 0
-      }
+      const offset = (Math.floor(i / cols) * 2 * cols + (i % cols)) * 4
+      kinds[i] = imgData[offset + 2] === 0
+        ? KIND_EMPTY
+        : imgData[offset + 1] >= FACE_FLAG - 12 ? KIND_FACE : KIND_SIDE
     }
+    const kindAt = (r, c) => (r < 0 || r >= rows || c < 0 || c >= cols ? KIND_EMPTY : kinds[r * cols + c])
 
-    const timeTick = Math.floor(performance.now() / 140)
     const ctx = this.displayCtx
     const dpr = this.dpr
     const fFontSize = (2 / this.fResolution) * this.iScale
@@ -299,9 +254,9 @@ class AsciiLogoSceneEffect {
     ctx.textBaseline = 'top'
     ctx.textAlign = 'left'
 
-    const accents = this.accents
-    accents.length = 0
     const rowChars = this.rowChars
+    const edgeChars = this.edgeChars
+    const lastRampIdx = this.charSet.length - 1
 
     // 3. Monta e desenha cada linha no canvas com aceleração direta por hardware
     for (let row = 0; row < this.rows; row++) {
@@ -315,42 +270,60 @@ class AsciiLogoSceneEffect {
         const r = imgData[offset]
         const g = imgData[offset + 1]
         const b = imgData[offset + 2]
-        const a = imgData[offset + 3]
 
         const cellIdx = rowOffset + col
-        const is3DLogo = a > 0 && (r > 10 || g > 10 || b > 10)
-        const corruption = this.decayBuffer[cellIdx]
-        this.logoMask[cellIdx] = is3DLogo ? 1 : 0
+        const kind = kinds[cellIdx]
+        edgeChars[col] = ' '
 
-        if (is3DLogo && corruption > 0.4) {
-          // Hover-glitch "BUG": strong local corruption overrides the normal
-          // shading right on the letters themselves, not just the backdrop.
-          const micro = getMicroGeom(row, col, 0.9, timeTick)
-          rowChars[col] = micro.char
-          if (micro.isRed) {
-            accents.push({ char: micro.char, col, row })
-          }
-        } else if (is3DLogo) {
-          let brightness = (0.3 * r + 0.59 * g + 0.11 * b) / 255
+        if (kind !== KIND_EMPTY) {
+          const isFace = kind === KIND_FACE
+          const dither = BAYER4[((row & 3) << 2) | (col & 3)]
+          // Contorno: a célula encosta numa vizinha de "nível" menor (face →
+          // lateral/vazio, lateral → vazio). Só o lado de dentro recebe o
+          // traço, então a linha tem exatamente 1 célula de espessura
+          const isOutline =
+            kindAt(row - 1, col) < kind || kindAt(row + 1, col) < kind ||
+            kindAt(row, col - 1) < kind || kindAt(row, col + 1) < kind
 
-          // A normal modula o próprio brilho (não troca de família de caractere):
-          // face virada de lado escurece um pouco e cai pra um char mais leve na
-          // mesma rampa, como um fresnel simples — leitura de volume contínua
-          if (normalData) {
-            const facing = normalData[offset + 2] / 255
-            brightness *= 1 - this.normalContrast * (1 - facing)
+          let char
+          if (isOutline) {
+            // Sobel sobre os kinds; normalizado pelo tamanho da célula (que
+            // é mais alta que larga) pra o ângulo bater com o da tela
+            const gx =
+              kindAt(row - 1, col + 1) + 2 * kindAt(row, col + 1) + kindAt(row + 1, col + 1) -
+              kindAt(row - 1, col - 1) - 2 * kindAt(row, col - 1) - kindAt(row + 1, col - 1)
+            const gy =
+              kindAt(row + 1, col - 1) + 2 * kindAt(row + 1, col) + kindAt(row + 1, col + 1) -
+              kindAt(row - 1, col - 1) - 2 * kindAt(row - 1, col) - kindAt(row - 1, col + 1)
+            let angle = Math.atan2(gy / this.charHeight, gx / this.charWidth)
+            if (angle < 0) angle += Math.PI
+            char = OUTLINE_CHARS[Math.round(angle / (Math.PI / 4)) % 4]
+          } else if (isFace) {
+            // Interior da face: rampa pela luz com fresnel suave, arredondada
+            // pelo limiar Bayer da célula em vez de um corte único
+            const edge = Math.min(1, Math.max(0, g - FACE_FLAG) / EDGE_RANGE)
+            const brightness = (r / 255) * (1 - this.normalContrast * edge * edge)
+            char = this.charSet[Math.min(lastRampIdx, Math.floor(brightness * lastRampIdx + dither))]
+          } else {
+            // Interior da lateral: de perfil vira hachura na direção da parede
+            // (perpendicular à normal); de frente, textura esparsa. Os dois
+            // cortes são ditherizados pra transicionar aos poucos
+            const edge = Math.min(1, g / EDGE_RANGE)
+            if (edge > 0.35 + dither * 0.3) {
+              const normalAngle = ((b - 1) / 254) * Math.PI * 2
+              const bucket = Math.floor((normalAngle % Math.PI) / (Math.PI / 4) + dither) % 4
+              char = HATCH_CHARS[bucket]
+            } else {
+              char = SIDE_FILL[r / 255 + (dither - 0.5) * 0.4 > 0.55 ? 1 : 0]
+            }
           }
 
-          let charIdx = Math.floor((1 - brightness) * (this.charSet.length - 1))
-          if (this.bInvert) {
-            charIdx = this.charSet.length - charIdx - 1
-          }
-          rowChars[col] = this.charSet[charIdx] || '.'
-        } else if (this.fillScene && corruption > 0.03) {
-          const micro = getMicroGeom(row, col, corruption, timeTick)
-          rowChars[col] = micro.char
-          if (micro.isRed) {
-            accents.push({ char: micro.char, col, row })
+          // Face em tinta; lateral (inclusive o contorno dela) no tom secundário
+          if (isFace) {
+            rowChars[col] = char
+          } else {
+            rowChars[col] = ' '
+            edgeChars[col] = char
           }
         } else {
           if (this.fillScene && this.density > 0.01) {
@@ -368,35 +341,22 @@ class AsciiLogoSceneEffect {
         }
       }
 
-      // Desenha a linha inteira de caracteres perfeitamente centralizada
+      // Desenha a linha inteira de caracteres perfeitamente centralizada;
+      // as laterais saem numa segunda camada, no tom secundário
+      const y = this.offsetY + row * this.charHeight
       ctx.fillStyle = this.foregroundColor
-      ctx.fillText(
-        rowChars.join(''),
-        this.offsetX,
-        this.offsetY + row * this.charHeight
-      )
-    }
-
-    // 4. Desenha os caracteres de destaque vermelho sobre as posições correspondentes
-    if (accents.length > 0) {
-      ctx.fillStyle = '#FF4438'
-      for (let i = 0; i < accents.length; i++) {
-        const acc = accents[i]
-        ctx.fillText(
-          acc.char,
-          this.offsetX + acc.col * this.charWidth,
-          this.offsetY + acc.row * this.charHeight
-        )
-      }
+      ctx.fillText(rowChars.join(''), this.offsetX, y)
+      ctx.fillStyle = this.edgeColor
+      ctx.fillText(edgeChars.join(''), this.offsetX, y)
     }
 
     ctx.restore()
   }
 
   dispose() {
-    this.decayBuffer = null
     this.rowChars = null
-    this.accents = null
+    this.edgeChars = null
+    this.kinds = null
     this.oCtx = null
     this.oCanvas = null
     this.displayCtx = null
@@ -419,6 +379,7 @@ export function createAsciiLogoScene(container, options = {}) {
     normalContrast,
     backgroundColor,
     foregroundColor,
+    edgeColor,
   } = options
 
   const scene = new THREE.Scene()
@@ -442,27 +403,7 @@ export function createAsciiLogoScene(container, options = {}) {
   )
   camera.position.set(0, 0, cameraZ)
 
-  // Sem deslocamento em X: o objeto gira continuamente, então qualquer viés
-  // lateral na luz faria alguns lados da rotação parecerem mais iluminados
-  // que outros. Centralizada, a luz lê como "de frente" o tempo todo.
-  const keyLight = new THREE.PointLight(0xffffff, 4, 0, 0)
-  keyLight.position.set(0, 3, 5)
-  scene.add(keyLight)
-
-  // Luz de preenchimento fraca: sem ela, faces que não encaram a keyLight caem a
-  // preto e somem da máscara de brilho do ASCII (is3DLogo exige r/g/b > 10)
-  const fillLight = new THREE.HemisphereLight(0xffffff, 0x3a3a3a, 0.18)
-  scene.add(fillLight)
-
-  // Luz de rim vindo de trás, também centralizada em X pelo mesmo motivo: acende
-  // as bordas do extrude simetricamente, não só quando o giro favorece um lado
-  const rimLight = new THREE.PointLight(0xffffff, 2.4, 0, 0)
-  rimLight.position.set(0, 1.5, -4)
-  scene.add(rimLight)
-
-  // Material usado só no passe extra de normais (scene.overrideMaterial) para
-  // detectar orientação de superfície por célula, sem afetar o material visível
-  const normalMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide })
+  // Sem luzes na cena: a iluminação é calculada no GLYPH_FRAGMENT
 
   // Three.js configurado para alta performance sem MSAA desnecessário
   const renderer = new THREE.WebGLRenderer({
@@ -474,9 +415,9 @@ export function createAsciiLogoScene(container, options = {}) {
 
   const effect = new AsciiLogoSceneEffect(renderer, CHAR_SET, {
     resolution: resolution ?? getAsciiResolution(),
-    invert: true,
     backgroundColor,
     foregroundColor,
+    edgeColor,
     fillScene,
     normalContrast,
   })
@@ -496,33 +437,17 @@ export function createAsciiLogoScene(container, options = {}) {
   let sceneProgress = 0
   let loadedMeshLargestDimension = 0
 
-  // Hover glitch: a "BUG" pulse local to wherever the cursor is over the
-  // piece — a few corrupted/red-accented characters (reusing the existing
-  // decay-buffer system below, just no longer fed by a continuous trail)
-  // plus a brief freeze + jitter, repeating irregularly while hovered.
-  let isHovering = false
-  let hoverX = 0
-  let hoverY = 0
-  let jitterIntensity = 0
-  let glitchTimeoutId = null
-  let unfreezeTimeoutId = null
-
   loadModel().then((gltf) => {
     const logoMesh = gltf.scene.clone(true)
 
-    // O GLB tem 2 camadas por letra: malha externa maior ("Texto"/"Texto.002")
-    // e uma malha interna menor deslocada ("Texto.001"/"Texto.003") — o próprio
-    // modelo já foi desenhado com essa dualidade, mas o material único apagava.
+    // Contrato com o Blender: Base Color branco = frente/verso, preto = laterais.
+    // Um shader por material de origem (primitivas que o compartilham reusam)
+    const glyphMaterials = new Map()
     logoMesh.traverse((node) => {
-      if (node.isMesh) {
-        const isInnerLayer = node.name.endsWith('.001') || node.name.endsWith('.003')
-        node.material = new THREE.MeshPhongMaterial({
-          color: isInnerLayer ? 0xf3f2ec : 0xbababa,
-          shininess: isInnerLayer ? 85 : 40,
-          specular: 0x222222,
-          side: THREE.DoubleSide,
-        })
-      }
+      if (!node.isMesh) return
+      const source = node.material
+      if (!glyphMaterials.has(source)) glyphMaterials.set(source, createGlyphMaterial(source))
+      node.material = glyphMaterials.get(source)
     })
 
     const box = new THREE.Box3().setFromObject(logoMesh)
@@ -546,77 +471,6 @@ export function createAsciiLogoScene(container, options = {}) {
 
     logoRig.add(logoMesh)
   })
-
-  function fireGlitchPulse() {
-    const bursts = 2 + Math.floor(Math.random() * 2)
-    for (let i = 0; i < bursts; i++) {
-      const jx = hoverX + (Math.random() - 0.5) * 44
-      const jy = hoverY + (Math.random() - 0.5) * 44
-      effect.addPointerPoint(jx, jy, true)
-    }
-
-    jitterIntensity = 0.14
-    isFrozen = true
-    clearTimeout(unfreezeTimeoutId)
-    unfreezeTimeoutId = setTimeout(() => {
-      isFrozen = false
-    }, 220)
-  }
-
-  function scheduleNextGlitch() {
-    clearTimeout(glitchTimeoutId)
-    glitchTimeoutId = setTimeout(() => {
-      if (!isHovering) return
-      fireGlitchPulse()
-      scheduleNextGlitch()
-    }, 1600 + Math.random() * 1400)
-  }
-
-  function stopHovering() {
-    isHovering = false
-    clearTimeout(glitchTimeoutId)
-    clearTimeout(unfreezeTimeoutId)
-    isFrozen = false
-    jitterIntensity = 0
-  }
-
-  // Faint, continuous trail — much weaker than a glitch pulse (see
-  // TRAIL_INTENSITY) so it reads as a subtle wake behind the cursor rather
-  // than competing with the periodic bursts.
-  const TRAIL_INTENSITY = 0.3
-
-  // Tracks pointer position continuously (cheap: grid math + a mask lookup,
-  // no repaint), but only "enters"/"leaves" the hover state when the cursor
-  // crosses onto/off of a cell the glyph itself lights up — an empty corner
-  // of the container never triggers it.
-  function onHoverMove(e) {
-    const rect = container.getBoundingClientRect()
-    hoverX = e.clientX - rect.left
-    hoverY = e.clientY - rect.top
-
-    const onLogo = effect.isPointOnLogo(hoverX, hoverY)
-    if (onLogo && !isHovering) {
-      isHovering = true
-      effect.resetTrail()
-      fireGlitchPulse()
-      scheduleNextGlitch()
-    } else if (!onLogo && isHovering) {
-      stopHovering()
-    }
-
-    if (isHovering) {
-      effect.addPointerPoint(hoverX, hoverY, false, TRAIL_INTENSITY)
-    }
-  }
-
-  // The hover glitch (pulse + trail + tremor) is new pointer-driven motion,
-  // so — unlike the rest of this file today — it checks reduced-motion from
-  // the start: reduced-motion users just get the plain, non-reactive glyph.
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (!prefersReducedMotion) {
-    container.addEventListener('pointermove', onHoverMove, { passive: true })
-    container.addEventListener('pointerleave', stopHovering)
-  }
 
   const observer = new IntersectionObserver(
     ([entry]) => {
@@ -644,32 +498,19 @@ export function createAsciiLogoScene(container, options = {}) {
     if (logoRig.children.length) {
       logoRig.rotation.x = MODEL_BASE_ROTATION.x
       logoRig.rotation.y = rotationY
-
-      // Hover-glitch tremor: a decaying random shake, back to dead still
-      // once it's spent rather than lingering as a tiny perpetual wobble.
-      if (jitterIntensity > 0.0008) {
-        logoRig.position.x = (Math.random() - 0.5) * jitterIntensity
-        logoRig.position.y = (Math.random() - 0.5) * jitterIntensity
-        jitterIntensity *= 0.82
-      } else if (logoRig.position.x || logoRig.position.y) {
-        jitterIntensity = 0
-        logoRig.position.set(0, 0, 0)
-      }
     }
 
     // The sample-and-draw pass below forces a GPU readback (getImageData)
     // every frame, which stalls the pipeline — cheap enough at rest, but it
     // competes with the main thread for the scroll-driven reveal transition.
     // Rather than fully pausing it (which froze the rotation on screen and
-    // could leave the canvas mid-resize/blank), render less often instead —
-    // and while scrolling, also skip the extra normals pass (only used for
-    // the fresnel-ish shading) to roughly halve the cost of the frames that
-    // do render, so the spin stays visibly smooth without a bigger stutter.
+    // could leave the canvas mid-resize/blank), render less often instead,
+    // so the spin stays visibly smooth without a bigger stutter.
     frameCounter++
     const everyNth = isScrolling ? 4 : 2
     if (frameCounter % everyNth !== 0) return
 
-    effect.render(scene, camera, isScrolling ? null : normalMaterial)
+    effect.render(scene, camera)
   }
 
   animate()
@@ -744,10 +585,6 @@ export function createAsciiLogoScene(container, options = {}) {
     window.removeEventListener('resize', applySize)
     resizeObserver.disconnect()
     observer.disconnect()
-    container.removeEventListener('pointermove', onHoverMove)
-    container.removeEventListener('pointerleave', stopHovering)
-    clearTimeout(glitchTimeoutId)
-    clearTimeout(unfreezeTimeoutId)
 
     if (effect.domElement.parentNode === container) {
       container.removeChild(effect.domElement)
