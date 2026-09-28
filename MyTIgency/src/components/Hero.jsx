@@ -4,9 +4,15 @@ import { RedText } from './RedText'
 import { useLanguage } from '../context/LanguageContext'
 import { useAsciiLogo } from '../hooks/useAsciiLogo'
 
+// Mobile: o box é baixo e a escala esbarra no logo de perfil — com a câmera
+// perto, a perspectiva infla a lateral e corta o box. Câmera mais longe com
+// escala maior = logo ~5–10% maior em repouso sem cortar (medido numa volta
+// inteira no Playwright). Lido uma vez no load; desktop continua 9.5/10.5.
+const IS_MOBILE = window.matchMedia('(max-width: 820px)').matches
+
 const ASCII_LOGO_OPTIONS = {
-  targetSize: 9.5,
-  cameraZ: 10.5,
+  targetSize: IS_MOBILE ? 14 : 9.5,
+  cameraZ: IS_MOBILE ? 15 : 10.5,
   // Constant idle spin — a trophy on display, not tied to the cursor.
   autoRotateSpeed: 0.08,
   fitToContainer: true,

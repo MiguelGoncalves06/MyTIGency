@@ -485,7 +485,9 @@ export function createAsciiLogoScene(container, options = {}) {
     }
   }
 
-  function applySize() {
+  // force: remede mesmo sem mudança de tamanho (fonte carregada). O
+  // ResizeObserver passa entries como 1º argumento, por isso `=== true`.
+  function applySize(force) {
     const { width: w, height: h } = getContainerSize()
     // A hidden ancestor (Hero gets display:none once docked — see
     // useHeroMarqueeReveal) collapses this container to ~0, which the
@@ -494,6 +496,9 @@ export function createAsciiLogoScene(container, options = {}) {
     // noise, so degenerate sizes are ignored — the renderer just keeps its
     // last real dimensions while hidden, and resumes cleanly when shown again.
     if (w < 10 || h < 10) return
+    // Resize de janela sem mudar o box (barra do navegador recolhendo no
+    // mobile): setSize recriaria o canvas e piscaria o ASCII à toa.
+    if (force !== true && w === effect.width && h === effect.height) return
 
     effect.setSize(w, h)
 
@@ -501,7 +506,16 @@ export function createAsciiLogoScene(container, options = {}) {
     camera.updateProjectionMatrix()
   }
 
-  applySize()
+  applySize(true)
+
+  // A fonte do grid (Source Code Pro) costuma chegar depois do primeiro
+  // setSize: a largura do caractere muda, mas grid e aspect da câmera ficavam
+  // velhos até o próximo resize — no mobile, o primeiro scroll (barra do
+  // navegador), que fazia o ASCII "pular" de tamanho. Remede tudo ao carregar.
+  let destroyed = false
+  document.fonts?.ready.then(() => {
+    if (!destroyed) applySize(true)
+  })
 
   const resizeObserver = new ResizeObserver(applySize)
   resizeObserver.observe(container)
@@ -536,6 +550,7 @@ export function createAsciiLogoScene(container, options = {}) {
   }
 
   function destroy() {
+    destroyed = true
     cancelAnimationFrame(frameId)
     window.removeEventListener('resize', applySize)
     resizeObserver.disconnect()

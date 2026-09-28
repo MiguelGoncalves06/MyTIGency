@@ -19,7 +19,6 @@ function AppShell() {
       <div className="reveal-spacer" aria-hidden="true" />
       <Marquee />
       <div className="reveal-panel">
-        <div className="marquee-dock-spacer" aria-hidden="true" />
         <Services />
         <Work />
         <Footer />
