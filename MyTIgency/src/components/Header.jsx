@@ -35,9 +35,10 @@ export function Header() {
 
   useEffect(() => () => clearTimeout(toggleTimeoutRef.current), [])
 
-  const activeId = useActiveSection(['top', 'trabalhos', 'carreiras'])
+  const activeId = useActiveSection(['top', 'manifesto', 'trabalhos', 'carreiras'])
   const sectionLabels = {
     top: t.header.home,
+    manifesto: t.header.manifesto,
     trabalhos: t.header.work,
     carreiras: t.header.careers,
   }

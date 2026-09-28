@@ -2,6 +2,7 @@ export const strings = {
   pt: {
     header: {
       home: 'Home',
+      manifesto: 'Manifesto',
       work: 'Trabalhos',
       careers: 'Carreiras',
       cta: 'Fale conosco →',
@@ -59,6 +60,17 @@ export const strings = {
         'Não ficamos satisfeitos até você parar de mandar "só mais um ajuste".',
       ],
     },
+    manifesto: {
+      lines: [
+        'Na MyTigency, acreditamos que um site não se apresenta. Ele conduz.',
+        'Sem gerente de conta, sem terceirizar, sem intermediários: quem conversa com você é quem desenha e quem programa.',
+        'Por isso, em vez de promessas, preferimos mostrar.',
+        'Repare no ritmo desta página. Nada surge antes da hora.',
+        'Cada linha foi escrita e posicionada exatamente assim.',
+        'Você não está lendo sobre o nosso trabalho.',
+        'Você está vivenciando.',
+      ],
+    },
     footer: {
       brand: 'MyTigency.',
       desc: '[Placeholder] Uma linha curta sobre o studio — quem somos e o que nos move.',
@@ -76,6 +88,7 @@ export const strings = {
   en: {
     header: {
       home: 'Home',
+      manifesto: 'Manifesto',
       work: 'Work',
       careers: 'Careers',
       cta: 'Get in touch →',
@@ -131,6 +144,17 @@ export const strings = {
         "If it's not good, we redo it — no extra charge.",
         'We reply fast because anxiety is fuel too.',
         'We\'re not satisfied until you stop sending "just one more tweak."',
+      ],
+    },
+    manifesto: {
+      lines: [
+        "At MyTigency, we believe a website doesn't introduce itself. It leads.",
+        'No account manager, no outsourcing, no middlemen: the person talking to you is the person designing and building it.',
+        "So instead of promises, we'd rather show you.",
+        'Notice the pace of this page. Nothing appears before its time.',
+        'Every line was written and placed exactly like this, on purpose.',
+        "You're not reading about our work.",
+        "You're living it.",
       ],
     },
     footer: {

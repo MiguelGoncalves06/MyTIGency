@@ -1,6 +1,7 @@
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
 import { Marquee } from './components/Marquee'
+import { Manifesto } from './components/Manifesto'
 import { Services } from './components/Services'
 import { Work } from './components/Work'
 import { Footer } from './components/Footer'
@@ -19,6 +20,7 @@ function AppShell() {
       <div className="reveal-spacer" aria-hidden="true" />
       <Marquee />
       <div className="reveal-panel">
+        <Manifesto />
         <Services />
         <Work />
         <Footer />
