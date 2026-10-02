@@ -124,17 +124,31 @@ export function mountDitherTV(canvas, {
   intersectionObserver.observe(canvas)
   const ease = (t) => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3)
 
+  // Renderiza menos durante scroll ativo — ver setScrolling(). Giro/uniforms
+  // continuam atualizando todo frame (barato); só os dois render() caros
+  // (cena 3D + passe de post-process) ficam de fora nos frames pulados.
+  let isScrolling = false
+  let frameCounter = 0
+
   renderer.setAnimationLoop((now) => {
     if (!visible) return
     const t = (now - introStart) / 1000
     post.uniforms.uReveal.value = ease((t - 0.1) / 1.2)
     const sway = reduceMotion ? 0 : Math.sin(now / 1400) * 0.06
     pivot.rotation.y = restAngle - 2 * (1 - ease(t / 1.8)) + sway
+
+    frameCounter++
+    if (isScrolling && frameCounter % 3 !== 0) return
+
     renderer.setRenderTarget(rt)
     renderer.render(scene, camera)
     renderer.setRenderTarget(null)
     renderer.render(postScene, postCam)
   })
+
+  function setScrolling(scrolling) {
+    isScrolling = Boolean(scrolling)
+  }
 
   function dispose() {
     disposed = true
@@ -149,5 +163,5 @@ export function mountDitherTV(canvas, {
     renderer.dispose()
   }
 
-  return { play, dispose }
+  return { play, dispose, setScrolling }
 }

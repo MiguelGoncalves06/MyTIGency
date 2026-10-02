@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useLenis } from 'lenis/react'
 import { useLanguage } from '../context/LanguageContext'
 import { mountDitherTV } from '../utils/tv3d'
 import { useManifestoHorizontal } from '../hooks/useManifestoHorizontal'
@@ -46,8 +47,13 @@ function Segment({ text, role }) {
 
 const TV_PALETTE = ['#1c1c1c', '#6e6e6e', '#bcbcbc', '#ffffff'] // "Cinza" do HANDOFF
 
+// Mesmo debounce de "scroll assentou" usado no dock da Marquee.
+const SCROLL_SETTLE_MS = 150
+
 function DitherTV() {
   const canvasRef = useRef(null)
+  const sceneRef = useRef(null)
+  const scrollSettleRef = useRef(0)
   // Adia o fetch do .glb + setup do WebGL (cena, PMREM) até a TV chegar
   // perto da viewport, em vez de pagar esse custo no load da página inteira
   // enquanto a seção ainda está fora de tela. rootMargin generoso dá meia
@@ -60,14 +66,31 @@ function DitherTV() {
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return
       observer.disconnect()
-      dispose = mountDitherTV(canvas, { url: tvUrl, palette: TV_PALETTE }).dispose
+      const instance = mountDitherTV(canvas, { url: tvUrl, palette: TV_PALETTE })
+      sceneRef.current = instance
+      dispose = instance.dispose
     }, { rootMargin: '50% 0px' })
     observer.observe(canvas)
     return () => {
       observer.disconnect()
       dispose?.()
+      sceneRef.current = null
     }
   }, [])
+
+  // Renderiza menos durante scroll ativo (ver setScrolling em tv3d.js) —
+  // reduz o custo por frame da TV bem na hora em que ele mais compete com
+  // o resto do scroll. Validado: ganho de fluidez perceptível, mudança
+  // visual mínima (só o balanço da TV fica um pouco menos suave rolando).
+  useLenis(() => {
+    sceneRef.current?.setScrolling(true)
+    clearTimeout(scrollSettleRef.current)
+    scrollSettleRef.current = setTimeout(() => {
+      sceneRef.current?.setScrolling(false)
+    }, SCROLL_SETTLE_MS)
+  })
+  useEffect(() => () => clearTimeout(scrollSettleRef.current), [])
+
   return <canvas className="s2-tv" ref={canvasRef} aria-hidden="true" />
 }
 
