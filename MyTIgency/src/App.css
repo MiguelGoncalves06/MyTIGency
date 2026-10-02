@@ -540,91 +540,436 @@
   }
 
   /* ---------- Manifesto ----------
-     Grid "blueprint" (uma camada de hairlines, parallax via transform) +
-     texto que nasce em --ink-dim/baixa opacidade e pinta palavra por palavra
-     pra --ink-soft (ou --accent na linha final) conforme cruza a faixa de
-     leitura (useManifestoReveal). Estado padrão em CSS já é o texto
-     totalmente legível (--ink-soft/--accent, opacidade 1) — o JS só regride
-     pro estado "não pintado" quando motion está ativo, então sem JS ou com
-     prefers-reduced-motion a seção já nasce correta, sem depender de nada
-     rodar. */
+     Estado final estático do frame do Figma (animações entram depois).
+     Tudo é medido em "px de design" (--u). Um frame fixo não serve em
+     todas as telas: 1680 fica bom em ~707px, mas grande demais em ~1878px,
+     onde o ideal é 2680. Então --u interpola linearmente entre esses dois
+     pontos (e congela acima de 1920px). Abaixo de 700px o bloco mobile
+     assume. A frase usa 96px de
+     design e cada decoração é posicionada em `em` relativo a ela, ancorada
+     na palavra que acompanha — muda o idioma/quebra e ela vai junto. */
   .manifesto{
+    --u:calc(707px / 1680 + (min(100vw, 1920px) - 707px) * (1878 / 2680 - 707 / 1680) / (1878 - 707));
+    --ms-ink:#595959;
+    --ms-ink-strong:#333333;
+    /* Seção 1 e 2 dividem um sistema de coordenadas só (o "frame" do
+       Figma, origem no canto do label Ethos), porque os traços vermelhos
+       atravessam as duas. --ms-top/--ms-left = onde o label cai: a frase
+       continua centrada na primeira tela (738.6 = metade da linha 1). */
+    --ms-top:calc(50svh - 245 * var(--u));
+    --ms-left:calc(50% - 738.6 * var(--u));
+    /* Respiro extra entre as seções 1 e 2 em telas menores: 30% da sobra
+       da primeira tela, no máximo 40 px de design (curva esticada ≤25%);
+       0 em telas grandes. Absorvido pela curva em S do traço A. */
+    --ms-gap:clamp(0px, (100svh - var(--ms-top) - 907.7 * var(--u)) * .3, 40 * var(--u));
     position:relative;
+    isolation:isolate;
     overflow:hidden;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:clamp(120px,16vw,200px) clamp(20px,4vw,48px) clamp(140px,18vw,220px);
     background:var(--bg);
     border-bottom:1px solid var(--line);
   }
-  .manifesto-grid{
-    position:absolute;
-    inset:-15% -10%;
-    z-index:0;
-    pointer-events:none;
-    background-image:
-      repeating-linear-gradient(0deg, var(--line) 0 1px, transparent 1px 120px),
-      repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 120px);
-    opacity:.6;
-    /* Promove a camada pra composição GPU: sem isso, animar `transform` num
-       elemento com repeating-gradient grande força o navegador a repintar
-       o gradiente inteiro a cada frame de scroll em vez de só mover uma
-       camada já rasterizada (medido via trace: ~19x mais custo de raster
-       nesta seção do que nas seguintes). Não muda nada visualmente. */
-    will-change:transform;
+  /* Trilha do scroll lateral (useManifestoHorizontal): tudo do Manifesto
+     anda junto para a esquerda enquanto o bloco está fixado. */
+  .ms-track{
+    position:relative;
+    /* O transform da trilha a isola como camada: sem fundo próprio, o
+       multiply do ornamento ASCII não teria o que multiplicar e o branco
+       do PNG apareceria. */
+    background:var(--bg);
   }
-  .manifesto-text{
+  .ms1{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    padding-top:var(--ms-top);
+    /* Fronteira fixa em y=700 do frame: a distância entre as duas seções é
+       a do Figma (os traços dependem dela), não a altura da tela. */
+    height:calc(var(--ms-top) + 700 * var(--u) + var(--ms-gap));
+  }
+  .ms-stage{
+    position:relative;
+    width:100%;
+    font-size:calc(96 * var(--u));
+  }
+  .ms-content{
     position:relative;
     z-index:1;
-    max-width:880px;
+    width:fit-content;
+    margin:0 auto;
+  }
+
+  /* Ethos + traço de lápis */
+  .ms-eyebrow{
+    display:flex;
+    align-items:center;
+    gap:.5em;
+    margin-bottom:.5em;
+  }
+  .ms-label{
+    flex:none;
+    margin-left:-.3em; /* no Figma o label começa um pouco antes do "N" */
+    font-family:'IM Fell Great Primer',serif;
+    font-size:.375em; /* 36px de design */
+    line-height:1;
+    padding:.32em .7em .34em;
+    color:#fff;
+    background:var(--ms-ink-strong);
+    border-radius:2px;
+  }
+  .ms-eyebrow-line{
+    flex:1;
+    width:0; /* não deixa os 1242px intrínsecos do SVG alargarem o bloco */
+    height:auto;
+  }
+
+  /* Frase */
+  .ms-statement{
+    font-family:'Ibarra Real Nova',serif;
+    font-weight:400;
+    font-size:1em;
+    line-height:1;
+    color:var(--ms-ink);
     text-align:center;
+    letter-spacing:0;
   }
-  .manifesto-line{
-    color:var(--ink-soft);
-    margin-bottom:clamp(10px,1.4vw,16px);
+  .ms-line{
+    position:relative;
+    display:block;
+    white-space:nowrap;
   }
-  .manifesto-line:last-child{
-    margin-bottom:0;
+  /* Linhas 2 e 3 não são centradas a régua no Figma: deslocamentos
+     medidos sobre o frame de referência. */
+  .ms-line:nth-child(2){ margin-top:.31em; left:-.46em; }
+  .ms-line:last-child{ margin-top:.19em; left:.4em; }
+
+  .ms-brand{
+    position:relative;
+    font-weight:700;
+    color:var(--ms-ink-strong);
   }
-  .manifesto-line--accent{
-    color:var(--accent);
+  .ms-brand-stroke{
+    position:absolute;
+    left:-.28em;
+    right:-.12em;
+    top:-.22em;
+    bottom:-.18em;
+    pointer-events:none;
   }
-  /* Tese (linha de abertura) e fechamento (dueto final) — a afirmação
-     central, tratamento display igual ao headline da Hero. */
-  .manifesto-line--lead{
-    font-family:'Archivo Black',sans-serif;
-    font-size:clamp(22px,3.6vw,42px);
-    line-height:1.3;
+  .ms-brand-stroke svg{
+    display:block;
+    width:100%;
+    height:100%;
+    overflow:visible;
   }
-  /* Bloco de explicação (linhas 2–5) — apoio, não afirmação: sistema mono,
-     menor, mais leve — contraste de escala com a tese em vez de tudo do
-     mesmo peso. */
-  .manifesto-line--support{
-    font-family:'JetBrains Mono',monospace;
-    font-weight:500;
-    font-size:clamp(15px,1.9vw,20px);
-    line-height:1.7;
+
+  .ms-highlight{
+    position:relative;
+    z-index:0;
+    color:#fff;
   }
-  /* Respiro extra depois da abertura e depois do bloco de explicação —
-     agrupa por relação de sentido em vez de espaçar tudo igual. */
-  .manifesto-line--gap-after{
-    margin-bottom:clamp(36px,5vw,64px);
+  .ms-highlight::before{
+    content:'';
+    position:absolute;
+    z-index:-1;
+    inset:.2em -.12em .1em;
+    background:var(--accent);
+    border-radius:.1em;
   }
-  .manifesto-word{
+
+  .ms-lead{
+    font-family:'Iansui',sans-serif;
+    color:var(--ms-ink-strong);
+    text-transform:uppercase;
+  }
+
+  /* Decorações ancoradas */
+  .ms-anchor{
+    position:relative;
     display:inline-block;
+    width:0;
+    height:1em;
+    vertical-align:top;
   }
-  .manifesto-counter{
+  .ms-plus{
+    position:absolute;
+    width:.95em;
+    left:-.645em;
+    top:-.375em;
+    filter:drop-shadow(.06em .06em .06em rgba(0,0,0,.28));
+  }
+  .ms-myti{
+    position:absolute;
+    width:2.55em;
+    left:.12em;
+    top:.24em;
+  }
+  .ms-target{
+    display:inline-block;
+    width:.42em;
+    margin-right:.12em;
+    vertical-align:-.02em;
+  }
+  .ms-arrow{
+    display:inline-block;
+    width:.5em;
+    margin-left:.3em;
+    vertical-align:.05em;
+  }
+  /* PNG já vem com a sombra. Mesma escala do export anterior (873px =
+     8.09em); deslocado para a esquerda para o corte diagonal do braço
+     ficar fora da tela — a mão entra colada na borda e os dedos ficam onde
+     estavam. */
+  .ms-hand{
+    position:absolute;
+    z-index:0;
+    left:-2.78em;
+    top:.9em;
+    width:8.09em;
+    max-width:none;
+    pointer-events:none;
+  }
+
+  /* ---------- Manifesto · seção 2 ----------
+     Colagem: cada peça em px de design (--g) relativa ao seu grupo, e cada
+     grupo posicionado no frame. No desktop --g = --u; no mobile os grupos
+     empilham e cada um ganha a própria escala. */
+  /* A seção 2 tem escala própria (--g): o frame do Figma representa a
+     tela inteira, então a composição precisa crescer com a largura — com
+     o --u da seção 1 ela ficava estreita e abria um vão no meio em telas
+     grandes. As duas escalas se encontram num ponto só: J, onde o traço A
+     cruza da seção 1 para a 2 (x=392.3, y=707.7 no frame, origem no
+     label). Tudo da seção 2 escala a partir de J, então o traço continua
+     emendado. --g é tal que a borda direita do frame (x=1578) caia na
+     borda da tela; nunca menor que --u (telas pequenas: as duas iguais).
+     Posição de um ponto (X, Y) do frame dentro da seção 2:
+       left = --s2-jx + (X − 392.3)·g     top = --s2-jy + (Y − 707.7)·g */
+  .ms2{
+    position:relative;
+    --g:max(var(--u), (50vw + 346.3 * var(--u)) / 1185.7);
+    --s2-jx:calc(50% - 346.3 * var(--u));
+    --s2-jy:calc(7.7 * var(--u));
+    min-height:max(100svh, calc(var(--s2-jy) + 880 * var(--g)));
+  }
+  .s2-group{
+    position:absolute;
+  }
+  .s2-group > *{ position:absolute; }
+  /* Grupo "Sem": origem = canto do ornamento ASCII. Textos posicionados
+     pela linha de base (medida no frame), daí o top = base − ascendente. */
+  .s2-group--without{
+    /* Telas grandes: colado na borda esquerda (como no Figma). Telas
+       menores: a posição do Figma em relação a J, que fica um pouco mais à
+       esquerda e mantém a lista longe do traço A. Vale a mais à esquerda. */
+    left:min(calc(2.9 * var(--g)), calc(var(--s2-jx) - 545 * var(--g)));
+    top:calc(var(--s2-jy) + .3 * var(--g));
+    width:calc(940 * var(--g));
+    height:calc(780 * var(--g));
+  }
+  .s2-ornament{
+    left:0;
+    top:0;
+    width:calc(623.5 * var(--g));
+    /* PNG com fundo branco: multiply some com o branco sobre o --bg. */
+    mix-blend-mode:multiply;
+  }
+  .s2-without{
+    inset:0;
+    color:#000;
+  }
+  .s2-without > span{ position:absolute; white-space:nowrap; line-height:1; }
+  .s2-initial{
+    font-family:'Great Vibes',cursive;
+    font-size:calc(278 * var(--g));
+    left:calc(66.1 * var(--g));
+    top:calc((424 - 199.5) * var(--g));
+  }
+  .s2-rest{
+    font-family:'Just Me Again Down Here',cursive;
+    font-size:calc(196 * var(--g));
+    text-transform:uppercase;
+    left:calc(333.3 * var(--g));
+    top:calc((396.7 - 160.1) * var(--g));
+  }
+  .s2-item{
+    font-family:'IM Fell Great Primer',serif;
+    font-size:calc(64 * var(--g));
+    color:var(--ms-ink);
+  }
+  .s2-item--1{ left:calc(387.7 * var(--g)); top:calc((224.8 - 51) * var(--g)); }
+  .s2-item--2{ left:calc(525.5 * var(--g)); top:calc((294.8 - 51) * var(--g)); }
+  /* Inglês: "Without" é bem mais largo que "Sem" — a palavra encolhe para
+     60% e o último item recua para não colidir com "ITHOUT". */
+  .s2-without[data-lang="en"] .s2-initial{
+    font-size:calc(166.8 * var(--g));
+    left:calc(80 * var(--g));
+    top:calc((424 - 119.7) * var(--g));
+  }
+  .s2-without[data-lang="en"] .s2-rest{
+    font-size:calc(117.6 * var(--g));
+    left:calc(314 * var(--g));
+    top:calc((396.7 - 96.1) * var(--g));
+  }
+  .s2-without[data-lang="en"] .s2-item--3{ left:calc(640 * var(--g)); }
+  .s2-item--3{ left:calc(558 * var(--g)); top:calc((374.6 - 51) * var(--g)); }
+  .s2-cue{
+    left:calc(344.4 * var(--g));
+    top:calc(468.3 * var(--g));
+    width:calc(336 * var(--g));
+    height:calc(58 * var(--g));
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:calc(14 * var(--g));
+    font-family:'Hedvig Letters Sans',sans-serif;
+    font-size:calc(32 * var(--g));
+    line-height:1;
+    white-space:nowrap;
+    color:#fff;
+    background:var(--accent);
+    border-radius:calc(50 * var(--g));
+  }
+  .s2-cue-arrow{
+    width:calc(26 * var(--g));
+    transform:rotate(90deg); /* seta.png aponta ↗; aqui começa ↘ */
+    filter:brightness(0) invert(1);
+  }
+
+  /* Grupo TV: origem = canto do sticker smiley. */
+  .s2-group--tv{
+    left:calc(var(--s2-jx) + 508.5 * var(--g));
+    top:calc(var(--s2-jy) + 5.8 * var(--g));
+    width:calc(910 * var(--g));
+    height:calc(615 * var(--g));
+  }
+  .s2-tv{
+    left:calc(40.1 * var(--g));
+    top:calc(135.3 * var(--g));
+    width:calc(560 * var(--g));
+    height:calc(480 * var(--g));
+  }
+  .s2-smiley{
+    z-index:1;
+    left:0;
+    top:0;
+    width:calc(339.3 * var(--g));
+  }
+  .s2-search{
+    z-index:1;
+    left:calc(327 * var(--g));
+    top:calc(109.1 * var(--g));
+    width:calc(567 * var(--g));
+  }
+
+  /* Traço A: um SVG só (manifest-vetorA-s2), mostrado duas vezes e
+     recortado em y=570 (46.875% da altura) — o único ponto em que ele
+     cruza a fronteira. Em cima, escala da seção 1 (--u, ancorado no +);
+     embaixo, escala da seção 2 (--g, ancorado em J). Mesmo arquivo, então
+     a textura emenda; a animação de "caminho" pode percorrer os dois. */
+  .ms-frame{
     position:absolute;
     z-index:1;
-    right:clamp(20px,4vw,48px);
-    bottom:28px;
-    font-size:11px;
-    letter-spacing:.12em;
-    color:var(--ink-dim);
+    left:var(--ms-left);
+    top:var(--ms-top);
+    width:0;
+    height:0;
+    pointer-events:none;
   }
-  @media(max-width:820px){
-    .manifesto-counter{ display:none; }
+  .ms-frame img{ position:absolute; max-width:none; }
+  .ms-line-a{
+    left:calc(248.3 * var(--u));
+    top:calc(137.7 * var(--u));
+    width:calc(1348 * var(--u));
+  }
+  /* Metade de cima em 2 partes: até o cotovelo (y 410) e, de lá até J,
+     a faixa levemente esticada em --ms-gap. */
+  .ms-line-a--top{ clip-path:inset(0 0 66.283% 0); }
+  .ms-line-a-elbow{
+    position:absolute;
+    left:calc(248.3 * var(--u));
+    top:calc((137.7 + 409) * var(--u));
+    width:calc(1348 * var(--u));
+    height:calc(162 * var(--u) + var(--ms-gap));
+  }
+  .ms-line-a-elbow svg{ display:block; width:100%; height:100%; }
+  .s2-line{
+    position:absolute;
+    z-index:1;
+    max-width:none;
+    pointer-events:none;
+  }
+  .s2-line-a{
+    left:calc(var(--s2-jx) - 144 * var(--g));
+    top:calc(var(--s2-jy) - 570 * var(--g));
+    width:calc(1348 * var(--g));
+    clip-path:inset(46.875% 0 0 0);
+  }
+  /* Rabo do traço A (manifest-vetorA-s3) rumo ao "quem" da seção 3 —
+     hoje sai pela direita; o scroll lateral vai revelá-lo. */
+  .s2-line-a-tail{
+    left:calc(var(--s2-jx) + 1163 * var(--g));
+    top:calc(var(--s2-jy) + 373 * var(--g));
+    width:calc(588 * var(--g));
+  }
+  .s2-line-b{
+    /* acompanha o grupo "Sem" (termina no botão) */
+    left:min(calc(-27.4 * var(--g)), calc(var(--s2-jx) - 575.3 * var(--g)));
+    top:calc(var(--s2-jy) - 107.1 * var(--g));
+    width:calc(387 * var(--g));
+  }
+
+  /* Grid: guia de layout do Figma trazido pra tela, acima de tudo da seção
+     (header/marquee vivem fora dela, então ficam por cima). Tiles com
+     linear-gradient em vez de repeating-gradient: a linha de 1px não some
+     por antialiasing em escala fracionária. */
+  .manifesto-grid{
+    position:absolute;
+    inset:0;
+    /* Estica para a direita o quanto a trilha anda, senão a área revelada
+       pelo scroll lateral ficaria sem grid. */
+    right:calc(-1 * var(--ms-travel, 0px));
+    z-index:2;
+    pointer-events:none;
+    --cell:calc(204 * var(--u));
+    background-image:
+      linear-gradient(to right, rgba(11,11,12,.25) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(11,11,12,.25) 1px, transparent 1px);
+    background-size:var(--cell) var(--cell);
+    background-position:calc(194 * var(--u)) 0;
+  }
+
+  /* Mobile: mesma composição, mais compacta — escalar o frame inteiro
+     deixaria a frase em ~20px num celular de 351px. Aqui a frase ganha
+     tamanho e quebra naturalmente; as decorações seguem ancoradas nas
+     palavras, então vão junto sem posição própria. */
+  @media(max-width:700px){
+    .ms-stage{ font-size:clamp(34px, 10.5vw, 56px); }
+    .ms-content{ width:auto; padding:0 16px; }
+    .ms-line{ white-space:normal; }
+    .ms-label{ font-size:.5em; }
+    .ms-plus{ width:.9em; }
+    .ms-myti{ width:1.8em; left:-1.6em; top:2.35em; }
+    .ms-hand{ top:auto; bottom:-4.4em; left:-2.48em; width:7.22em; }
+    /* Volta ao centramento simples da seção 1. Os traços dependem da
+       composição desktop (no mobile a frase quebra diferente), então
+       ficam escondidos até termos a versão mobile deles. */
+    .ms1{ height:auto; min-height:100svh; padding:120px 0 200px; justify-content:center; }
+    .ms-frame, .s2-line{ display:none; }
+    .ms2{
+      min-height:100svh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:48px;
+      padding:48px 16px 80px;
+    }
+    .s2-group{ position:relative; left:auto; top:auto; flex:none; }
+    .s2-group--without{ --g:calc((100vw - 32px) / 1015); }
+    .s2-group--tv{ --g:calc((100vw - 32px) / 760); align-self:flex-start; }
+    .manifesto-grid{
+      --cell:25vw;
+      background-position:12.5vw 0;
+    }
   }
 
   /* ---------- Services ---------- */

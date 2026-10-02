@@ -61,6 +61,23 @@ export const strings = {
       ],
     },
     manifesto: {
+      label: 'Ethos',
+      // 3 linhas fixas do Figma; role: brand (elipse), highlight (fundo
+      // vermelho), lead (CONDUZ). Decorações são ancoradas por linha no
+      // componente, então o texto pode mudar sem reposicionar nada à mão.
+      statement: [
+        [{ text: 'Na ' }, { text: 'MyTIgency,', role: 'brand' }, { text: ' acreditamos que um' }],
+        [{ text: 'site não se ' }, { text: 'apresenta.', role: 'highlight' }, { text: ' Ele' }],
+        [{ text: 'conduz.', role: 'lead' }],
+      ],
+      // Seção 2: "Sem" = S (Great Vibes) + em (Just Me Again Down Here).
+      without: {
+        initial: 'S',
+        rest: 'em',
+        items: ['Gerente de conta', 'Terceirizar', 'Intermediários'],
+        sentence: 'Sem gerente de conta, sem terceirizar, sem intermediários.',
+        cue: 'continue rolando',
+      },
       lines: [
         'Na MyTigency, acreditamos que um site não se apresenta. Ele conduz.',
         'Sem gerente de conta, sem terceirizar, sem intermediários: quem conversa com você é quem desenha e quem programa.',
@@ -147,6 +164,19 @@ export const strings = {
       ],
     },
     manifesto: {
+      label: 'Ethos',
+      statement: [
+        [{ text: 'At ' }, { text: 'MyTIgency,', role: 'brand' }, { text: ' we believe a site' }],
+        [{ text: 'never ' }, { text: 'introduces', role: 'highlight' }, { text: ' itself. It' }],
+        [{ text: 'leads.', role: 'lead' }],
+      ],
+      without: {
+        initial: 'W',
+        rest: 'ithout',
+        items: ['Account manager', 'Outsourcing', 'Middlemen'],
+        sentence: 'Without an account manager, without outsourcing, without middlemen.',
+        cue: 'keep scrolling',
+      },
       lines: [
         "At MyTigency, we believe a website doesn't introduce itself. It leads.",
         'No account manager, no outsourcing, no middlemen: the person talking to you is the person designing and building it.',
