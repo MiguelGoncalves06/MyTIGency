@@ -48,7 +48,26 @@ const TV_PALETTE = ['#1c1c1c', '#6e6e6e', '#bcbcbc', '#ffffff'] // "Cinza" do HA
 
 function DitherTV() {
   const canvasRef = useRef(null)
-  useEffect(() => mountDitherTV(canvasRef.current, { url: tvUrl, palette: TV_PALETTE }).dispose, [])
+  // Adia o fetch do .glb + setup do WebGL (cena, PMREM) até a TV chegar
+  // perto da viewport, em vez de pagar esse custo no load da página inteira
+  // enquanto a seção ainda está fora de tela. rootMargin generoso dá meia
+  // tela de antecedência, então o modelo já está pronto quando o usuário
+  // de fato rola até lá — sem atraso visível na entrada.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return undefined
+    let dispose = null
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      observer.disconnect()
+      dispose = mountDitherTV(canvas, { url: tvUrl, palette: TV_PALETTE }).dispose
+    }, { rootMargin: '50% 0px' })
+    observer.observe(canvas)
+    return () => {
+      observer.disconnect()
+      dispose?.()
+    }
+  }, [])
   return <canvas className="s2-tv" ref={canvasRef} aria-hidden="true" />
 }
 

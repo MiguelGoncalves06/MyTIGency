@@ -11,6 +11,10 @@ export const strings = {
       menuClose: 'Fechar',
       menuAria: 'Menu de navegação',
     },
+    loading: {
+      label: 'carregando',
+      ariaLabel: 'Carregando o site',
+    },
     hero: {
       eyebrow: 'MyTigency — studio de produto digital, desde 2026',
       headline: ['FUNCIONAR', 'É COMUM.', 'VENCER', 'É RARO.'],
@@ -113,6 +117,10 @@ export const strings = {
       menuOpen: 'Menu',
       menuClose: 'Close',
       menuAria: 'Navigation menu',
+    },
+    loading: {
+      label: 'loading',
+      ariaLabel: 'Loading the site',
     },
     hero: {
       eyebrow: 'MyTigency — digital product studio, since 2026',

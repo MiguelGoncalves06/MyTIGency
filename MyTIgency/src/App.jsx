@@ -6,6 +6,7 @@ import { Services } from './components/Services'
 import { Work } from './components/Work'
 import { Footer } from './components/Footer'
 import { ContextualCursor } from './components/ContextualCursor'
+import { LoadingScreen } from './components/LoadingScreen'
 import { SmoothScroll } from './components/SmoothScroll'
 import { LanguageProvider } from './context/LanguageContext'
 import { useHeroMarqueeReveal } from './hooks/useHeroMarqueeReveal'
@@ -36,6 +37,7 @@ function App() {
         <ContextualCursor />
         <Header />
         <AppShell />
+        <LoadingScreen />
       </LanguageProvider>
     </SmoothScroll>
   )

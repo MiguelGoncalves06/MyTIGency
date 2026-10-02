@@ -103,12 +103,13 @@ Inconsistência identificada, não corrigida agora: o **rastro de ponteiro (glit
 
 # Scroll / Lenis
 
-Lenis (`SmoothScroll.jsx`, `ReactLenis` com `autoRaf:true`) é a única autoridade de scroll do projeto. Não existe GSAP/ScrollTrigger nem outra lib de scroll — não introduza uma sem necessidade real e sem remover a anterior primeiro.
+Lenis (`SmoothScroll.jsx`, `ReactLenis` com `autoRaf:true`) é a única autoridade de scroll do projeto. GSAP + ScrollTrigger já fazem parte do projeto hoje (`useHeroMarqueeReveal.js` — reveal Hero→Marquee; `useManifestoHorizontal.js` — pin lateral do Manifesto seção 2), sincronizados ao Lenis via `lenis.on('scroll', () => ScrollTrigger.update())`, não via scroller nativo — não introduza uma terceira lib de scroll sem necessidade real.
 
 - `respectReducedMotion: true` já está configurado — o próprio Lenis desliga o smoothing sob `prefers-reduced-motion`.
 - Consumidores devem ler o progresso via `useLenis` (como `SceneContext` e `AsciiStage` já fazem), não via listener nativo de `scroll` — `useHeaderScroll.js` é a exceção atual (usa `window.addEventListener('scroll', ...)` + `window.scrollY` direto). É uma inconsistência de arquitetura a observar; não migre isso agora sem necessidade, mas não replique esse padrão em código novo — prefira `useLenis`.
 - **Duplicação a observar:** `SceneContext` e `AsciiStage` calculam `progress = scroll / getIntroScrollDistance()` cada um por conta própria, dentro de dois callbacks `useLenis` separados. Funciona porque a fórmula é idêntica nos dois lugares, mas é uma fonte de verdade duplicada — trate `SceneContext`/`--scene-progress` como a fonte canônica de progresso/fase; um sistema novo deve ler dali (ou de `getIntroScrollDistance()` diretamente, como hoje), não recalcular sua própria noção paralela de progresso sem motivo.
 - Nenhum outro sistema deve iniciar um segundo RAF de scroll-tracking independente — reutilize `useLenis` ou leia `--scene-progress`.
+- **Known debt — desync visual no pin do Manifesto seção 2:** rolando rápido (flick) de volta pra cima logo depois de passar da TV, o bloco pinado inteiro (`useManifestoHorizontal.js`) aparece por alguns frames numa posição vertical errada, sobrepondo o header, antes de se autocorrigir. Reproduz só com mudança de scroll rápida/grande cruzando a fronteira do pin — scroll lento/gradual não reproduz. Investigado e não é causado pelo `will-change` do próprio hook (testado desligado, reproduz igual), nem é questão de z-index/empilhamento (`anticipatePin` e `z-index` explícito no `.manifesto` testados, nenhum dos dois mudou o bug) — aponta pra um desync momentâneo do próprio GSAP ao recalcular a posição do pin numa transição rápida, não investigado a fundo ainda. Decisão do usuário: não investigar mais por ora — a seção 2 ainda vai crescer lateralmente com mais elementos, o que pode tornar o bug menos perceptível/relevante na prática. Reavaliar quando essa expansão acontecer.
 
 # Cursor / Pointer
 
@@ -206,6 +207,17 @@ Este é um site visualmente ambicioso — performance é parte da qualidade, nã
 - Evitar forced synchronous layout: leituras de `getBoundingClientRect()` já concentradas nos callbacks de `useLenis`/resize, não em loops apertados — mantenha esse padrão (ler layout uma vez por frame, não múltiplas vezes).
 - `devicePixelRatio` já é limitado (`Math.min(devicePixelRatio, 2)` no canvas ASCII; `renderer.setPixelRatio(1)` no WebGL) — reaproveite esse teto em qualquer canvas/WebGL novo, não assuma DPR nativo em telas de alta densidade.
 - Custo de um efeito precisa ser avaliado contra o que ele prova segundo `DESIGN.md` (Performance) — um efeito caro que não expressa transformação real ou resposta proporcional deve ser simplificado, não apenas otimizado.
+
+# Loading Gate
+
+`LoadingScreen.jsx` + `useAppReady.js` seguram a primeira interação (scroll travado via `useBodyScrollLock`) até os recursos pesados do primeiro impacto estarem prontos, em vez de deixar o usuário interagir enquanto eles ainda estão competindo pela main thread. Existe porque medimos, com profiling real (não suposição), um long task de ~100-150ms no mount que não tinha nenhuma causa única — era a soma de GSAP criando dois `ScrollTrigger`, a cena 3D da Hero montando e o próprio React inicializando, tudo síncrono. Esconder essa janela atrás do loading screen resolve sem precisar otimizar cada peça isoladamente.
+
+- **O que entra no gate hoje**: `document.fonts.ready` e o load do `.glb` da Hero (`getHeroModelReady()` em `1asciiLogo.js`) — ver `useAppReady.js`.
+- **Critério pra adicionar algo novo ao gate**: qualquer recurso que seja (a) carregado/montado automaticamente na primeira tela (não atrás de scroll/lazy) **e** (b) pesado o bastante pra competir por main thread no mount (fetch+parse de modelo 3D, geração de environment map, setup de uma lib de scroll/animação nova). Um asset que já é lazy (como o `tv.min.glb` do Manifesto, carregado só perto da seção — ver `Manifesto.jsx`) não entra: o gate é sobre a primeira impressão, não sobre o site inteiro.
+- **Como adicionar**: expor uma promise do módulo responsável (mesmo padrão de `getHeroModelReady()`) e somar em `Promise.all([...])` dentro de `dependencies()` em `useAppReady.js`. Sempre com `.catch(() => {})` — uma dependência que rejeita não pode travar o reveal pra sempre.
+- **Teto obrigatório**: `MAX_WAIT_MS` garante que uma falha de rede ou asset quebrado nunca prende o usuário atrás da tela — isso não é opcional ao estender o gate.
+- **Exibição mínima**: `MIN_DISPLAY_MS` evita um "pisca" quando tudo carrega rápido demais — não remover só porque parece redundante em teste local.
+- **Reduced motion**: o gate em si (a espera) vale pra todo mundo — é sobre performance, não preferência de movimento. Só o indicador visual (o cursor piscando) é desligado via `prefers-reduced-motion`.
 
 # Technology Selection
 

@@ -71,6 +71,14 @@ export function useManifestoHorizontal(rootRef) {
           invalidateOnRefresh: true,
           refreshPriority: -1, // mede depois do gatilho da Hero→Marquee
           onRefresh: () => root.style.setProperty('--ms-travel', `${travel()}px`),
+          // Mesmo padrão do tween Marquee/panel (useHeroMarqueeReveal): promove
+          // a camada só enquanto o scrub lateral está de fato em jogo, solta
+          // depois de passar — .ms-track carrega o grid inteiro, a maior
+          // camada da página, então não vale deixá-la promovida parada à toa.
+          onEnter: () => gsap.set(track, { willChange: 'transform' }),
+          onEnterBack: () => gsap.set(track, { willChange: 'transform' }),
+          onLeave: () => gsap.set(track, { willChange: 'auto' }),
+          onLeaveBack: () => gsap.set(track, { willChange: 'auto' }),
         },
       })
     })

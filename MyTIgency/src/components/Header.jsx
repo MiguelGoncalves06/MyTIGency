@@ -58,7 +58,10 @@ export function Header() {
   }, [])
 
   return (
-    <header ref={headerRef} className={scrolled ? 'scrolled' : ''}>
+    <header
+      ref={headerRef}
+      className={[scrolled && 'scrolled', open && 'menu-open'].filter(Boolean).join(' ')}
+    >
       <a href="#top" className="brand" onClick={handleHomeClick}>
         <img src={logo} alt="MyTigency" className="brand-logo" />
       </a>

@@ -90,6 +90,12 @@ function loadModel() {
   return modelLoadPromise
 }
 
+// Exposto pro gate de loading (ver useAppReady) — mesma promise cacheada
+// que createAsciiLogoScene usa, então não dispara um segundo fetch.
+export function getHeroModelReady() {
+  return loadModel()
+}
+
 function getAsciiResolution() {
   const area = window.innerWidth * window.innerHeight
   const resolution = 0.2 - 0.00000006 * Math.max(area - 1200000, 0)

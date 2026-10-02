@@ -30,6 +30,7 @@ Se implementação e documentação divergirem: não assuma silenciosamente que 
 | Intro → Hero | `PRODUCT.md` → `DESIGN.md` → `myt-art-director` → `myt-motion` → `myt-design-system` (se visual mudar) → implementação → `myt-visual-qa` |
 | Refactor/arquitetura | inspect → Graphify se necessário → plan → implement → Ponytail se útil → verify → `myt-visual-qa` se houver impacto |
 | Bug visual | inspect → `myt-design-system`/`myt-motion` conforme a causa → correção mínima → `myt-visual-qa` |
+| Nova implementação pesada (cena 3D, asset grande, nova lib de scroll/animação) | implementação → avaliar contra `myt-motion` → Loading Gate se precisa entrar no gate de loading (`useAppReady.js`) → `myt-visual-qa` |
 
 O objetivo é evitar processamento desnecessário — carregar um skill que a tarefa não toca é desperdício de contexto, não rigor.
 
@@ -125,6 +126,7 @@ Não pergunte algo que `PRODUCT.md`, `DESIGN.md`, um skill ou o próprio código
 ✓ acessibilidade relevante verificada
 ✓ myt-visual-qa executado, quando a mudança tem impacto perceptível
 ✓ console sem erro novo relevante
+✓ se a mudança for pesada no mount (3D, asset grande, lib de scroll/animação nova), avaliada contra myt-motion → Loading Gate
 ```
 
 Para tarefa puramente interna, aplique só os critérios relevantes — não force um checklist visual em algo que não toca a UI.

@@ -33,6 +33,40 @@
   ::selection{background:var(--accent);color:#fff;}
   .display{font-family:'Archivo Black',sans-serif;}
 
+  /* ---------- Loading screen ---------- */
+  /* Acima de tudo, inclusive do cursor contextual (z-index:9999) — enquanto
+     ela existe, nada mais deveria estar "por cima". */
+  .loading-screen{
+    position:fixed;inset:0;
+    z-index:10000;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--bg);
+    transition:opacity 400ms ease;
+  }
+  .loading-screen--fading{
+    opacity:0;
+    pointer-events:none;
+  }
+  .loading-screen-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .loading-screen-cursor{
+    display:inline-block;
+    animation:loadingCursorBlink 1s step-end infinite;
+  }
+  @keyframes loadingCursorBlink{
+    0%,50%{opacity:1;}
+    50.01%,100%{opacity:0;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .loading-screen{transition:none;}
+    .loading-screen-cursor{animation:none;}
+  }
+
   /* ---------- Nav ---------- */
   header{
     display:flex;align-items:center;justify-content:space-between;
@@ -44,11 +78,24 @@
     background:transparent;
     z-index:60;
     isolation:isolate;
-    transition:border-color 350ms ease, transform 320ms cubic-bezier(.16,1,.3,1);
+    /* top, not transform: a transform here would become the containing
+       block for .menu-panel (position:fixed, child of header on mobile),
+       collapsing its fullscreen inset:0 down to header's own floating-pill
+       box instead of the viewport once docked. */
+    transition:border-color 350ms ease, top 320ms cubic-bezier(.16,1,.3,1);
     pointer-events:none;
   }
   html.marquee-docked header{
-    transform:translateY(var(--marquee-h, 52px));
+    top:var(--marquee-h, 52px);
+  }
+  /* isolation:isolate above makes header its own stacking context, so
+     .menu-panel's z-index:70 only wins against header's own children —
+     against the marquee (a sibling, z-index:61) the whole header context is
+     compared at header's z-index:60 and loses, letting the marquee paint
+     over the open fullscreen menu. Bump header above the marquee only while
+     its menu is open, so the trapped panel comes along with it. */
+  header.menu-open{
+    z-index:65;
   }
   header::before{
     content:'';
@@ -74,12 +121,6 @@
       top:12px;left:12px;right:12px;
       border-radius:var(--menu-radius);
       border-bottom:none;
-    }
-    /* The floating header already sits 12px down; subtract that from the dock
-       push so it lands flush under the marquee instead of leaving a gap the
-       reveal panel's content could show through. */
-    html.marquee-docked header{
-      transform:translateY(calc(var(--marquee-h, 52px) - 12px));
     }
     header::before{
       border-radius:var(--menu-radius);
@@ -284,6 +325,14 @@
       justify-content:flex-start;
       align-items:flex-start;
       padding:96px 32px 40px;
+      transition:padding-top 320ms cubic-bezier(.16,1,.3,1);
+    }
+    /* 96px clears the floating header at its undocked top:12px. Once docked,
+       header (and the brand/close button inside it) sits var(--marquee-h)
+       lower — without this, the section list starts at the same fixed 96px
+       and ends up overlapping the close button instead of clearing it. */
+    html.marquee-docked .menu-panel{
+      padding-top:calc(96px + var(--marquee-h, 52px));
     }
     .menu-item-label{font-size:28px;}
   }

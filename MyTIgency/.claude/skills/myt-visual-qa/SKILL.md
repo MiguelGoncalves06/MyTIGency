@@ -292,6 +292,7 @@ Itens já documentados em `DESIGN.md`/`myt-motion` — não reabrir como bug nov
 - Footer assinado "RUNTIME." enquanto o resto do site usa "MyTigency".
 - Marquee/placeholders de cliente (`[CLIENTE A]`...) que podem sugerir clientela real inexistente.
 - `PrismSection.jsx`/`BackgroundBoxes.jsx` (e `useAsciiDonut`/`utils/asciiDonut.js`) são componentes/hooks órfãos, não renderizados por nenhuma página.
+- Pin do Manifesto seção 2 (`useManifestoHorizontal.js`) desincroniza visualmente por alguns frames quando o scroll muda de direção rapidamente perto da fronteira do pin (flick/fling) — bloco pinado aparece sobrepondo o header antes de se autocorrigir. Scroll lento/gradual não reproduz. Causa raiz não resolvida (ver `myt-motion` → Scroll/Lenis); decisão do usuário foi não investigar mais por ora, já que a seção vai crescer lateralmente e isso pode tornar o bug menos perceptível.
 
 Se qualquer um desses itens for corrigido em uma implementação futura, o QA deve atualizar seu entendimento (não continuar reportando como debt depois de resolvido) e verificar no navegador que a correção realmente resolveu o problema, não só que o código mudou.
 

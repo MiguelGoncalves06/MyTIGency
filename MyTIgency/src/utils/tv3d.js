@@ -21,7 +21,10 @@ export function mountDitherTV(canvas, {
 } = {}) {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true })
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+  // Mesmo teto do outro WebGL do projeto (asciiLogo.js) — o dither já é
+  // deliberadamente blocado, então DPR nativo não acrescenta nitidez
+  // perceptível, só custo de fill-rate por frame.
+  renderer.setPixelRatio(1)
 
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100)
