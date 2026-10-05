@@ -11,6 +11,13 @@ const DESKTOP_QUERY = '(min-width: 701px)'
 // Começa um pouco antes do centro exato: quando o centro do conteúdo ainda
 // está esta fração da altura da tela abaixo do meio.
 const START_EARLY = 0.06
+// Notebook (tela baixa): a faixa fixa do topo (marquee + header) come uma
+// fatia maior da altura e o topo do conteúdo ficava embaixo dela durante o
+// pin. Só aqui o pin começa mais cedo e a seção 3 desce o necessário para o
+// topo do conteúdo encostar no fim do header, como já acontece no desktop.
+const NOTEBOOK_QUERY = '(max-height: 900px)'
+// Topo do conteúdo da seção 3 (o "ideias viram produtos" girado), em vh.
+const S3_TOP_VH = 0.133
 // Seção 3 (protótipo): trilha de 233vh de largura, o "quem" a 8vh da borda
 // esquerda dela, e 5.5 telas de scroll para o desenho inteiro.
 const S3_WIDTH_VH = 2.33
@@ -53,21 +60,30 @@ export function useManifestoHorizontal(rootRef) {
       for (let n = el; n; n = n.offsetParent) y += n.offsetTop
       return y
     }
-    // Centro vertical do conteúdo da seção 2 (os dois grupos, sem os traços).
-    const contentCenter = () => {
+    // Faixa fixa do topo durante o Manifesto: marquee acoplado + header.
+    const chromeBottom = () => {
+      const header = document.querySelector('header')
+      const marqueeH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--marquee-h')) || 0
+      return marqueeH + (header?.offsetHeight ?? 0)
+    }
+    const isNotebook = () => window.matchMedia(NOTEBOOK_QUERY).matches
+    // Em layout (sem pins). O pin de entrada da seção 1 (useManifestoIntro)
+    // vem antes e segura o bloco por introPinDuration() de scroll: o início
+    // real soma isso; já a posição da seção 3 dentro do bloco não muda (depois
+    // daquele pin o bloco inteiro está deslocado pela mesma duração).
+    const startY = () => {
+      // Conteúdo da seção 2 (os dois grupos, sem os traços), no documento.
       let top = Infinity
       let bottom = -Infinity
       groups.forEach((g) => {
         top = Math.min(top, g.offsetTop)
         bottom = Math.max(bottom, g.offsetTop + g.offsetHeight)
       })
-      return docTop(ms2) + (top + bottom) / 2
+      top += docTop(ms2)
+      bottom += docTop(ms2)
+      const y = (top + bottom) / 2 - window.innerHeight * (0.5 + START_EARLY)
+      return isNotebook() ? y - Math.max(0, chromeBottom() - (top - y)) : y
     }
-    // Em layout (sem pins). O pin de entrada da seção 1 (useManifestoIntro)
-    // vem antes e segura o bloco por introPinDuration() de scroll: o início
-    // real soma isso; já a posição da seção 3 dentro do bloco não muda (depois
-    // daquele pin o bloco inteiro está deslocado pela mesma duração).
-    const startY = () => contentCenter() - window.innerHeight * (0.5 + START_EARLY)
     const pinAt = () => startY() + introPinDuration()
 
     // Medidas em coordenadas da trilha (offset*, imunes ao transform dela).
@@ -80,8 +96,10 @@ export function useManifestoHorizontal(rootRef) {
       const tailEndX = ms2.offsetLeft + tail.offsetLeft + tail.offsetWidth * TAIL_END[0]
       const tailEndY = ms2.offsetTop + tail.offsetTop + tail.offsetHeight * TAIL_END[1]
       const s3Left = tailEndX - vh * S3_QUEM_X_VH
-      // A seção 3 ocupa exatamente a tela enquanto o bloco está fixado.
-      const s3Top = startY() - docTop(root)
+      // A seção 3 ocupa exatamente a tela enquanto o bloco está fixado (no
+      // notebook, deslocada para baixo até o conteúdo sair de baixo do header).
+      const s3Shift = isNotebook() ? Math.max(0, chromeBottom() - vh * S3_TOP_VH) : 0
+      const s3Top = startY() - docTop(root) + s3Shift
       root.style.setProperty('--s3-left', `${s3Left}px`)
       root.style.setProperty('--s3-top', `${s3Top}px`)
       root.style.setProperty('--s3-quem-y', `${tailEndY - s3Top}px`)
@@ -158,7 +176,7 @@ export function useManifestoHorizontal(rootRef) {
         root: s3, comp: q('.s3-comp'), gl: q('.s3-gl'), gl2: q('.s3-gl2'),
         ov: q('.s3-ov'), ov2: q('.s3-ov2'), ovdefs: q('.s3-ovdefs'),
         titleDeco: q('.s3-title-deco'), tipArrow: q('.s3-tip-arrow'), hand: q('.s3-hand'),
-        titleSpans: [...s3.querySelectorAll('.s3-title span')], m1: q('.s3-m1'), m2: q('.s3-m2'), bin: q('.s3-bin'),
+        titleSpans: [...s3.querySelectorAll('.s3-title span')], bin: q('.s3-bin'),
       })
       s3api.ready.then((res) => {
         if (cancelled || !res?.tl) return

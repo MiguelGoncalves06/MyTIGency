@@ -89,8 +89,6 @@ export const strings = {
         rest: 'conversa com você',
         title: ['é quem desenha', 'e quem programa.'],
         hand: ['ideias', 'viram', 'produtos'],
-        notes: ['Não é sorte.', 'Não é acaso.', 'É estratégia,', 'projeto, técnica', 'e pessoas certas.'],
-        notes2: ['Design e código na mesma mesa.', 'Sem intermediários,', 'sem telefone sem fio.'],
         alt: 'Anjo apontando, em gravura azul, sobre um mapa celestial, com lua, planetas e órbitas vermelhas',
       },
       lines: [
@@ -201,8 +199,6 @@ export const strings = {
         rest: 'talks to you',
         title: ['is who designs', 'and who codes.'],
         hand: ['ideas', 'become', 'products'],
-        notes: ["It's not luck.", "It's not chance.", "It's strategy,", 'design, technique', 'and the right people.'],
-        notes2: ['Design and code at the same table.', 'No middlemen,', 'no broken telephone.'],
         alt: 'Pointing angel, in blue engraving, over a celestial map with a moon, planets and red orbits',
       },
       lines: [

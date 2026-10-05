@@ -221,7 +221,7 @@ const loadImg = (src) => new Promise((res, rej) => { const i = new Image(); i.on
 
 /**
  * Monta a seção 3 dentro dos elementos já renderizados pelo React.
- * @param {object} els  { root, comp, gl, gl2, ov, ov2, ovdefs, titleDeco, tipArrow, hand, titleSpans, m1, m2, bin }
+ * @param {object} els  { root, comp, gl, gl2, ov, ov2, ovdefs, titleDeco, tipArrow, hand, titleSpans, bin }
  * @returns {{ ready: Promise<{ tl: gsap.core.Timeline|null }|null>, setVelocity, dispose }}
  *   `ready` resolve com { tl } — a timeline do desenho (tl null em reduced-motion);
  *   null se desmontado antes de carregar. dispose() pode ser chamado a qualquer momento.
@@ -441,7 +441,7 @@ export function mountSection3(els) {
   const fx = {
     hand: focusFx(els.hand, 's3-fx-hand', 4, 0.06),
     t0: focusFx(spans[0], 's3-fx-t0', 9), t1: focusFx(spans[1], 's3-fx-t1', 9),
-    m1: focusFx(els.m1, 's3-fx-m1', 3, 0.08), m2: focusFx(els.m2, 's3-fx-m2', 3, 0.08), bin: focusFx(els.bin, 's3-fx-bin', 2, 0.1),
+    bin: focusFx(els.bin, 's3-fx-bin', 2, 0.1),
   }
   tl.fromTo(els.tipArrow, { drawSVG: '0%', opacity: 0 }, { drawSVG: '100%', opacity: 1, duration: 2.5, ease: 'power2.inOut' }, T)
   focusIn(tl, fx.hand, T + 1, 3)
@@ -450,8 +450,6 @@ export function mountSection3(els) {
   tl.fromTo(deco.querySelectorAll('path:not(.s3-rosa path)'), { drawSVG: '0%', opacity: 0 }, { drawSVG: '100%', opacity: 1, duration: 3, stagger: 0.25, ease: 'power2.inOut' }, T + 1)
     .fromTo(deco.querySelectorAll('use, circle:not(.s3-rosa circle)'), { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: 1.2, stagger: 0.2, ease: 'back.out(3)' }, T + 3)
     .fromTo(deco.querySelectorAll('.s3-dotgrid, .s3-rosa'), { opacity: 0 }, { opacity: 1, duration: 1.5, stagger: 0.5 }, T + 4.5)
-  focusIn(tl, fx.m1, T + 5, 2.5)
-  focusIn(tl, fx.m2, T + 5.6, 2.5)
   focusIn(tl, fx.bin, T + 6.2, 2.2)
   // binário embaralha até assentar, da esquerda para a direita
   const bin = els.bin, words = ['0101', '1100', '0110', '1001'], scr = { t: 0 }

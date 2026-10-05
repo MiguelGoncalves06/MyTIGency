@@ -1088,8 +1088,6 @@
     font-family:'Space Mono',monospace; text-transform:uppercase; color:var(--s3-blue);
     font-size:1.15vh; line-height:1.75; letter-spacing:.12em; white-space:nowrap;
   }
-  .s3-m1{ left:203vh; top:29vh; }
-  .s3-m2{ left:152vh; top:61.5vh; }
   .s3-bin{ left:207vh; top:60.8vh; font-size:1vh; }
 
   /* Grid: guia de layout do Figma trazido pra tela, acima de tudo da seção

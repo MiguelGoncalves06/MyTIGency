@@ -82,8 +82,6 @@ function Section3({ who }) {
       <h2 className="s3-title" id="s3-title">{/* key = índice: troca de idioma atualiza o texto no mesmo nó (o filtro de foco fica nele) */}
         {who.title.map((l, i) => <span key={i}>{l}</span>)}</h2>
 
-      <p className="s3-mono s3-m1">{who.notes.map((l, i) => <span key={i}>{i > 0 && <br />}{l}</span>)}</p>
-      <p className="s3-mono s3-m2">{who.notes2.map((l, i) => <span key={i}>{i > 0 && <br />}{l}</span>)}</p>
       <p className="s3-mono s3-bin" aria-hidden="true">+&nbsp;&nbsp;0101<br />+&nbsp;&nbsp;1100<br />+&nbsp;&nbsp;0110<br />+&nbsp;&nbsp;1001</p>
 
       {/* decoração em coordenadas vh (viewBox 233×100 = seção 233vh × 100vh) */}
