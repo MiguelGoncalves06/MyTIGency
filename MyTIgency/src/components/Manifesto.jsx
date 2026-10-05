@@ -45,6 +45,87 @@ function Segment({ text, role }) {
   return text
 }
 
+// Seção 3: estrutura do protótipo (PAINTest/export-secao3/secao3.html). O
+// desenho/animação é montado por utils/manifestoS3.js (via
+// useManifestoHorizontal); tudo aqui é posicionado em vh, como lá.
+function Section3({ who }) {
+  return (
+    <section className="s3" aria-labelledby="s3-title">
+      <p className="s3-who">
+        <span className="s3-who-word">{who.word}</span> {who.rest}
+      </p>
+
+      <div className="s3-comp" role="img" aria-label={who.alt}>
+        {/* de baixo para cima: gravuras (WebGL) · linhas · planetas (WebGL) · estrelas */}
+        <canvas className="s3-gl" />
+        <svg className="s3-ov" viewBox="0 0 1130 784" aria-hidden="true"><defs className="s3-ovdefs" /></svg>
+        <canvas className="s3-gl2" />
+        <svg className="s3-ov2" viewBox="0 0 1130 784" aria-hidden="true" />
+      </div>
+
+      <p className="s3-hand" aria-hidden="true">{who.hand.map((w, i) => <span key={i}>{w}</span>)}</p>
+
+      <h2 className="s3-title" id="s3-title">{/* key = índice: troca de idioma atualiza o texto no mesmo nó (o filtro de foco fica nele) */}
+        {who.title.map((l, i) => <span key={i}>{l}</span>)}</h2>
+
+      <p className="s3-mono s3-m1">{who.notes.map((l, i) => <span key={i}>{i > 0 && <br />}{l}</span>)}</p>
+      <p className="s3-mono s3-m2">{who.notes2.map((l, i) => <span key={i}>{i > 0 && <br />}{l}</span>)}</p>
+      <p className="s3-mono s3-bin" aria-hidden="true">+&nbsp;&nbsp;0101<br />+&nbsp;&nbsp;1100<br />+&nbsp;&nbsp;0110<br />+&nbsp;&nbsp;1001</p>
+
+      {/* decoração em coordenadas vh (viewBox 233×100 = seção 233vh × 100vh) */}
+      <svg className="s3-deco" viewBox="0 0 233 100" aria-hidden="true">
+        <defs>
+          <symbol id="s3-star" viewBox="-1 -1 2 2"><path d="M0-1C.1-.1.1-.1 1 0 .1.1.1.1 0 1-.1.1-.1.1-1 0-.1-.1-.1-.1 0-1Z" /></symbol>
+          <marker id="s3-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M0 0 10 5 0 10 3 5Z" fill="#F04A3F" />
+          </marker>
+          <pattern id="s3-dots" width="1.5" height="1.5" patternUnits="userSpaceOnUse"><circle cx=".75" cy=".75" r=".15" fill="#24489a" /></pattern>
+        </defs>
+
+        {/* a seta do olhar do anjo continua até o título */}
+        <path className="r s3-tip-arrow" strokeWidth=".18" markerEnd="url(#s3-head)" d="M140.5 29.3Q147.5 29.6 149.5 35" />
+
+        <g className="s3-title-deco" transform="translate(-13 0)">
+          {/* seta curva de baixo entrando no "e" */}
+          <path className="r" strokeWidth=".16" markerEnd="url(#s3-head)" d="M151 70C155 68 158 64 160.5 59" />
+          {/* linhas de construção do título */}
+          <g className="r" strokeWidth=".08">
+            <path d="M154 38.8H213" />
+            <path d="M154 46H211M159 56.6H230" strokeDasharray=".4 .4" />
+            <path d="M157 35V52M211 35.5V49M161.3 50V64.5M228 50V60" />
+            <path d="M155 64.5H190" />
+            <path d="M195 38.8H213" strokeWidth=".16" />
+            <circle cx="211" cy="38.8" r=".3" fill="#F04A3F" />
+          </g>
+          <g fill="#F04A3F">
+            <use href="#s3-star" x="156.1" y="32.6" width="1.8" height="1.8" />
+            <use href="#s3-star" x="209.7" y="33.6" width="2.6" height="2.6" />
+            <use href="#s3-star" x="160.4" y="63.6" width="1.8" height="1.8" />
+            <use href="#s3-star" x="227" y="49" width="2" height="2" />
+            <use href="#s3-star" x="231" y="66" width="2" height="2" />
+            <use href="#s3-star" x="192.5" y="37.8" width="2" height="2" />
+          </g>
+          {/* elementos azuis */}
+          <g fill="#24489a">
+            <use href="#s3-star" x="168" y="13" width="1.4" height="1.4" />
+            <use href="#s3-star" x="240" y="36" width="1.2" height="1.2" />
+            <use href="#s3-star" x="222" y="71" width="1.6" height="1.6" />
+            <use href="#s3-star" x="186" y="69" width="1.1" height="1.1" />
+          </g>
+          <rect className="s3-dotgrid" x="196" y="60.5" width="10" height="6" fill="url(#s3-dots)" />
+          {/* rosa dos ventos */}
+          <g className="s3-rosa b" transform="translate(214.5 63.5) scale(.55)" strokeWidth=".14">
+            <circle r="6" /><circle r="4.6" strokeWidth=".07" />
+            <path d="M-7 0H7M0-7V7" strokeWidth=".07" />
+            <path d="M0-5.6.9-.9 5.6 0 .9.9 0 5.6-.9.9-5.6 0-.9-.9Z" fill="#24489a" fillOpacity=".85" />
+            <path d="M2.4-2.4 4-4" markerEnd="url(#s3-head)" />
+          </g>
+        </g>
+      </svg>
+    </section>
+  )
+}
+
 const TV_PALETTE = ['#1c1c1c', '#6e6e6e', '#bcbcbc', '#ffffff'] // "Cinza" do HANDOFF
 
 // Mesmo debounce de "scroll assentou" usado no dock da Marquee.
@@ -96,7 +177,7 @@ function DitherTV() {
 
 export function Manifesto() {
   const { t, lang } = useLanguage()
-  const { label, statement, without } = t.manifesto
+  const { label, statement, without, who } = t.manifesto
   const [first, second, third] = statement
   const rootRef = useRef(null)
   useManifestoHorizontal(rootRef)
@@ -173,6 +254,8 @@ export function Manifesto() {
         <img className="ms-line-a ms-line-a--top" src={lineAImg} alt="" />
         <span className="ms-line-a-elbow" dangerouslySetInnerHTML={{ __html: lineAElbowSvg }} />
       </div>
+
+      <Section3 who={who} />
 
       <div className="manifesto-grid" aria-hidden="true" />
       </div>

@@ -82,6 +82,17 @@ export const strings = {
         sentence: 'Sem gerente de conta, sem terceirizar, sem intermediários.',
         cue: 'continue rolando',
       },
+      // Seção 3. Textos do protótipo (PAINTest/export-secao3); o design final
+      // deles ainda vai ser refinado.
+      who: {
+        word: 'quem',
+        rest: 'conversa com você',
+        title: ['é quem desenha', 'e quem programa.'],
+        hand: ['ideias', 'viram', 'produtos'],
+        notes: ['Não é sorte.', 'Não é acaso.', 'É estratégia,', 'projeto, técnica', 'e pessoas certas.'],
+        notes2: ['Design e código na mesma mesa.', 'Sem intermediários,', 'sem telefone sem fio.'],
+        alt: 'Anjo apontando, em gravura azul, sobre um mapa celestial, com lua, planetas e órbitas vermelhas',
+      },
       lines: [
         'Na MyTigency, acreditamos que um site não se apresenta. Ele conduz.',
         'Sem gerente de conta, sem terceirizar, sem intermediários: quem conversa com você é quem desenha e quem programa.',
@@ -184,6 +195,15 @@ export const strings = {
         items: ['Account manager', 'Outsourcing', 'Middlemen'],
         sentence: 'Without an account manager, without outsourcing, without middlemen.',
         cue: 'keep scrolling',
+      },
+      who: {
+        word: 'who',
+        rest: 'talks to you',
+        title: ['is who designs', 'and who codes.'],
+        hand: ['ideas', 'become', 'products'],
+        notes: ["It's not luck.", "It's not chance.", "It's strategy,", 'design, technique', 'and the right people.'],
+        notes2: ['Design and code at the same table.', 'No middlemen,', 'no broken telephone.'],
+        alt: 'Pointing angel, in blue engraving, over a celestial map with a moon, planets and red orbits',
       },
       lines: [
         "At MyTigency, we believe a website doesn't introduce itself. It leads.",

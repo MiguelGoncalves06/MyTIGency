@@ -1,0 +1,200 @@
+{
+ "frame": {
+  "w": 1130,
+  "h": 784
+ },
+ "camadas": [
+  {
+   "camada": 1,
+   "nome": "planetapeq",
+   "x": 838,
+   "y": 636,
+   "w": 13,
+   "h": 13
+  },
+  {
+   "camada": 2,
+   "nome": "vetoratrasdoplaneta",
+   "x": 835,
+   "y": 567,
+   "w": 17,
+   "h": 177
+  },
+  {
+   "camada": 3,
+   "nome": "star-asa",
+   "x": 288,
+   "y": 258,
+   "w": 180,
+   "h": 69
+  },
+  {
+   "camada": 4,
+   "nome": "star-ring",
+   "x": 272,
+   "y": 358,
+   "w": 80,
+   "h": 20
+  },
+  {
+   "camada": 5,
+   "nome": "vetordir",
+   "x": 758,
+   "y": 732,
+   "w": 98,
+   "h": 19
+  },
+  {
+   "camada": 6,
+   "nome": "saturn",
+   "x": 785,
+   "y": 411,
+   "w": 103,
+   "h": 88
+  },
+  {
+   "camada": 7,
+   "nome": "little-planet",
+   "x": 575.2,
+   "y": 590.63,
+   "w": 163,
+   "h": 162
+  },
+  {
+   "camada": 8,
+   "nome": "starESQ",
+   "x": 229,
+   "y": 372,
+   "w": 60,
+   "h": 64
+  },
+  {
+   "camada": 9,
+   "nome": "redSTAR",
+   "x": 769,
+   "y": 337,
+   "w": 53,
+   "h": 59
+  },
+  {
+   "camada": 10,
+   "nome": "two-star-esq",
+   "x": 185,
+   "y": 632,
+   "w": 53,
+   "h": 49
+  },
+  {
+   "camada": 11,
+   "nome": "lua-minguante",
+   "x": 283,
+   "y": 315,
+   "w": 133,
+   "h": 138
+  },
+  {
+   "camada": 12,
+   "nome": "redline-saturn",
+   "x": 859.49,
+   "y": 465.5,
+   "w": 1,
+   "h": 104
+  },
+  {
+   "camada": 13,
+   "nome": "redline-lado",
+   "x": 807.5,
+   "y": 568.57,
+   "w": 47,
+   "h": 1
+  },
+  {
+   "camada": 14,
+   "nome": "redline-seta",
+   "x": 554,
+   "y": 505,
+   "w": 251,
+   "h": 133
+  },
+  {
+   "camada": 15,
+   "nome": "seta-red",
+   "x": 726,
+   "y": 141.53,
+   "w": 241,
+   "h": 74
+  },
+  {
+   "camada": 16,
+   "nome": "elipse-arms",
+   "x": 638.08,
+   "y": 241.26,
+   "w": 126,
+   "h": 121
+  },
+  {
+   "camada": 17,
+   "nome": "elipse",
+   "x": 215.3,
+   "y": 488.14,
+   "w": 371,
+   "h": 182
+  },
+  {
+   "camada": 18,
+   "nome": "ANJO",
+   "x": 221,
+   "y": 0,
+   "w": 688,
+   "h": 741
+  },
+  {
+   "camada": 19,
+   "nome": "nuvem-esq",
+   "x": 327,
+   "y": 543,
+   "w": 266,
+   "h": 208
+  },
+  {
+   "camada": 20,
+   "nome": "moon",
+   "x": 558,
+   "y": 412,
+   "w": 292,
+   "h": 276
+  },
+  {
+   "camada": 21,
+   "nome": "vetor-lua-cheia",
+   "x": 746,
+   "y": 592,
+   "w": 23,
+   "h": 162
+  },
+  {
+   "camada": 22,
+   "nome": "nuvem-abaixo-lua",
+   "x": 571.07,
+   "y": 341.89,
+   "w": 400,
+   "h": 315
+  },
+  {
+   "camada": 23,
+   "nome": "nuvem-cima",
+   "x": 499,
+   "y": 198,
+   "w": 408,
+   "h": 397
+  },
+  {
+   "camada": 24,
+   "nome": "nuvem-dir",
+   "x": 501,
+   "y": 519,
+   "w": 387,
+   "h": 252
+  }
+ ]
+}

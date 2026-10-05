@@ -967,6 +967,104 @@
     width:calc(387 * var(--g));
   }
 
+  /* ---------- Manifesto · seção 3 ----------
+     Port do protótipo (PAINTest/export-secao3): tudo em vh, a composição
+     escala com a altura da tela. A seção fica na mesma trilha das seções 1
+     e 2, logo depois do fim do traço A; left/top/quem-y vêm do
+     useManifestoHorizontal (ela ocupa exatamente a tela durante o pin). */
+  .s3{
+    --s3-red:#F04A3F;
+    --s3-blue:#24489a;
+    --s3-text:#585858;
+    position:absolute;
+    left:var(--s3-left, 0px);
+    top:var(--s3-top, 0px);
+    width:233vh;
+    height:100vh;
+    color:var(--s3-text);
+    pointer-events:none;
+  }
+  .s3 > *{ position:absolute; }
+  .s3 .r{ fill:none; stroke:var(--s3-red); stroke-linecap:round; }
+  .s3 .b{ fill:none; stroke:var(--s3-blue); }
+
+  /* "quem conversa com você": o "quem" encosta no fim do traço A. */
+  .s3-who{
+    left:8vh;
+    top:var(--s3-quem-y, 41vh);
+    transform:translateY(-50%);
+    margin:0;
+    font-family:'Inter',sans-serif;
+    font-size:3.9vh;
+    color:#595959;
+    white-space:nowrap;
+  }
+  .s3-who-word{
+    position:relative;
+    display:inline-block;
+    margin-right:.25em;
+    padding:0 .3em;
+    font-family:'Italiana',serif;
+    font-size:1.38em; /* Italiana 64 no Figma */
+    line-height:1.15;
+    color:#000;
+    background:rgba(255,68,56,.4);
+  }
+  /* barras vermelhas de seleção de texto, com a pontinha (Figma) */
+  .s3-who-word::before,
+  .s3-who-word::after{
+    content:'';
+    position:absolute;
+    top:-.08em;
+    bottom:-.08em;
+    width:.16em;
+    background:var(--accent);
+  }
+  .s3-who-word::before{ left:-.05em; clip-path:polygon(0 0, 100% 0, 45% 9%, 45% 100%, 0 100%); }
+  .s3-who-word::after{ right:-.05em; clip-path:polygon(55% 0, 100% 0, 100% 100%, 0 100%, 55% 91%); }
+
+  /* composição do anjo: frame do Figma 1130×784 */
+  .s3-comp{
+    left:58vh;
+    top:17vh;
+    height:66vh;
+    aspect-ratio:1130 / 784;
+    z-index:1;
+    pointer-events:auto;
+    cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Ccircle cx='13' cy='13' r='10' fill='none' stroke='%23F04A3F' stroke-width='1.4'/%3E%3Ccircle cx='13' cy='13' r='2.2' fill='%23F04A3F'/%3E%3C/svg%3E") 13 13, crosshair;
+  }
+  .s3-comp > *{ position:absolute; inset:0; width:100%; height:100%; }
+  .s3-ov, .s3-ov2{ overflow:visible; }
+
+  .s3-deco{ inset:0; width:100%; height:100%; overflow:visible; z-index:2; }
+
+  .s3-hand{
+    left:144vh; top:17vh; margin:0;
+    font-family:'Nothing You Could Do',cursive; color:var(--s3-red);
+    font-size:2.1vh; line-height:1.05;
+    transform:rotate(-22deg); transform-origin:left bottom;
+  }
+  .s3-hand span{ display:block; }
+  .s3-hand span:nth-child(2){ padding-left:1.6vh; }
+  .s3-hand span:nth-child(3){ padding-left:3.2vh; }
+
+  .s3-title{
+    left:144vh; top:38vh; margin:0;
+    font-family:'UnifrakturMaguntia',serif; font-weight:400; color:var(--s3-red);
+    font-size:9vh; line-height:1.18; white-space:nowrap; letter-spacing:-.01em;
+  }
+  .s3-title span{ display:block; }
+  .s3-title span + span{ padding-left:4.3vh; }
+
+  .s3-mono{
+    margin:0;
+    font-family:'Space Mono',monospace; text-transform:uppercase; color:var(--s3-blue);
+    font-size:1.15vh; line-height:1.75; letter-spacing:.12em; white-space:nowrap;
+  }
+  .s3-m1{ left:203vh; top:29vh; }
+  .s3-m2{ left:152vh; top:61.5vh; }
+  .s3-bin{ left:207vh; top:60.8vh; font-size:1vh; }
+
   /* Grid: guia de layout do Figma trazido pra tela, acima de tudo da seção
      (header/marquee vivem fora dela, então ficam por cima). Tiles com
      linear-gradient em vez de repeating-gradient: a linha de 1px não some
@@ -1003,7 +1101,7 @@
        composição desktop (no mobile a frase quebra diferente), então
        ficam escondidos até termos a versão mobile deles. */
     .ms1{ height:auto; min-height:100svh; padding:120px 0 200px; justify-content:center; }
-    .ms-frame, .s2-line{ display:none; }
+    .ms-frame, .s2-line, .s3{ display:none; }
     .ms2{
       min-height:100svh;
       display:flex;
