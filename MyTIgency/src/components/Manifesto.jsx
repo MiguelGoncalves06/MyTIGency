@@ -3,14 +3,14 @@ import { useLenis } from 'lenis/react'
 import { useLanguage } from '../context/LanguageContext'
 import { mountDitherTV } from '../utils/tv3d'
 import { useManifestoHorizontal } from '../hooks/useManifestoHorizontal'
+import { useManifestoIntro } from '../hooks/useManifestoIntro'
 import handImg from '../assets/mao-halftone.png'
 import targetImg from '../assets/alvo.png'
 import arrowImg from '../assets/seta.png'
 import plusImg from '../assets/plus.svg'
-import mytiImg from '../assets/MyTi.svg'
+import mytiRaw from '../assets/MyTi.svg?raw'
 import ethosLineImg from '../assets/ethos-drawn.svg'
-import lineAImg from '../assets/manifest-vetorA-s2.svg'
-import lineARaw from '../assets/manifest-vetorA-s2.svg?raw'
+import { lineAPiece } from '../utils/manifestoLineA'
 import lineATailImg from '../assets/manifest-vetorA-s3.svg'
 import lineBImg from '../assets/manifest-vetor2.svg'
 import ornamentImg from '../assets/ornamento-ascii.png'
@@ -25,24 +25,38 @@ import brandStrokeRaw from '../assets/myt-stroke.svg?raw'
 // mantém a proporção original e fica baixo demais.
 const brandStrokeSvg = brandStrokeRaw.replace('<svg ', '<svg preserveAspectRatio="none" ')
 
-// Faixa y 409–571 do traço A: do cotovelo da curva em S até a emenda J.
-// Esticada levemente na vertical (no máximo 50%), ela abre o respiro extra
-// entre as seções 1 e 2 sem quebrar o traço nem endireitar a curva.
-const lineAElbowSvg = lineARaw
-  .replace(/width="\d+" height="\d+" viewBox="[^"]+"/, 'width="100%" height="100%" viewBox="0 409 1348 162" preserveAspectRatio="none"')
+// Traço A em três pedaços (mesmo SVG, cada um com a máscara da "caneta" —
+// ver utils/manifestoLineA.js): metade de cima, o cotovelo y 409–571 (esticado
+// levemente na vertical para abrir o respiro entre as seções 1 e 2, sem
+// quebrar o traço nem endireitar a curva) e a metade de baixo, na seção 2.
+// Objetos {__html} fixos no módulo: o React 19 compara dangerouslySetInnerHTML
+// pela identidade do objeto, então um literal novo a cada render regravaria o
+// SVG (e apagaria o que as animações prepararam nele: máscaras, carimbos).
+const BRAND_HTML = { __html: brandStrokeSvg }
+const MYTI_HTML = { __html: mytiRaw }
+const LINE_A_TOP = { __html: lineAPiece('la-top') }
+const LINE_A_ELBOW = { __html: lineAPiece('la-elbow', '0 409 1348 162') }
+const LINE_A_LOW = { __html: lineAPiece('la-low') }
 
+// Cada palavra vira um .ms-w (unidade que pinta no scroll — useManifestoIntro);
+// trechos com papel (brand/highlight/lead) pintam como uma unidade só.
 function Segment({ text, role }) {
   if (role === 'brand') {
     return (
-      <span className="ms-brand">
+      <span className="ms-brand ms-w">
         {text}
-        <span className="ms-brand-stroke" aria-hidden="true" dangerouslySetInnerHTML={{ __html: brandStrokeSvg }} />
+        <span className="ms-brand-stroke" aria-hidden="true" dangerouslySetInnerHTML={BRAND_HTML} />
       </span>
     )
   }
-  if (role === 'highlight') return <span className="ms-highlight">{text}</span>
-  if (role === 'lead') return <span className="ms-lead">{text}</span>
-  return text
+  // Texto num span interno: é pintado depois da caixa (::before do externo),
+  // e troca de cinza pra branco na frente dela (ver .ms-hl-text no CSS).
+  if (role === 'highlight') return <span className="ms-highlight ms-w"><span className="ms-hl-text">{text}</span></span>
+  // CONDUZ: letra a letra (assentam da esquerda pra direita).
+  if (role === 'lead') {
+    return <span className="ms-lead" aria-label={text}>{[...text].map((ch, i) => <span key={i} className="ms-ch" aria-hidden="true">{ch}</span>)}</span>
+  }
+  return text.split(/(\s+)/).map((part, i) => (/^\s*$/.test(part) ? part : <span key={i} className="ms-w">{part}</span>))
 }
 
 // Seção 3: estrutura do protótipo (PAINTest/export-secao3/secao3.html). O
@@ -181,6 +195,7 @@ export function Manifesto() {
   const [first, second, third] = statement
   const rootRef = useRef(null)
   useManifestoHorizontal(rootRef)
+  useManifestoIntro(rootRef)
 
   return (
     <div className="manifesto" ref={rootRef}>
@@ -207,7 +222,7 @@ export function Manifesto() {
                 <img className="ms-target" src={targetImg} alt="" aria-hidden="true" />
                 {second.map((seg, i) => <Segment key={i} {...seg} />)}
                 <span className="ms-anchor" aria-hidden="true">
-                  <img className="ms-myti" src={mytiImg} alt="" />
+                  <span className="ms-myti" dangerouslySetInnerHTML={MYTI_HTML} />
                 </span>
               </span>
               {' '}
@@ -244,15 +259,15 @@ export function Manifesto() {
         </div>
 
         {/* Metade de baixo do traço A (escala da seção 2) + rabo rumo à seção 3. */}
-        <img className="s2-line s2-line-a" src={lineAImg} alt="" aria-hidden="true" />
+        <span className="s2-line s2-line-a" aria-hidden="true" dangerouslySetInnerHTML={LINE_A_LOW} />
         <img className="s2-line s2-line-a-tail" src={lineATailImg} alt="" aria-hidden="true" />
         <img className="s2-line s2-line-b" src={lineBImg} alt="" aria-hidden="true" />
       </section>
 
       {/* Metade de cima do traço A, na escala da seção 1 (ancorada no +). */}
       <div className="ms-frame" aria-hidden="true">
-        <img className="ms-line-a ms-line-a--top" src={lineAImg} alt="" />
-        <span className="ms-line-a-elbow" dangerouslySetInnerHTML={{ __html: lineAElbowSvg }} />
+        <span className="ms-line-a ms-line-a--top" dangerouslySetInnerHTML={LINE_A_TOP} />
+        <span className="ms-line-a-elbow" dangerouslySetInnerHTML={LINE_A_ELBOW} />
       </div>
 
       <Section3 who={who} />

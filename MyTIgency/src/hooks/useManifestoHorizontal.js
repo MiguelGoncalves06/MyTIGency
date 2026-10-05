@@ -2,6 +2,7 @@ import { useLayoutEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { mountSection3, TOTAL } from '../utils/manifestoS3'
+import { introPinDuration } from '../utils/manifestoScroll'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -62,7 +63,12 @@ export function useManifestoHorizontal(rootRef) {
       })
       return docTop(ms2) + (top + bottom) / 2
     }
+    // Em layout (sem pins). O pin de entrada da seção 1 (useManifestoIntro)
+    // vem antes e segura o bloco por introPinDuration() de scroll: o início
+    // real soma isso; já a posição da seção 3 dentro do bloco não muda (depois
+    // daquele pin o bloco inteiro está deslocado pela mesma duração).
     const startY = () => contentCenter() - window.innerHeight * (0.5 + START_EARLY)
+    const pinAt = () => startY() + introPinDuration()
 
     // Medidas em coordenadas da trilha (offset*, imunes ao transform dela).
     let travelA = 0
@@ -113,7 +119,7 @@ export function useManifestoHorizontal(rootRef) {
         onUpdate: apply,
         scrollTrigger: {
           trigger: root,
-          start: startY,
+          start: pinAt,
           end: () => `+=${travelA + scrollB}`,
           pin: true,
           // Fixa por transform, não por position:fixed. O .reveal-panel (pai)

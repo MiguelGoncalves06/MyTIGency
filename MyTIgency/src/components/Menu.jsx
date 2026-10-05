@@ -8,6 +8,8 @@ import { useEscapeKey } from '../hooks/useEscapeKey'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { DecodeText } from './DecodeText'
 
+const CLOSE_ON_SCROLL_PX = 24
+
 export function Menu({ open, onClose, triggerRef, activeId }) {
   const panelRef = useRef(null)
   const isMobile = useMediaQuery('(max-width: 820px)')
@@ -29,6 +31,21 @@ export function Menu({ open, onClose, triggerRef, activeId }) {
   useClickOutside(panelRef, onClose, open && !isMobile, triggerRef)
   useEscapeKey(onClose, open)
   useBodyScrollLock(open && isMobile)
+
+  // Desktop: rolar a página fecha o menu (no mobile o scroll já fica travado
+  // com ele aberto). Margem pequena pra um toque acidental no trackpad não
+  // fechar; lê do Lenis, a autoridade de scroll.
+  const scrollAtOpenRef = useRef(null)
+  useEffect(() => {
+    scrollAtOpenRef.current = open && !isMobile ? (lenis?.scroll ?? window.scrollY) : null
+  }, [open, isMobile, lenis])
+  useLenis(({ scroll }) => {
+    const start = scrollAtOpenRef.current
+    if (start !== null && Math.abs(scroll - start) > CLOSE_ON_SCROLL_PX) {
+      scrollAtOpenRef.current = null
+      onClose()
+    }
+  })
 
   useEffect(() => {
     if (open) {

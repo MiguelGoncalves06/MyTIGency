@@ -105,6 +105,21 @@ export function useHeroMarqueeReveal() {
         { y: 0, ease: 'none' }
       )
 
+      // Header troca de lugar com a marquee ligado ao scroll, sem evento: o
+      // topo visual da marquee é linear no progresso, (heroH − peek)·(1 − p).
+      // Quando ela encosta na base do header, ele começa a descer na mesma
+      // proporção e chega embaixo dela exatamente no dock (--dock-t = 1, o
+      // mesmo top que html.marquee-docked aplica) — antes ele só pulava.
+      const header = document.querySelector('header')
+      function dockHeader(self) {
+        if (!header) return
+        const base = parseFloat(getComputedStyle(header).getPropertyValue('--header-base')) || 0
+        const reach = header.offsetHeight + base // de onde a marquee "encosta" no header
+        const marqueeTop = (heroH - peek()) * (1 - self.progress)
+        const t = Math.min(1, Math.max(0, (reach - marqueeTop) / reach))
+        document.documentElement.style.setProperty('--dock-t', t.toFixed(4))
+      }
+
       triggerRef.current = ScrollTrigger.create({
         trigger: spacer,
         start: 'top top',
@@ -114,6 +129,7 @@ export function useHeroMarqueeReveal() {
         invalidateOnRefresh: true,
         onLeave: dock,
         onEnterBack: undock,
+        onUpdate: dockHeader,
       })
     })
 
@@ -124,6 +140,7 @@ export function useHeroMarqueeReveal() {
       ctx.revert()
       triggerRef.current = null
       document.documentElement.classList.remove('marquee-docked')
+      document.documentElement.style.removeProperty('--dock-t')
       hero.classList.remove('hero--pinned', 'hero--hidden')
       spacer.classList.remove('reveal-spacer--active')
       marquee.classList.remove('marquee--reveal')
