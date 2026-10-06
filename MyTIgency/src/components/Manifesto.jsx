@@ -1,21 +1,23 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLenis } from 'lenis/react'
 import { useLanguage } from '../context/LanguageContext'
 import { mountDitherTV } from '../utils/tv3d'
 import { useManifestoHorizontal } from '../hooks/useManifestoHorizontal'
 import { useManifestoIntro } from '../hooks/useManifestoIntro'
+import { useManifestoS2Enter } from '../hooks/useManifestoS2Enter'
+import { DecodeText } from './DecodeText'
 import handImg from '../assets/mao-halftone.png'
 import targetImg from '../assets/alvo.png'
 import arrowImg from '../assets/seta.png'
 import plusImg from '../assets/plus.svg'
 import mytiRaw from '../assets/MyTi.svg?raw'
 import ethosLineImg from '../assets/ethos-drawn.svg'
-import { lineAPiece } from '../utils/manifestoLineA'
+import { lineAPiece, lineBPiece } from '../utils/manifestoLineA'
 import lineATailImg from '../assets/manifest-vetorA-s3.svg'
-import lineBImg from '../assets/manifest-vetor2.svg'
 import ornamentImg from '../assets/ornamento-ascii.png'
 import smileyImg from '../assets/smiley.svg'
-import searchImg from '../assets/setmyt.svg'
+import searchBoxImg from '../assets/s2-busca.png'
+import searchCursorImg from '../assets/s2-cursor.svg'
 import tvUrl from '../assets/tv.min.glb?url'
 // Inline (não <img>): o traço vive numa <mask> com um <path> — é esse path
 // que vai receber stroke-dashoffset quando a elipse passar a se desenhar.
@@ -37,6 +39,7 @@ const MYTI_HTML = { __html: mytiRaw }
 const LINE_A_TOP = { __html: lineAPiece('la-top') }
 const LINE_A_ELBOW = { __html: lineAPiece('la-elbow', '0 409 1348 162') }
 const LINE_A_LOW = { __html: lineAPiece('la-low') }
+const LINE_B_HTML = { __html: lineBPiece('lb') }
 
 // Cada palavra vira um .ms-w (unidade que pinta no scroll — useManifestoIntro);
 // trechos com papel (brand/highlight/lead) pintam como uma unidade só.
@@ -156,15 +159,28 @@ function DitherTV() {
     const canvas = canvasRef.current
     if (!canvas) return undefined
     let dispose = null
+    // A intro (pontos se formando) não toca sozinha: começa escondida e só
+    // toca uma vez, quando a entrada em combo da seção 2 dispara 's2:tv-play'
+    // (useManifestoS2Enter) — mais lenta que a do protótipo, e subir não apaga.
+    let playRequested = false
+    const onPlay = () => {
+      playRequested = true
+      sceneRef.current?.play()
+    }
+    canvas.addEventListener('s2:tv-play', onPlay)
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return
       observer.disconnect()
-      const instance = mountDitherTV(canvas, { url: tvUrl, palette: TV_PALETTE })
+      const instance = mountDitherTV(canvas, {
+        url: tvUrl, palette: TV_PALETTE, autoPlay: false, revealDuration: 2.8, spinDuration: 3.4,
+      })
       sceneRef.current = instance
       dispose = instance.dispose
+      if (playRequested) instance.play()
     }, { rootMargin: '50% 0px' })
     observer.observe(canvas)
     return () => {
+      canvas.removeEventListener('s2:tv-play', onPlay)
       observer.disconnect()
       dispose?.()
       sceneRef.current = null
@@ -187,6 +203,20 @@ function DitherTV() {
   return <canvas className="s2-tv" ref={canvasRef} aria-hidden="true" />
 }
 
+// Item riscado da seção 2: entra com o mesmo decoder da Header quando
+// useManifestoS2Enter dispara 's2:decode' nele (até lá fica escondido).
+function DecodeItem({ text, className }) {
+  const ref = useRef(null)
+  const [active, setActive] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    const onDecode = () => setActive(true)
+    el.addEventListener('s2:decode', onDecode)
+    return () => el.removeEventListener('s2:decode', onDecode)
+  }, [])
+  return <DecodeText ref={ref} value={text} active={active} className={className} />
+}
+
 export function Manifesto() {
   const { t, lang } = useLanguage()
   const { label, statement, without, who } = t.manifesto
@@ -194,6 +224,7 @@ export function Manifesto() {
   const rootRef = useRef(null)
   useManifestoHorizontal(rootRef)
   useManifestoIntro(rootRef)
+  useManifestoS2Enter(rootRef)
 
   return (
     <div className="manifesto" ref={rootRef}>
@@ -241,25 +272,39 @@ export function Manifesto() {
             <span className="s2-initial">{without.initial}</span>
             <span className="s2-rest">{without.rest}</span>
             {without.items.map((item, i) => (
-              <span key={item} className={`s2-item s2-item--${i + 1}`}>{item}</span>
+              <DecodeItem key={item} text={item} className={`s2-item s2-item--${i + 1}`} />
             ))}
           </div>
+          {/* Recipiente (contorno + texto vermelho) que enche de "água" vermelha
+              com texto branco por cima — .s2-cue-fill, nível em --fill. */}
           <span className="s2-cue">
-            {without.cue}
-            <img className="s2-cue-arrow" src={arrowImg} alt="" aria-hidden="true" />
+            <span className="s2-cue-label">
+              {without.cue}
+              <span className="s2-cue-arrow" aria-hidden="true" />
+            </span>
+            <span className="s2-cue-fill" aria-hidden="true">
+              <span className="s2-cue-label">
+                {without.cue}
+                <span className="s2-cue-arrow" />
+              </span>
+            </span>
           </span>
         </div>
 
         <div className="s2-group s2-group--tv" aria-hidden="true">
           <DitherTV />
           <img className="s2-smiley" src={smileyImg} alt="" />
-          <img className="s2-search" src={searchImg} alt="" />
+          <div className="s2-search">
+            <img className="s2-search-box" src={searchBoxImg} alt="" />
+            <span className="s2-search-text" data-text="set:mytigency.com">set:mytigency.com</span>
+            <img className="s2-search-cursor" src={searchCursorImg} alt="" />
+          </div>
         </div>
 
         {/* Metade de baixo do traço A (escala da seção 2) + rabo rumo à seção 3. */}
         <span className="s2-line s2-line-a" aria-hidden="true" dangerouslySetInnerHTML={LINE_A_LOW} />
         <img className="s2-line s2-line-a-tail" src={lineATailImg} alt="" aria-hidden="true" />
-        <img className="s2-line s2-line-b" src={lineBImg} alt="" aria-hidden="true" />
+        <span className="s2-line s2-line-b" aria-hidden="true" dangerouslySetInnerHTML={LINE_B_HTML} />
       </section>
 
       {/* Metade de cima do traço A, na escala da seção 1 (ancorada no +). */}

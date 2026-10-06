@@ -18,6 +18,12 @@ export function mountDitherTV(canvas, {
   contrast = 1.35,
   bright = 0.02,
   restAngle = 0.6, // rad, vista 3/4
+  // autoPlay: intro toca sozinha a cada entrada na tela (comportamento do
+  // protótipo). false = começa escondida e só toca quando play() for chamado,
+  // uma vez — quem chama decide o momento (ex.: entrada em combo da seção 2).
+  autoPlay = true,
+  revealDuration = 1.2, // s até os pontos aparecerem todos
+  spinDuration = 1.8, // s do giro de entrada até o repouso
 } = {}) {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true })
@@ -113,14 +119,22 @@ export function mountDitherTV(canvas, {
   })
   resizeObserver.observe(canvas)
 
-  // Intro: pontos dissolvem + giro até o repouso. Repete a cada entrada; render pausa fora da tela.
-  let introStart = -Infinity
+  // Intro: pontos dissolvem + giro até o repouso; render pausa fora da tela.
+  // autoPlay: repete a cada entrada. Senão: escondida (introStart = +∞ → t
+  // negativo) até o primeiro play(); chamadas seguintes não reiniciam.
+  let introStart = reduceMotion || autoPlay ? -Infinity : Infinity
+  let played = false
   let visible = false
-  const play = () => { introStart = reduceMotion ? -Infinity : performance.now() }
+  const play = () => {
+    if (reduceMotion) { introStart = -Infinity; return }
+    if (!autoPlay && played) return
+    played = true
+    introStart = performance.now()
+  }
   const intersectionObserver = new IntersectionObserver(([e]) => {
     visible = e.isIntersecting
-    if (visible) play()
-  }, { threshold: 0.4 })
+    if (visible && autoPlay) play()
+  }, { threshold: autoPlay ? 0.4 : 0 })
   intersectionObserver.observe(canvas)
   const ease = (t) => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3)
 
@@ -133,9 +147,9 @@ export function mountDitherTV(canvas, {
   renderer.setAnimationLoop((now) => {
     if (!visible) return
     const t = (now - introStart) / 1000
-    post.uniforms.uReveal.value = ease((t - 0.1) / 1.2)
+    post.uniforms.uReveal.value = ease((t - 0.1) / revealDuration)
     const sway = reduceMotion ? 0 : Math.sin(now / 1400) * 0.06
-    pivot.rotation.y = restAngle - 2 * (1 - ease(t / 1.8)) + sway
+    pivot.rotation.y = restAngle - 2 * (1 - ease(t / spinDuration)) + sway
 
     frameCounter++
     if (isScrolling && frameCounter % 3 !== 0) return

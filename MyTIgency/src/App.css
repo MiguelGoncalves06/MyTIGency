@@ -816,6 +816,8 @@
      Posição de um ponto (X, Y) do frame dentro da seção 2:
        left = --s2-jx + (X − 392.3)·g     top = --s2-jy + (Y − 707.7)·g */
   .ms2{
+    /* quanto o traço B e o botão descem (px de design) — abaixo da mão */
+    --s2-b-drop: 150;
     position:relative;
     --g:max(var(--u), (50vw + 346.3 * var(--u)) / 1185.7);
     --s2-jx:calc(50% - 346.3 * var(--u));
@@ -846,7 +848,7 @@
   }
   .s2-without{
     inset:0;
-    color:#000;
+    color:var(--ms-ink-strong); /* #333, o mesmo do MyTIgency da seção 1 */
   }
   .s2-without > span{ position:absolute; white-space:nowrap; line-height:1; }
   .s2-initial{
@@ -867,6 +869,20 @@
     font-size:calc(64 * var(--g));
     color:var(--ms-ink);
   }
+  /* "Sem" = não temos: cada item é riscado (--strike 0→1 no scroll,
+     useManifestoS2Enter). Padrão 1 = riscado. */
+  .s2-item::after{
+    content:'';
+    position:absolute;
+    left:-.06em;
+    right:-.06em;
+    top:54%;
+    height:.06em;
+    border-radius:.03em;
+    background:var(--accent);
+    transform:rotate(-1.2deg) scaleX(var(--strike, 1));
+    transform-origin:left center;
+  }
   .s2-item--1{ left:calc(387.7 * var(--g)); top:calc((224.8 - 51) * var(--g)); }
   .s2-item--2{ left:calc(525.5 * var(--g)); top:calc((294.8 - 51) * var(--g)); }
   /* Inglês: "Without" é bem mais largo que "Sem" — a palavra encolhe para
@@ -883,28 +899,70 @@
   }
   .s2-without[data-lang="en"] .s2-item--3{ left:calc(640 * var(--g)); }
   .s2-item--3{ left:calc(558 * var(--g)); top:calc((374.6 - 51) * var(--g)); }
+  /* Botão "continue rolando" = recipiente que enche: contorno + texto
+     vermelho por baixo; por cima, a "água" (.s2-cue-fill, vermelho + texto
+     branco) recortada por uma onda que sobe com --fill (0 vazio → 1 cheio,
+     useManifestoS2Enter) e corre de lado (--wx). Padrão --fill 1 = cheio,
+     igual ao design. ::before = onda de trás, mais clara e na contramão. */
   .s2-cue{
+    --fill:1;
     left:calc(344.4 * var(--g));
-    top:calc(468.3 * var(--g));
+    top:calc((468.3 + var(--s2-b-drop)) * var(--g));
     width:calc(336 * var(--g));
     height:calc(58 * var(--g));
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:calc(14 * var(--g));
     font-family:'Hedvig Letters Sans',sans-serif;
     font-size:calc(32 * var(--g));
     line-height:1;
     white-space:nowrap;
-    color:#fff;
-    background:var(--accent);
+    color:var(--accent);
     border-radius:calc(50 * var(--g));
+    box-shadow:inset 0 0 0 max(1.5px, calc(2 * var(--g))) var(--accent);
+    overflow:hidden;
+  }
+  .s2-cue-label{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:calc(14 * var(--g));
   }
   .s2-cue-arrow{
     width:calc(26 * var(--g));
+    aspect-ratio:1;
+    background:currentColor;
+    -webkit-mask:url('./assets/seta.png') center / contain no-repeat;
+    mask:url('./assets/seta.png') center / contain no-repeat;
     transform:rotate(90deg); /* seta.png aponta ↗; aqui começa ↘ */
-    filter:brightness(0) invert(1);
   }
+  @property --wx{ syntax:'<number>'; inherits:true; initial-value:0; }
+  .s2-cue::before,
+  .s2-cue-fill{
+    content:'';
+    position:absolute;
+    inset:0;
+    /* onda no topo de um ladrilho 120×116 (2× a altura do botão), sólido
+       embaixo; repete na horizontal sem emenda */
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 116' preserveAspectRatio='none'%3E%3Cpath d='M0 7Q30 0 60 7T120 7V116H0z'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 116' preserveAspectRatio='none'%3E%3Cpath d='M0 7Q30 0 60 7T120 7V116H0z'/%3E%3C/svg%3E");
+    -webkit-mask-repeat:repeat-x;
+    mask-repeat:repeat-x;
+    -webkit-mask-size:calc(120 * var(--g)) calc(116 * var(--g));
+    mask-size:calc(120 * var(--g)) calc(116 * var(--g));
+    /* y: --fill 0 = onda abaixo do botão; 1 = acima (cheio, sem onda) */
+    -webkit-mask-position:calc(var(--wx) * 120 * var(--g)) calc((58 - var(--fill) * 72) * var(--g));
+    mask-position:calc(var(--wx) * 120 * var(--g)) calc((58 - var(--fill) * 72) * var(--g));
+    background:var(--accent);
+  }
+  .s2-cue::before{
+    opacity:.35;
+    -webkit-mask-position:calc(var(--wx) * -120 * var(--g) + 37 * var(--g)) calc((58 - var(--fill) * 80) * var(--g));
+    mask-position:calc(var(--wx) * -120 * var(--g) + 37 * var(--g)) calc((58 - var(--fill) * 80) * var(--g));
+  }
+  .s2-cue-fill{ color:#fff; }
+  /* a onda só corre enquanto está enchendo (classe posta pelo hook) */
+  .s2-cue.is-filling{ animation:s2Wave 1.6s linear infinite; }
+  @keyframes s2Wave{ to{ --wx:1; } }
 
   /* Grupo TV: origem = canto do sticker smiley. */
   .s2-group--tv{
@@ -925,11 +983,60 @@
     top:0;
     width:calc(339.3 * var(--g));
   }
+  /* Busca: caixa (PNG) + texto real (digitado na entrada) + cursor, no
+     frame 567×207 do export antigo (setmyt.svg). Texto: IBM Plex Sans Hebrew
+     48 — medido para bater a largura do texto do SVG; linha de base y=57. */
   .s2-search{
     z-index:1;
     left:calc(327 * var(--g));
     top:calc(109.1 * var(--g));
     width:calc(567 * var(--g));
+    height:calc(207 * var(--g));
+  }
+  .s2-search > *{ position:absolute; }
+  .s2-search-box{ left:0; top:calc(13 * var(--g)); width:calc(567 * var(--g)); }
+  .s2-search-text{
+    left:calc(81.3 * var(--g));
+    top:calc(15 * var(--g));
+    font-family:'IBM Plex Sans Hebrew',sans-serif;
+    font-size:calc(48 * var(--g));
+    line-height:1;
+    color:#595959;
+    white-space:nowrap;
+  }
+  /* Cor que "anda" (como no "smooth performance" do site do GSAP): uma faixa
+     vermelha corre pelo texto em onda, de um tom ao outro. Só com a busca na
+     tela (.is-onscreen, useManifestoS2Enter) e sem reduced motion. */
+  @media (prefers-reduced-motion: no-preference){
+    .s2-search.is-onscreen .s2-search-text{
+      color:transparent;
+      background:linear-gradient(90deg, #595959 0 30%, #ff8a7f 40%, var(--accent) 46%, #b8302a 52%, #595959 62% 100%);
+      background-size:300% 100%;
+      -webkit-background-clip:text;
+      background-clip:text;
+      animation:s2ColorWave 3.4s cubic-bezier(.45,.05,.55,.95) infinite;
+    }
+  }
+  @keyframes s2ColorWave{ from{ background-position:100% 0; } to{ background-position:0% 0; } }
+  /* barra | de cursor de texto (useManifestoS2Enter): aparece na digitação e
+     fica piscando; fixa enquanto "edita" (apaga/redigita) */
+  .s2-search-text.is-typing::after{
+    content:'';
+    display:inline-block;
+    width:.06em;
+    height:.95em;
+    margin-left:.04em;
+    vertical-align:-.12em;
+    background:#595959;
+    animation:s2Caret .9s steps(1) infinite;
+  }
+  .s2-search-text.is-editing::after{ animation:none; }
+  @keyframes s2Caret{ 50%{ opacity:0; } }
+  .s2-search-cursor{
+    left:calc(51 * var(--g));
+    top:0;
+    width:calc(200 * var(--g));
+    transform-origin:2% 28%; /* ponta da seta (canto do retângulo do cursor no frame): o clique "afunda" ali */
   }
 
   /* Traço A: um SVG só (manifest-vetorA-s2), mostrado duas vezes e
@@ -953,7 +1060,7 @@
     width:calc(1348 * var(--u));
     height:calc(1216 * var(--u));
   }
-  .ms-line-a svg, .s2-line-a svg{ display:block; width:100%; height:100%; }
+  .ms-line-a svg, .s2-line-a svg, .s2-line-b svg{ display:block; width:100%; height:100%; }
   /* Metade de cima em 2 partes: até o cotovelo (y 410) e, de lá até J,
      a faixa levemente esticada em --ms-gap. */
   /* A revelação "caneta" é a máscara de cada SVG (utils/manifestoLineA.js);
@@ -988,10 +1095,12 @@
     width:calc(588 * var(--g));
   }
   .s2-line-b{
-    /* acompanha o grupo "Sem" (termina no botão) */
+    /* acompanha o grupo "Sem" (termina no botão) e desce junto com ele
+       (--s2-b-drop) para começar abaixo da mão girada da seção 1 */
     left:min(calc(-27.4 * var(--g)), calc(var(--s2-jx) - 575.3 * var(--g)));
-    top:calc(var(--s2-jy) - 107.1 * var(--g));
+    top:calc(var(--s2-jy) + (var(--s2-b-drop) - 107.1) * var(--g));
     width:calc(387 * var(--g));
+    height:calc(628 * var(--g));
   }
 
   /* ---------- Manifesto · seção 3 ----------
