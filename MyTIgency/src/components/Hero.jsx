@@ -4,22 +4,28 @@ import { RedText } from './RedText'
 import { useLanguage } from '../context/LanguageContext'
 import { useAsciiLogo } from '../hooks/useAsciiLogo'
 
-// Mobile: o box é baixo e a escala esbarra no logo de perfil — com a câmera
-// perto, a perspectiva infla a lateral e corta o box. Câmera mais longe com
-// escala maior = logo ~5–10% maior em repouso sem cortar (medido numa volta
-// inteira no Playwright). Lido uma vez no load; desktop continua 9.5/10.5.
+// FOV estreito: com o FOV padrão (70°) a ponta do símbolo que gira na direção
+// da câmera inflava ~1,8× e cortava o box em vários ângulos, travando o
+// tamanho. A 30° a inflação cai pra ~1,25×, então o símbolo fica ~30% maior
+// (mobile ~20%) em repouso sem cortar (medido numa volta inteira no
+// Playwright). Mobile tem box mais baixo, por isso câmera/escala próprias.
+// Lido uma vez no load.
 const IS_MOBILE = window.matchMedia('(max-width: 820px)').matches
 
 const ASCII_LOGO_OPTIONS = {
-  targetSize: IS_MOBILE ? 14 : 9.5,
+  targetSize: IS_MOBILE ? 6.4 : 4.8,
   cameraZ: IS_MOBILE ? 15 : 10.5,
-  // Constant idle spin — a trophy on display, not tied to the cursor.
-  autoRotateSpeed: 0.08,
+  fov: 30,
+  // Balanço lento em torno da frente (±~29°, 24s por ciclo), não giro de 360°:
+  // de perfil o símbolo vira uma "laje" ilegível. Não segue o cursor.
+  swingAngle: 0.5,
+  swingPeriod: 24,
   fitToContainer: true,
   fillScene: true,
   // Resolução mais alta que o padrão (tunado para intro em tela cheia): o painel
-  // da Hero é pequeno, então precisa de caracteres menores para não ficar "blocudo"
-  resolution: 0.22,
+  // da Hero é pequeno e o símbolo tem traços caligráficos finos. Com o símbolo
+  // ~30% maior, 0.26 ainda resolve as letras com caracteres menos granulados
+  resolution: 0.26,
   backgroundColor: '#FAFAF8',
   foregroundColor: '#0B0B0C',
 }
