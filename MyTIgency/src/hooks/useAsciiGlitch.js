@@ -6,6 +6,9 @@ const START_DELAY_MS = 460 // brief full-scramble "wind up" before the reveal st
 const MS_PER_CHAR = 101 // constant linear reveal speed
 const TICK_MS = 86 // calm, steady refresh — faster reads as jittery
 
+/** Duração total (ms) de uma decodificação de `len` caracteres. */
+export const decodeDuration = (len) => START_DELAY_MS + len * MS_PER_CHAR
+
 function randomGlyph() {
   return GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
 }

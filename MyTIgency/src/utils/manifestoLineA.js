@@ -40,3 +40,42 @@ export const lineAPiece = (id, viewBox = '0 0 1348 1216') =>
 export const lineBPiece = (id) =>
   maskedSvg(lineBRaw, { id, guide: LINE_B_GUIDE, viewBox: '0 0 387 628', w: 387, h: 628, brush: 30 })
     .replace('class="la-guide"', 'class="lb-guide"')
+
+// Inicial do "Sem"/"Without" (Great Vibes) escrita à caneta: SVG <text> com a
+// mesma máscara-caneta. Guias extraídos da própria fonte (mesmo processo dos
+// traços; S cobre 100%, W com o esporão do meio como ida-e-volta), em
+// unidades de 1/1000 em, origem no início da linha de base. Ordem = ordem da
+// escrita.
+const INITIAL_GUIDES = {
+  S: {
+    box: [-60, -880, 1120, 1040],
+    d: 'M884,-602L924,-616L949,-636L964,-664L969,-684L969,-704L955,-738L932,-765L890,-789L850,-801L790,-806L746,-804L684,-795L620,-777L576,-758L544,-738L504,-700L488,-674L483,-660L475,-624L475,-598L485,-568L504,-542L530,-518L570,-492L736,-416L782,-391L808,-374L840,-344L857,-322L874,-282L880,-250L872,-196L858,-158L834,-116L794,-68L740,-22L674,18L612,45L560,60L502,70L424,78L354,74L280,62L234,47L176,16L140,-12L107,-52L94,-78L84,-106L76,-166L81,-214L92,-258L114,-312L132,-342L150,-368L188,-409L232,-440',
+  },
+  W: {
+    box: [-80, -870, 1530, 1060],
+    d: 'M303,-447L342,-454L368,-454L386,-450L404,-439L413,-430L423,-414L430,-392L432,-354L427,-320L418,-292L405,-264L385,-232L364,-204L342,-180L308,-154L284,-139L254,-126L222,-117L174,-114L130,-123L88,-144L51,-180L35,-206L21,-246L13,-320L17,-364L35,-428L59,-486L86,-532L128,-588L190,-652L240,-693L302,-734L350,-759L390,-776L426,-787L460,-795L500,-800L550,-800L606,-787L646,-767L657,-756L671,-736L679,-714L685,-690L690,-648L690,-622L683,-574L665,-506L652,-466L554,-222L507,-88L487,-16L480,24L480,48L488,86L500,103L512,109L554,104L592,81L637,42L686,-14L729,-70L776,-138L821,-210L828,-217L866,-234L870,-239L962,-410L875,-242L873,-234L875,-224L867,-172L852,-106L850,-88L852,-46L855,-22L866,10L880,30L898,44L914,52L942,58L972,58L996,55L1022,47L1058,33L1108,6L1164,-34L1228,-92L1265,-136L1301,-190L1334,-268L1351,-326L1360,-386L1356,-454L1346,-504L1325,-546L1310,-566L1296,-579L1278,-591L1260,-598L1234,-604L1198,-606L1178,-603L1157,-596',
+  },
+}
+const INITIAL_BASELINE = 725 // Great Vibes com line-height 1: base a 72.5% do topo
+const initialCache = {}
+
+/**
+ * {__html} estável (React 19 compara por identidade) da inicial com a
+ * máscara-caneta (path .sem-guide), ou null se a letra não tem guia.
+ */
+export function initialPiece(letter) {
+  const g = INITIAL_GUIDES[letter]
+  if (!g) return null
+  if (!initialCache[letter]) {
+    const [x, y, w, h] = g.box
+    const em = (v) => `${v / 1000}em`
+    initialCache[letter] = {
+      __html: `<svg viewBox="${g.box.join(' ')}" style="position:absolute;left:${em(x)};top:${em(INITIAL_BASELINE + y)};width:${em(w)};height:${em(h)};overflow:visible">`
+        + `<defs><mask id="sem-${letter}" maskUnits="userSpaceOnUse" x="${x}" y="${y}" width="${w}" height="${h}">`
+        + `<path class="sem-guide" d="${g.d}" fill="none" stroke="#fff" stroke-width="92" stroke-linecap="round" stroke-linejoin="round"/>`
+        + `</mask></defs>`
+        + `<text mask="url(#sem-${letter})" font-family="Great Vibes" font-size="1000" fill="currentColor">${letter}</text></svg>`,
+    }
+  }
+  return initialCache[letter]
+}

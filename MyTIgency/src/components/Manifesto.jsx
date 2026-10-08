@@ -12,7 +12,7 @@ import arrowImg from '../assets/seta.png'
 import plusImg from '../assets/plus.svg'
 import mytiRaw from '../assets/MyTi.svg?raw'
 import ethosLineImg from '../assets/ethos-drawn.svg'
-import { lineAPiece, lineBPiece } from '../utils/manifestoLineA'
+import { initialPiece, lineAPiece, lineBPiece } from '../utils/manifestoLineA'
 import lineATailImg from '../assets/manifest-vetorA-s3.svg'
 import ornamentImg from '../assets/ornamento-ascii.png'
 import smileyImg from '../assets/smiley.svg'
@@ -269,7 +269,9 @@ export function Manifesto() {
           <img className="s2-ornament" src={ornamentImg} alt="" aria-hidden="true" />
           <h3 className="sr-only">{without.sentence}</h3>
           <div className="s2-without" data-lang={lang} aria-hidden="true">
-            <span className="s2-initial">{without.initial}</span>
+            {initialPiece(without.initial)
+              ? <span className="s2-initial" dangerouslySetInnerHTML={initialPiece(without.initial)} />
+              : <span className="s2-initial">{without.initial}</span>}
             <span className="s2-rest">{without.rest}</span>
             {without.items.map((item, i) => (
               <DecodeItem key={item} text={item} className={`s2-item s2-item--${i + 1}`} />

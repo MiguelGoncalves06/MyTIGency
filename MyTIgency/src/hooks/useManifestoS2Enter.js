@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin'
 import { introPinDuration } from '../utils/manifestoScroll'
+import { decodeDuration } from './useAsciiGlitch'
 
 gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 
@@ -17,12 +18,14 @@ gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 //   tempos em tempos apaga 1–2 letras e redigita, e o cursor clica sozinho
 //   (ciclos independentes, pausados com a busca fora da tela). Ambiente (só com mouse): o sticker acompanha o
 //   cursor por poucos px, como a mão da seção 1.
-// Grupo da esquerda: os itens "Gerente de conta / Terceirizar /
-//   Intermediários" entram uma vez, decodificando (decoder da Header,
-//   evento 's2:decode' → DecodeItem). O resto é scrubbed e reversível, como o
-//   traço A da seção 1: o traço B se desenha como caneta, os itens são
-//   riscados um a um (Sem = não temos) e o traço "desenha" o contorno do
-//   botão continue rolando, que então enche de água (--fill + onda em CSS).
+// Grupo da esquerda, título (uma vez, em tempo real): o "S" é escrito à
+//   caneta, o "em" cai com peso e, no impacto, os itens "Gerente de conta /
+//   Terceirizar / Intermediários" entram decodificando (decoder da Header,
+//   evento 's2:decode' → DecodeItem). Só quando o último termina é que são
+//   riscados, um a um, devagar (Sem = não temos).
+// Grupo da esquerda, traço (scrubbed e reversível, como o traço A da seção
+//   1): o traço B se desenha como caneta e "desenha" o contorno do botão
+//   continue rolando, que então enche de água (--fill + onda em CSS).
 // Reduced motion: nada disso roda — CSS já mostra tudo no lugar e a TV nasce
 // pronta (tv3d.js).
 const TV_PLAY_AT = 0.3 // fração da entrada em que a TV começa a se formar
@@ -30,6 +33,8 @@ const TYPE_SPEED = 0.075 // s por caractere
 const EDIT_EVERY = [2.5, 5.5] // s entre uma "correção" (apaga e redigita) e outra
 const CLICK_EVERY = [3.5, 7] // s entre um clique e outro do cursor
 const DECODE_STAGGER = 0.22 // s entre um item e outro decodificando
+const STRIKE_DUR = 0.9 // s de cada risco
+const STRIKE_STAGGER = 0.4 // s entre um risco e outro
 
 export function useManifestoS2Enter(rootRef) {
   useLayoutEffect(() => {
@@ -150,25 +155,49 @@ export function useManifestoS2Enter(rootRef) {
         })
         return docTop(ms2) + (top + bottom) / 2 - window.innerHeight * 0.56 + D1()
       }
-      // decoder: uma vez, com o primeiro item a 85% da tela. O item só
-      // aparece depois que o React já trocou o texto pelos símbolos.
-      gsap.set(items, { autoAlpha: 0 })
-      const decodeSt = items.length ? ScrollTrigger.create({
-        trigger: items[0],
-        start: () => docTop(items[0]) - window.innerHeight * 0.85 + D1(),
+      /* ---------- título "Sem": caneta → queda → decoder → riscos ---------- */
+      const initial = q('.s2-initial')
+      const semGuide = q('.sem-guide')
+      const rest = q('.s2-rest')
+      gsap.set(items, { autoAlpha: 0, '--strike': 0 })
+      if (semGuide) gsap.set(semGuide, { drawSVG: '0%' })
+      if (rest) gsap.set(rest, { autoAlpha: 0 })
+      const decodeItems = () => items.forEach((item, i) => {
+        alive.push(gsap.delayedCall(i * DECODE_STAGGER, () => {
+          item.dispatchEvent(new Event('s2:decode'))
+          // só aparece depois que o React já trocou o texto pelos símbolos
+          alive.push(gsap.delayedCall(0.08, () => gsap.set(item, { autoAlpha: 1 })))
+        }))
+      })
+      // fim do decoder do último item a terminar (s, a partir do impacto)
+      const decodeEnd = Math.max(0, ...Array.from(items, (item, i) =>
+        i * DECODE_STAGGER + decodeDuration(item.getAttribute('aria-label')?.length || 0) / 1000))
+      const title = gsap.timeline({ paused: true })
+      if (semGuide) title.to(semGuide, { drawSVG: '100%', duration: 1.5, ease: 'power1.inOut' }, 0)
+      if (rest) {
+        // cai com peso: acelera, achata no chão e volta com um quique curto
+        title.fromTo(rest, { autoAlpha: 0, yPercent: -140, rotation: -9 },
+          { autoAlpha: 1, yPercent: 0, rotation: 0, duration: 0.55, ease: 'power3.in' }, 1.15)
+        title.to(rest, { scaleY: 0.84, scaleX: 1.08, duration: 0.08, ease: 'power1.out', transformOrigin: '50% 85%' })
+        title.to(rest, { scaleY: 1, scaleX: 1, duration: 0.8, ease: 'elastic.out(1, 0.4)' })
+      }
+      const impact = rest ? 1.7 : 1.2
+      title.call(decodeItems, null, impact)
+      items.forEach((item, i) => {
+        title.fromTo(item, { '--strike': 0 }, { '--strike': 1, duration: STRIKE_DUR, ease: 'power2.inOut' },
+          impact + decodeEnd + 0.3 + i * STRIKE_STAGGER)
+      })
+      alive.push(title)
+      const titleSt = ScrollTrigger.create({
+        trigger: initial || left,
+        start: () => docTop(initial || left) - window.innerHeight * 0.8 + D1(),
         once: true,
         invalidateOnRefresh: true,
-        onEnter: () => items.forEach((item, i) => {
-          alive.push(gsap.delayedCall(i * DECODE_STAGGER, () => {
-            item.dispatchEvent(new Event('s2:decode'))
-            alive.push(gsap.delayedCall(0.08, () => gsap.set(item, { autoAlpha: 1 })))
-          }))
-        }),
-      }) : null
+        onEnter: () => title.play(),
+      })
 
       let leftTl = null
       if (left && lineBGuide && cue) {
-        gsap.set(items, { '--strike': 0 })
         leftTl = gsap.timeline({
           defaults: { ease: 'none' },
           scrollTrigger: {
@@ -180,10 +209,6 @@ export function useManifestoS2Enter(rootRef) {
           },
         })
         leftTl.fromTo(lineBGuide, { drawSVG: '0%' }, { drawSVG: '100%', duration: 0.78, ease: 'sine.inOut' }, 0)
-        // riscos, um por item, enquanto o traço contorna o "Sem"
-        items.forEach((item, i) => {
-          leftTl.fromTo(item, { '--strike': 0 }, { '--strike': 1, duration: 0.2, ease: 'power2.inOut' }, 0.3 + i * 0.12)
-        })
         // botão: o traço chega e "desenha" o contorno da esquerda pra direita;
         // aí o recipiente enche (a onda só corre enquanto está enchendo)
         leftTl.fromTo(cue, { clipPath: 'inset(0% 100% 0% 0% round 999px)' },
@@ -222,7 +247,7 @@ export function useManifestoS2Enter(rootRef) {
       return () => {
         leftTl?.scrollTrigger?.kill()
         leftTl?.kill()
-        decodeSt?.kill()
+        titleSt.kill()
         cue?.classList.remove('is-filling')
         search.classList.remove('is-onscreen')
         st.kill()
