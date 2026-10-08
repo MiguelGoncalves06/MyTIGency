@@ -7,6 +7,9 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 
+// Fração por frame (a 60fps) com que o giro do scroll persegue o alvo.
+const TURN_FOLLOW = 0.14
+
 const gltfs = {}
 const load = (url) => (gltfs[url] ||= new GLTFLoader().loadAsync(url))
 
@@ -143,16 +146,26 @@ export function mountDitherTV(canvas, {
   // (cena 3D + passe de post-process) ficam de fora nos frames pulados.
   let isScrolling = false
   let frameCounter = 0
+  // Giro pelo scroll (setTurn, useManifestoHorizontal): deslocamento do
+  // ângulo em relação ao repouso, perseguido com uma inércia curta (peso).
+  let turnTarget = 0
+  let turn = 0
+  let lastNow = 0
 
   renderer.setAnimationLoop((now) => {
+    const dt = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0
+    lastNow = now
     if (!visible) return
+    turn += (turnTarget - turn) * (1 - Math.pow(1 - TURN_FOLLOW, dt * 60))
+    const turning = Math.abs(turnTarget - turn) > 0.0005
     const t = (now - introStart) / 1000
     post.uniforms.uReveal.value = ease((t - 0.1) / revealDuration)
     const sway = reduceMotion ? 0 : Math.sin(now / 1400) * 0.06
-    pivot.rotation.y = restAngle - 2 * (1 - ease(t / spinDuration)) + sway
+    pivot.rotation.y = restAngle - 2 * (1 - ease(t / spinDuration)) + sway + turn
 
     frameCounter++
-    if (isScrolling && frameCounter % 3 !== 0) return
+    // girando, renderiza todo frame (senão o giro engasga)
+    if (isScrolling && !turning && frameCounter % 3 !== 0) return
 
     renderer.setRenderTarget(rt)
     renderer.render(scene, camera)
@@ -177,5 +190,7 @@ export function mountDitherTV(canvas, {
     renderer.dispose()
   }
 
-  return { play, dispose, setScrolling }
+  const setTurn = (offset) => { turnTarget = offset }
+
+  return { play, dispose, setScrolling, setTurn }
 }

@@ -21,6 +21,9 @@ const vectorSrc = (name) => VECTOR_SRC[`../assets/s3/vec/${name}.svg`]()
 
 const NS = 'http://www.w3.org/2000/svg'
 const FW = 1130, FH = 784 // frame do Figma
+// Disco do mapa, em unidades do frame — o traço A termina na borda dele
+// (useManifestoHorizontal).
+export const S3_MAP = { x: meta.mapa.x, cx: meta.mapa.x + meta.mapa.w / 2, cy: meta.mapa.y + meta.mapa.w / 2, R: meta.mapa.w / 2 }
 const el = (tag, attrs = {}, parent) => {
   const e = document.createElementNS(NS, tag)
   for (const k in attrs) e.setAttribute(k, attrs[k])
@@ -64,6 +67,11 @@ const SCRIPT = [
   ['seta-red', 96, 100],
 ]
 export const TOTAL = 112
+/** Trecho do mapa no desenho (unidades de TOTAL) e a velocidade do radar: o
+ *  compasso dá a volta em (fim − início) / S3_RADAR, do topo, no sentido horário
+ *  (mesmo 1.35 do modo SINAL no shader). */
+export const S3_MAP_SPAN = SCRIPT.find(([name]) => name === 'mapa').slice(1)
+export const S3_RADAR = 1.35
 
 // modos do shader
 const INK = 0, SIGNAL = 1, WIPE = 2, FOG = 3, DITHER = 4
@@ -221,7 +229,7 @@ const loadImg = (src) => new Promise((res, rej) => { const i = new Image(); i.on
 
 /**
  * Monta a seção 3 dentro dos elementos já renderizados pelo React.
- * @param {object} els  { root, comp, gl, gl2, ov, ov2, ovdefs, titleDeco, tipArrow, hand, titleSpans, bin }
+ * @param {object} els  { root, comp, gl, gl2, ov, ov2, ovdefs, titleDeco, tipArrow?, hand, titleSpans, bin, mark? }
  * @returns {{ ready: Promise<{ tl: gsap.core.Timeline|null }|null>, setVelocity, dispose }}
  *   `ready` resolve com { tl } — a timeline do desenho (tl null em reduced-motion);
  *   null se desmontado antes de carregar. dispose() pode ser chamado a qualquer momento.
@@ -443,7 +451,10 @@ export function mountSection3(els) {
     t0: focusFx(spans[0], 's3-fx-t0', 9), t1: focusFx(spans[1], 's3-fx-t1', 9),
     bin: focusFx(els.bin, 's3-fx-bin', 2, 0.1),
   }
-  tl.fromTo(els.tipArrow, { drawSVG: '0%', opacity: 0 }, { drawSVG: '100%', opacity: 1, duration: 2.5, ease: 'power2.inOut' }, T)
+  if (els.tipArrow) tl.fromTo(els.tipArrow, { drawSVG: '0%', opacity: 0 }, { drawSVG: '100%', opacity: 1, duration: 2.5, ease: 'power2.inOut' }, T)
+  // marca-texto em "quem conversa com você": anda da esquerda pra direita
+  // logo que a seta do dedo do anjo (seta-red) chega nele
+  if (els.mark) tl.fromTo(els.mark, { '--mark': 0 }, { '--mark': 1, duration: 3.5, ease: 'power2.inOut' }, T - 0.5)
   focusIn(tl, fx.hand, T + 1, 3)
   focusIn(tl, fx.t0, T + 1.5, 4.5)
   focusIn(tl, fx.t1, T + 3, 4.5)

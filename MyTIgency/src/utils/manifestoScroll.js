@@ -7,5 +7,11 @@
 export const INTRO_PIN_VH = 0.75
 export const INTRO_PIN_QUERY = '(min-width: 701px) and (prefers-reduced-motion: no-preference)'
 
+// Caneta do traço A: um drawSVG só, do "+" (seção 1) até o disco do mapa da
+// seção 3, dirigido pelo scroll (useManifestoIntro). Onde ele termina — scroll
+// absoluto e fração da guia — é medido pelo pin lateral
+// (useManifestoHorizontal.layout), que sabe onde a seção 3 fica.
+export const lineAPen = { end: 0, frac: 1 }
+
 export const introPinDuration = () =>
   (window.matchMedia(INTRO_PIN_QUERY).matches ? window.innerHeight * INTRO_PIN_VH : 0)

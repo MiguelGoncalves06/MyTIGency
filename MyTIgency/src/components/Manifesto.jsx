@@ -13,7 +13,6 @@ import plusImg from '../assets/plus.svg'
 import mytiRaw from '../assets/MyTi.svg?raw'
 import ethosLineImg from '../assets/ethos-drawn.svg'
 import { initialPiece, lineAPiece, lineBPiece } from '../utils/manifestoLineA'
-import lineATailImg from '../assets/manifest-vetorA-s3.svg'
 import ornamentImg from '../assets/ornamento-ascii.png'
 import smileyImg from '../assets/smiley.svg'
 import searchBoxImg from '../assets/s2-busca.png'
@@ -38,7 +37,7 @@ const BRAND_HTML = { __html: brandStrokeSvg }
 const MYTI_HTML = { __html: mytiRaw }
 const LINE_A_TOP = { __html: lineAPiece('la-top') }
 const LINE_A_ELBOW = { __html: lineAPiece('la-elbow', '0 409 1348 162') }
-const LINE_A_LOW = { __html: lineAPiece('la-low') }
+const LINE_A_LOW = { __html: lineAPiece('la-low', '0 0 2135 1216') }
 const LINE_B_HTML = { __html: lineBPiece('lb') }
 
 // Cada palavra vira um .ms-w (unidade que pinta no scroll — useManifestoIntro);
@@ -68,8 +67,18 @@ function Segment({ text, role }) {
 function Section3({ who }) {
   return (
     <section className="s3" aria-labelledby="s3-title">
+      {/* Marca-texto (s3-marca-texto.svg): barras com ponta nas duas bordas e
+          caixa translúcida que anda com --mark (timeline da seção 3). */}
       <p className="s3-who">
-        <span className="s3-who-word">{who.word}</span> {who.rest}
+        <span className="s3-who-word">
+          <svg className="s3-mark-bar" viewBox="0 0 17 88" aria-hidden="true">
+            <rect x="5.22" y="5.68" width="6.49" height="75.25" rx="1" /><path d="M8.5 10.54 1.15 2.67 15.76 2.63Z" />
+          </svg>
+          {who.word} {who.rest}
+          <svg className="s3-mark-bar s3-mark-bar--end" viewBox="714 0 17 88" aria-hidden="true">
+            <rect x="718.86" y="7" width="6.41" height="75.25" rx="1" /><path d="M722.04 77.39 729.3 85.27 714.87 85.3Z" />
+          </svg>
+        </span>
       </p>
 
       <div className="s3-comp" role="img" aria-label={who.alt}>
@@ -97,8 +106,6 @@ function Section3({ who }) {
           <pattern id="s3-dots" width="1.5" height="1.5" patternUnits="userSpaceOnUse"><circle cx=".75" cy=".75" r=".15" fill="#24489a" /></pattern>
         </defs>
 
-        {/* a seta do olhar do anjo continua até o título */}
-        <path className="r s3-tip-arrow" strokeWidth=".18" markerEnd="url(#s3-head)" d="M140.5 29.3Q147.5 29.6 149.5 35" />
 
         <g className="s3-title-deco" transform="translate(-13 0)">
           {/* seta curva de baixo entrando no "e" */}
@@ -175,6 +182,7 @@ function DitherTV() {
         url: tvUrl, palette: TV_PALETTE, autoPlay: false, revealDuration: 2.8, spinDuration: 3.4,
       })
       sceneRef.current = instance
+      canvas.tv = instance // o pin lateral (useManifestoHorizontal) gira a TV
       dispose = instance.dispose
       if (playRequested) instance.play()
     }, { rootMargin: '50% 0px' })
@@ -183,6 +191,7 @@ function DitherTV() {
       canvas.removeEventListener('s2:tv-play', onPlay)
       observer.disconnect()
       dispose?.()
+      delete canvas.tv
       sceneRef.current = null
     }
   }, [])
@@ -303,9 +312,8 @@ export function Manifesto() {
           </div>
         </div>
 
-        {/* Metade de baixo do traço A (escala da seção 2) + rabo rumo à seção 3. */}
+        {/* Metade de baixo do traço A (escala da seção 2), que segue até o disco do mapa da seção 3. */}
         <span className="s2-line s2-line-a" aria-hidden="true" dangerouslySetInnerHTML={LINE_A_LOW} />
-        <img className="s2-line s2-line-a-tail" src={lineATailImg} alt="" aria-hidden="true" />
         <span className="s2-line s2-line-b" aria-hidden="true" dangerouslySetInnerHTML={LINE_B_HTML} />
       </section>
 

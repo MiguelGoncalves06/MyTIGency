@@ -1080,19 +1080,14 @@
     max-width:none;
     pointer-events:none;
   }
+  /* 2135 de largura: o traço segue até o disco do mapa da seção 3 (a
+     extensão é desenhada pelo pin lateral) */
   .s2-line-a{
     left:calc(var(--s2-jx) - 144 * var(--g));
     top:calc(var(--s2-jy) - 570 * var(--g));
-    width:calc(1348 * var(--g));
+    width:calc(2135 * var(--g));
     height:calc(1216 * var(--g));
     clip-path:inset(46.875% 0 0 0);
-  }
-  /* Rabo do traço A (manifest-vetorA-s3) rumo ao "quem" da seção 3 —
-     hoje sai pela direita; o scroll lateral vai revelá-lo. */
-  .s2-line-a-tail{
-    left:calc(var(--s2-jx) + 1163 * var(--g));
-    top:calc(var(--s2-jy) + 373 * var(--g));
-    width:calc(588 * var(--g));
   }
   .s2-line-b{
     /* acompanha o grupo "Sem" (termina no botão) e desce junto com ele
@@ -1119,49 +1114,60 @@
     height:100vh;
     color:var(--s3-text);
     pointer-events:none;
+    /* acima do traço A: a ponta dele entra um pouco no disco e some sob o
+       mapa quando ele se forma */
+    z-index:2;
   }
   .s3 > *{ position:absolute; }
   .s3 .r{ fill:none; stroke:var(--s3-red); stroke-linecap:round; }
   .s3 .b{ fill:none; stroke:var(--s3-blue); }
 
-  /* "quem conversa com você": o "quem" encosta no fim do traço A. */
+  /* Layout "tudo junto" (Figma): ilustração à esquerda; a seta que sai do
+     dedo do anjo aponta para "quem conversa com você" (frase inteira na
+     caixa de seleção vermelha) e, embaixo, "é quem desenha / e quem programa". */
   .s3-who{
-    left:8vh;
-    top:var(--s3-quem-y, 41vh);
-    transform:translateY(-50%);
+    left:86vh;
+    top:25.4vh;
     margin:0;
-    font-family:'Inter',sans-serif;
-    font-size:3.9vh;
-    color:#595959;
+    font-size:4.8vh;
     white-space:nowrap;
   }
+  /* Marca-texto (Group 21, 731×88): caixa de 66 de altura = 1.375em, então
+     1 unidade = 1em/48. --mark 0→1 (timeline da seção 3) estica a caixa da
+     esquerda para a direita e leva a barra da direita junto. */
   .s3-who-word{
+    --mark:1;
     position:relative;
+    isolation:isolate;
     display:inline-block;
-    margin-right:.25em;
     padding:0 .3em;
     font-family:'Italiana',serif;
-    font-size:1.38em; /* Italiana 64 no Figma */
-    line-height:1.15;
+    line-height:1.375;
     color:#000;
-    background:rgba(255,68,56,.4);
   }
-  /* barras vermelhas de seleção de texto, com a pontinha (Figma) */
-  .s3-who-word::before,
-  .s3-who-word::after{
+  .s3-who-word::before{
     content:'';
     position:absolute;
-    top:-.08em;
-    bottom:-.08em;
-    width:.16em;
-    background:var(--accent);
+    inset:0;
+    z-index:-1;
+    background:rgba(255,68,56,.36);
+    transform:scaleX(var(--mark));
+    transform-origin:left center;
   }
-  .s3-who-word::before{ left:-.05em; clip-path:polygon(0 0, 100% 0, 45% 9%, 45% 100%, 0 100%); }
-  .s3-who-word::after{ right:-.05em; clip-path:polygon(55% 0, 100% 0, 100% 100%, 0 100%, 55% 91%); }
+  .s3-mark-bar{
+    position:absolute;
+    left:calc(-8em / 48);
+    top:calc(-11em / 48);
+    width:calc(17em / 48);
+    height:calc(88em / 48);
+    fill:#FF4438;
+    opacity:min(1, calc(var(--mark) * 20));
+  }
+  .s3-mark-bar--end{ left:calc(var(--mark) * 100% - 8em / 48); }
 
   /* composição do anjo: frame do Figma 1130×784 */
   .s3-comp{
-    left:58vh;
+    left:2vh;
     top:17vh;
     height:66vh;
     aspect-ratio:1130 / 784;
@@ -1184,13 +1190,16 @@
   .s3-hand span:nth-child(2){ padding-left:1.6vh; }
   .s3-hand span:nth-child(3){ padding-left:3.2vh; }
 
+  /* provisório — o usuário ainda vai refinar este bloco */
   .s3-title{
-    left:144vh; top:38vh; margin:0;
-    font-family:'UnifrakturMaguntia',serif; font-weight:400; color:var(--s3-red);
-    font-size:9vh; line-height:1.18; white-space:nowrap; letter-spacing:-.01em;
+    left:100vh; top:32.6vh; margin:0;
+    font-family:'Ibarra Real Nova',serif; font-weight:700; color:#595959;
+    font-size:5.2vh; line-height:1.18; white-space:nowrap;
   }
   .s3-title span{ display:block; }
-  .s3-title span + span{ padding-left:4.3vh; }
+  .s3-title span + span{ padding-left:1.6vh; }
+  /* fora do layout novo (a timeline ainda os anima; só não aparecem) */
+  .s3-hand, .s3-bin, .s3-title-deco{ display:none; }
 
   .s3-mono{
     margin:0;

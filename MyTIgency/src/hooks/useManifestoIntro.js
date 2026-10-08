@@ -2,7 +2,7 @@ import { useLayoutEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin'
-import { INTRO_PIN_QUERY, introPinDuration } from '../utils/manifestoScroll'
+import { INTRO_PIN_QUERY, introPinDuration, lineAPen } from '../utils/manifestoScroll'
 
 gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 
@@ -226,16 +226,20 @@ export function useManifestoIntro(rootRef) {
       leave.fromTo('.ms-hand', { rotation: 0 }, { rotation: 50, duration: 0.8, ease: 'power2.inOut' }, 0.1)
 
       // Traço A como caneta: os três pedaços (cima, cotovelo, baixo) usam a
-      // mesma linha-guia, então um drawSVG só, do "+" até o pin lateral.
+      // mesma linha-guia, então um drawSVG só, do "+" até o disco do mapa da
+      // seção 3, já dentro do pin lateral — onde e até que fração quem mede é
+      // o pin (lineAPen, useManifestoHorizontal); refreshPriority mais baixo
+      // para ler a medida já atualizada.
       gsap.fromTo(root.querySelectorAll('.la-guide'), { drawSVG: '0%' }, {
-        drawSVG: '100%',
+        drawSVG: () => `${lineAPen.frac * 100}%`,
         ease: 'none',
         scrollTrigger: {
           trigger: content,
           start: phraseEnd,
-          end: () => Math.max(pinStart() + pinDur(), phraseEnd() + 1),
+          end: () => Math.max(lineAPen.end || pinStart() + pinDur(), phraseEnd() + 1),
           scrub: SCRUB,
           invalidateOnRefresh: true,
+          refreshPriority: -2,
         },
       })
 
