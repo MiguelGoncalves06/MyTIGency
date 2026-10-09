@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLenis } from 'lenis/react'
 import { useLanguage } from '../context/LanguageContext'
 import { mountDitherTV } from '../utils/tv3d'
-import { useManifestoHorizontal } from '../hooks/useManifestoHorizontal'
+import { useManifestoHorizontal, DESKTOP_QUERY } from '../hooks/useManifestoHorizontal'
 import { useManifestoIntro } from '../hooks/useManifestoIntro'
 import { useManifestoS2Enter } from '../hooks/useManifestoS2Enter'
 import { DecodeText } from './DecodeText'
@@ -11,6 +11,7 @@ import targetImg from '../assets/alvo.png'
 import arrowImg from '../assets/seta.png'
 import plusImg from '../assets/plus.svg'
 import mytiRaw from '../assets/MyTi.svg?raw'
+import mytiUrl from '../assets/MyTi.svg'
 import ethosLineImg from '../assets/ethos-drawn.svg'
 import { initialPiece, lineAPiece, lineBPiece } from '../utils/manifestoLineA'
 import ornamentImg from '../assets/ornamento-ascii.png'
@@ -180,11 +181,14 @@ function DitherTV() {
       observer.disconnect()
       const instance = mountDitherTV(canvas, {
         url: tvUrl, palette: TV_PALETTE, autoPlay: false, revealDuration: 2.8, spinDuration: 3.4,
+        // a tela sintoniza o logo pelo pin lateral; sem ele (mobile), já sintonizada
+        screenImage: mytiUrl, tune: window.matchMedia(DESKTOP_QUERY).matches ? 0 : 1,
       })
       sceneRef.current = instance
-      canvas.tv = instance // o pin lateral (useManifestoHorizontal) gira a TV
+      canvas.tv = instance // o pin lateral (useManifestoHorizontal) gira e sintoniza a TV
       dispose = instance.dispose
       if (playRequested) instance.play()
+      canvas.dispatchEvent(new Event('s2:tv-ready'))
     }, { rootMargin: '50% 0px' })
     observer.observe(canvas)
     return () => {
@@ -200,7 +204,10 @@ function DitherTV() {
   // reduz o custo por frame da TV bem na hora em que ele mais compete com
   // o resto do scroll. Validado: ganho de fluidez perceptível, mudança
   // visual mínima (só o balanço da TV fica um pouco menos suave rolando).
-  useLenis(() => {
+  // A posição do scroll também vai para a TV: a velocidade dele tira o
+  // dither de foco (ver setScroll em tv3d.js).
+  useLenis(({ scroll }) => {
+    sceneRef.current?.setScroll(scroll)
     sceneRef.current?.setScrolling(true)
     clearTimeout(scrollSettleRef.current)
     scrollSettleRef.current = setTimeout(() => {

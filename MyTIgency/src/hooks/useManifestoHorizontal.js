@@ -9,7 +9,7 @@ import { introPinDuration, lineAPen } from '../utils/manifestoScroll'
 gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 
 // Desktop/tablet only — o mobile das seções 2/3 é outro layout (a definir).
-const DESKTOP_QUERY = '(min-width: 701px)'
+export const DESKTOP_QUERY = '(min-width: 701px)'
 // Começa um pouco antes do centro exato: quando o centro do conteúdo ainda
 // está esta fração da altura da tela abaixo do meio.
 const START_EARLY = 0.06
@@ -45,6 +45,9 @@ const SCRUB = 0.9
 // lado direito dela, com o adesivo, de frente — TV_TURN rad além do repouso.
 const TV_TURN = 1.6
 const TV_TURN_END_AT = 0.2
+// A tela da TV sai do chiado e trava a imagem (setTune) até este ponto do
+// mesmo giro — ~0.42 é onde sine.inOut chega ao ângulo de frente.
+const TV_TUNE_AT = 0.42
 const turnEase = gsap.parseEase('sine.inOut')
 
 // Scroll lateral do Manifesto: quando o conteúdo da seção 2 chega ao centro da
@@ -190,10 +193,14 @@ export function useManifestoHorizontal(rootRef) {
       const d = proxy.d
       const x = d <= travelA ? -d : -(travelA + Math.min(1, (d - travelA) / scrollB) * travelB)
       gsap.set(track, { x })
-      // giro da TV pela posição dela na tela (sem giro em reduced motion)
-      if (!reduced) {
+      // giro, sintonia e peso da TV pela posição dela na tela (nada disso em
+      // reduced motion: a TV fica no repouso, já sintonizada)
+      const tv = tvCanvas?.tv
+      if (tv && !reduced) {
         const t = Math.min(1, Math.max(0, (tvF0 - (tvCx + x) / vw) / (tvF0 - TV_TURN_END_AT)))
-        tvCanvas?.tv?.setTurn(-TV_TURN * turnEase(t))
+        tv.setTurn(-TV_TURN * turnEase(t))
+        tv.setTune(t / TV_TUNE_AT)
+        tv.setShift(x)
       }
       // Desenho: de drawStart até o fim do pin, linear — o título continua
       // assentando no fim do percurso, como no protótipo.
@@ -237,6 +244,7 @@ export function useManifestoHorizontal(rootRef) {
         gsap.set(track, { clearProps: 'transform,willChange' })
         lineAPen.end = 0 // sem o pin lateral, a caneta volta a terminar na seção 2
         tvCanvas?.tv?.setTurn(0)
+        tvCanvas?.tv?.setTune(1) // sem o pin lateral não há sintonia pelo scroll
       }
     })
 
@@ -269,11 +277,17 @@ export function useManifestoHorizontal(rootRef) {
     io.observe(ms2)
     mm.add(DESKTOP_QUERY, () => { tryMount() })
 
+    // A TV monta tarde (DitherTV adia o WebGL até ela chegar perto) e pode
+    // aparecer já no meio do pin: aplica giro/sintonia no estado atual.
+    const onTvReady = () => { if (window.matchMedia(DESKTOP_QUERY).matches) apply() }
+    tvCanvas?.addEventListener('s2:tv-ready', onTvReady)
+
     // Alturas da seção dependem de fontes web; remede quando carregarem.
     document.fonts.ready.then(() => ScrollTrigger.refresh())
 
     return () => {
       cancelled = true
+      tvCanvas?.removeEventListener('s2:tv-ready', onTvReady)
       io.disconnect()
       mm.revert()
       s3api?.dispose()
