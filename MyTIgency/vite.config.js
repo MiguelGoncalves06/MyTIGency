@@ -9,4 +9,11 @@ export default defineConfig({
   optimizeDeps: {
     include: ['three'],
   },
+  // Multi-página: home (index.html) e contato (contato.html → /contato; a
+  // hospedagem serve /contato a partir de contato.html).
+  build: {
+    rollupOptions: {
+      input: { main: 'index.html', contato: 'contato.html' },
+    },
+  },
 })

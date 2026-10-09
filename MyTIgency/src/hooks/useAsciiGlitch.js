@@ -13,6 +13,14 @@ function randomGlyph() {
   return GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
 }
 
+/** Mesmo decode fora do React (rótulo da transição de página): o texto
+ *  `elapsed` ms depois de começar a decodificar. */
+export function decodeAt(text, elapsed) {
+  const revealCount = Math.max(0, Math.floor((elapsed - START_DELAY_MS) / MS_PER_CHAR))
+  return [...text].map((c, i) => (c === ' ' || i < revealCount ? c : randomGlyph())).join('')
+}
+export const DECODE_TICK_MS = TICK_MS
+
 export function useAsciiGlitch({ active, originalChars, onUpdate }) {
   useEffect(() => {
     if (!active) {

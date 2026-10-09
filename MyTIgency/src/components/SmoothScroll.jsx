@@ -1,5 +1,13 @@
 import { ReactLenis } from 'lenis/react'
 import 'lenis/dist/lenis.css'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { usePageCovered } from '../utils/pageTransition'
+
+// Scroll travado enquanto a cortina da transição entre páginas cobre a tela
+function PageTransitionScrollLock() {
+  useBodyScrollLock(usePageCovered())
+  return null
+}
 
 const LENIS_OPTIONS = {
   autoRaf: true,
@@ -20,6 +28,7 @@ const LENIS_OPTIONS = {
 export function SmoothScroll({ children }) {
   return (
     <ReactLenis root options={LENIS_OPTIONS}>
+      <PageTransitionScrollLock />
       {children}
     </ReactLenis>
   )

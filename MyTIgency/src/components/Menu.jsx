@@ -10,7 +10,7 @@ import { DecodeText } from './DecodeText'
 
 const CLOSE_ON_SCROLL_PX = 24
 
-export function Menu({ open, onClose, triggerRef, activeId }) {
+export function Menu({ open, onClose, triggerRef, activeId, isContact = false }) {
   const panelRef = useRef(null)
   const isMobile = useMediaQuery('(max-width: 820px)')
   const prefersReducedMotion = useReducedMotion()
@@ -21,6 +21,8 @@ export function Menu({ open, onClose, triggerRef, activeId }) {
   // native #top jump would be a no-op — scroll to the real document top.
   const handleSectionClick = (e, sectionId) => {
     onClose()
+    // Fora da home os links são navegação normal entre páginas
+    if (isContact) return
     if (sectionId === 'top') {
       e.preventDefault()
       e.stopPropagation()
@@ -55,10 +57,11 @@ export function Menu({ open, onClose, triggerRef, activeId }) {
     }
   }, [open, triggerRef])
 
+  const home = isContact ? '/' : ''
   const sections = [
-    { id: 'top', href: '#top', label: t.header.home },
-    { id: 'trabalhos', href: '#trabalhos', label: t.header.work },
-    { id: 'carreiras', href: '#carreiras', label: t.header.careers },
+    { id: 'top', href: isContact ? '/' : '#top', label: t.header.home },
+    { id: 'trabalhos', href: `${home}#trabalhos`, label: t.header.work },
+    { id: 'carreiras', href: `${home}#carreiras`, label: t.header.careers },
   ]
 
   return (
@@ -112,9 +115,11 @@ export function Menu({ open, onClose, triggerRef, activeId }) {
             </button>
           </div>
 
-          <a href="#contato" className="btn menu-cta" onClick={onClose}>
-            {t.header.cta}
-          </a>
+          {!isContact && (
+            <a href="/contato" className="btn menu-cta" onClick={onClose}>
+              {t.header.cta}
+            </a>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

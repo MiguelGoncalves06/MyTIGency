@@ -14,6 +14,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js'
 
 // Molas (k = rigidez, zeta = amortecimento; < 1 passa do ponto e volta).
 // Giro: segue o alvo do scroll com um leve overshoot — sensação de massa.
@@ -38,7 +39,7 @@ const BLUR_PX = 1.2 // ponto chega a pixel × (1 + BLUR_PX)
 // ±HX × ±HY em torno de y = CY, abaulado z = Z0 − A·u² − B·v² + C·u²v² com
 // u, v ∈ [−1, 1]. A imagem fica OFFSET à frente do vidro e passa MARGIN da
 // borda — o excesso some atrás da moldura, que é mais alta que o vidro ali.
-const SCREEN = { CY: 0.1736, HX: 0.676, HY: 0.526, Z0: 0.7675, A: 0.135, B: 0.09, C: 0.045, OFFSET: 0.008, MARGIN: 1.03 }
+export const SCREEN = { CY: 0.1736, HX: 0.676, HY: 0.526, Z0: 0.7675, A: 0.135, B: 0.09, C: 0.045, OFFSET: 0.008, MARGIN: 1.03 }
 const TV_SIZE = 1.7
 
 const gltfs = {}
@@ -85,14 +86,14 @@ const screenFragment = `
     gl_FragColor = vec4(vec3(pow(clamp(l, 0., 1.), 2.2)), 1.);
   }`
 
-function buildScreen(imageUrl) {
-  const { CY, HX, HY, Z0, A, B, C, OFFSET, MARGIN } = SCREEN
+function buildScreen(imageUrl, shape) {
+  const { CX = 0, CY, HX, HY, Z0, A, B, C, OFFSET, MARGIN } = shape
   const geo = new THREE.PlaneGeometry(2 * HX * MARGIN, 2 * HY * MARGIN, 24, 18)
   const pos = geo.attributes.position
   for (let i = 0; i < pos.count; i++) {
     const u = pos.getX(i) / HX
     const v = pos.getY(i) / HY
-    pos.setXYZ(i, pos.getX(i), pos.getY(i) + CY, Z0 - A * u * u - B * v * v + C * u * u * v * v + OFFSET)
+    pos.setXYZ(i, pos.getX(i) + CX, pos.getY(i) + CY, Z0 - A * u * u - B * v * v + C * u * u * v * v + OFFSET)
   }
   // Imagem da sintonia: logo centrado num quadro escuro 4:3 (o vidro é ~1.29:1).
   const cv = document.createElement('canvas')
@@ -138,6 +139,13 @@ export function mountDitherTV(canvas, {
   spinDuration = 1.8, // s do giro de entrada até o repouso
   screenImage = null, // url da imagem que a tela sintoniza
   tune: initialTune = 1, // 0 = chiado, 1 = sintonizada (ver setTune)
+  // Por modelo (padrões = tv.min.glb): para onde a frente do GLB aponta
+  // (rotação em Y que a vira para +Z), o vidro medido (ver SCREEN) e se a
+  // tela da sintonia aparece (false = mostra a tela do próprio modelo).
+  front = -Math.PI / 2,
+  screenShape = SCREEN,
+  showScreen = true,
+  colorBoost = 2.5, // clareia o material (plástico escuro); modelo claro pede menos
 } = {}) {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true })
@@ -168,22 +176,32 @@ export function mountDitherTV(canvas, {
   const pivot = new THREE.Group()
   tilt.add(pivot)
   let screen = null
+  let screenScale = 1
+  let screenVisible = showScreen
+  let mixer = null
   let disposed = false
-  load(url).then(({ scene: src }) => {
+  load(url).then(({ scene: src, animations }) => {
     if (disposed) return
-    const model = src.clone(true)
+    // SkeletonUtils: um clone simples quebra modelos com esqueleto
+    const model = cloneSkinned(src)
+    if (animations.length) {
+      mixer = new THREE.AnimationMixer(model)
+      animations.forEach((clip) => mixer.clipAction(clip).play())
+    }
     const box = new THREE.Box3().setFromObject(model)
     const size = box.getSize(new THREE.Vector3())
     model.position.sub(box.getCenter(new THREE.Vector3()))
     // Plástico preto metálico vira mancha no dither; fosco e mais claro deixa o volume aparecer.
     model.traverse((o) => {
       if (!o.material) return
-      Object.assign(o.material, { metalness: 0, metalnessMap: null })
-      o.material.color.setScalar(2.5)
+      for (const m of [].concat(o.material)) {
+        Object.assign(m, { metalness: 0, metalnessMap: null })
+        m.color?.setScalar(colorBoost)
+      }
     })
     const holder = new THREE.Group()
     holder.add(model)
-    holder.rotation.y = -Math.PI / 2 // a frente deste GLB aponta para +X
+    holder.rotation.y = front
     pivot.add(holder)
     const scale = TV_SIZE / Math.max(size.x, size.y, size.z)
     pivot.scale.setScalar(scale)
@@ -191,10 +209,19 @@ export function mountDitherTV(canvas, {
     const base = (size.y * scale) / 2
     tilt.position.y = -base
     pivot.position.y = base
-    screen = buildScreen(screenImage)
-    screen.scale.setScalar(1 / scale) // SCREEN está na escala normalizada
-    pivot.add(screen)
+    screenScale = 1 / scale // SCREEN está na escala normalizada
+    setScreenShape(screenShape)
   })
+
+  function setScreenShape(shape) {
+    screenShape = shape
+    if (!screenScale || disposed || !pivot.children.length) return
+    if (screen) { pivot.remove(screen); screen.dispose() }
+    screen = buildScreen(screenImage, shape)
+    screen.scale.setScalar(screenScale)
+    screen.visible = screenVisible
+    pivot.add(screen)
+  }
 
   // Cena → render target → dither ordenado (Bayer 8×8) em paleta de 4 cores.
   const rt = new THREE.WebGLRenderTarget(1, 1)
@@ -322,6 +349,7 @@ export function mountDitherTV(canvas, {
     post.uniforms.uLevels.value = 3 - Math.round(blur * 2)
     pivot.rotation.y = restAngle - 2 * (1 - ease(t / spinDuration)) + turnS.x
     tilt.rotation.z = tiltS.x
+    if (mixer && dt > 0 && !reduceMotion) mixer.update(dt)
     if (screen) {
       screen.material.uniforms.uTime.value = now / 1000
       screen.material.uniforms.uTune.value = tune
@@ -344,6 +372,7 @@ export function mountDitherTV(canvas, {
   function dispose() {
     disposed = true
     renderer.setAnimationLoop(null)
+    mixer?.stopAllAction()
     resizeObserver.disconnect()
     intersectionObserver.disconnect()
     screen?.dispose()
@@ -362,6 +391,7 @@ export function mountDitherTV(canvas, {
   const setShift = (px) => { shift = px; if (!hasShift) { lastShift = px; hasShift = true } }
   const setScroll = (px) => { scroll = px; if (!hasScroll) { lastScroll = px; hasScroll = true } }
   const setTune = (p) => { if (!reduceMotion) tune = Math.min(1, Math.max(0, p)) }
+  const setScreenVisible = (v) => { screenVisible = v; if (screen) screen.visible = v }
 
-  return { play, dispose, setScrolling, setTurn, setShift, setScroll, setTune }
+  return { play, dispose, setScrolling, setTurn, setShift, setScroll, setTune, setScreenVisible, setScreenShape }
 }

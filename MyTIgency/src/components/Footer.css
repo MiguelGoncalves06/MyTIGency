@@ -1,0 +1,792 @@
+/* ---------- Footer ----------
+   Portado do protótipo (Desktop/FOOTER/index.html) — ver o PDF "Footer
+   MyTIgency — histórico e especificação". Tokens ficam no próprio footer
+   (e na pílula do cursor, que vive fora dele) para não colidir com os do
+   site: --u aqui é a escala fluida do footer, não a do Manifesto.
+
+   Empilhamento: o footer (z-index:0) fica "preso" atrás da seção de cima,
+   o .reveal-panel (z-index:1, com fundo). O protótipo usava z-index:-1 +
+   isolation no body, mas aqui o footer não é filho do body: o .app-shell
+   capturaria o mouse dele. */
+.site-footer,
+.talk-cursor-pill {
+  --ease: cubic-bezier(0.14, 1, 0.34, 1);
+  --color-text: #0a0a0a;
+  --color-muted: #383838;
+  --color-subtle: #949494;
+  --color-faint: #d3d3d3;
+  --color-background: #f5f5f5;
+  --font-display: "League Gothic", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+}
+
+.site-footer {
+  /* Escala fluida: 1u = 1px no tamanho de referência e cresce/encolhe 20% com a viewport */
+  --columns: 6;
+  --target-window-width: 390;
+  --scale-modifier: 0.2;
+  --u: calc(1px - 1px * var(--scale-modifier) + 100vw / var(--target-window-width) * var(--scale-modifier));
+
+  --gutter-small: 16px;
+  --gutter-large: 24px;
+  --gutter: var(--gutter-small);
+  --single-column-width: calc((100vw - var(--gutter) * (var(--columns) + 1)) / var(--columns));
+  --row-height-small: calc(36 * var(--u));
+  --row-height-large: calc(56 * var(--u));
+  --button-size-small: calc(32 * var(--u));
+  --button-size-medium: calc(48 * var(--u));
+  --button-size-large: calc(56 * var(--u));
+  --asset-height: calc(96 * var(--u));
+
+  --skew-deg: -10deg;
+  --skew-tan: 0.1763;
+
+  position: relative;
+  z-index: 0;
+  color: var(--color-text);
+  background: var(--color-background);
+  font-family: var(--font-body);
+  line-height: 1.4;
+}
+
+@media (min-width: 768px) {
+  .site-footer {
+    --columns: 12;
+    --target-window-width: 768;
+    --row-height-small: calc(42 * var(--u));
+    --row-height-large: calc(64 * var(--u));
+    --button-size-small: calc(36 * var(--u));
+    --button-size-large: calc(60 * var(--u));
+  }
+}
+
+@media (min-width: 1280px) {
+  .site-footer {
+    --columns: 24;
+    --target-window-width: 1440;
+    --gutter: var(--gutter-large);
+    --row-height-small: calc(50 * var(--u));
+    --row-height-large: calc(80 * var(--u));
+    --button-size-small: calc(40 * var(--u));
+    --button-size-large: calc(64 * var(--u));
+    --asset-height: calc(192 * var(--u));
+  }
+}
+
+@media (min-width: 1600px) {
+  .site-footer { --target-window-width: 1920; }
+}
+
+.site-footer ol,
+.site-footer ul { list-style: none; }
+.site-footer img,
+.site-footer svg { display: block; }
+.site-footer button { font: inherit; color: inherit; }
+
+.site-footer :focus-visible {
+  outline: 1px dashed currentColor;
+  outline-offset: -3px;
+}
+
+/* Tipografia */
+.site-footer .t-heading {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: calc(20 * var(--u));
+  line-height: 1;
+  text-transform: uppercase;
+  text-box: trim-both cap alphabetic;
+}
+
+.site-footer .t-small {
+  font-family: var(--font-body);
+  font-size: calc(13 * var(--u));
+  line-height: 1.54;
+  text-box: trim-both cap alphabetic;
+}
+
+@media (min-width: 768px) {
+  .site-footer .t-heading { font-size: calc(22 * var(--u)); line-height: 0.91; }
+  .site-footer .t-small { font-size: calc(14 * var(--u)); line-height: 1.43; }
+}
+
+@media (min-width: 1280px) {
+  .site-footer .t-heading { font-size: calc(24 * var(--u)); line-height: 0.83; }
+  .site-footer .t-small { font-size: calc(15 * var(--u)); line-height: 1.33; }
+}
+
+.site-footer__container {
+  display: grid;
+  min-height: 100svh;
+  grid-template-rows: min-content minmax(0, auto) min-content minmax(0, auto) min-content min-content min-content;
+  grid-template-areas:
+    "say-hello"
+    "offices"
+    "contact"
+    "nav"
+    "social"
+    "logo"
+    "legal";
+}
+
+@media (min-width: 1280px) {
+  .site-footer__container {
+    --right-column-width: calc(var(--single-column-width) * 12 + var(--gutter) * 13);
+    grid-template-columns: 1fr var(--right-column-width);
+    grid-template-rows: min-content minmax(0, auto) min-content min-content;
+    grid-template-areas:
+      "say-hello say-hello"
+      "contact offices"
+      "social nav"
+      "bottom bottom";
+  }
+}
+
+/* Título gigante */
+.site-footer__title {
+  grid-area: say-hello;
+  display: block;
+  border-bottom: 1px solid var(--color-faint);
+}
+
+.site-footer__say-hello {
+  width: 100%;
+  height: auto;
+  padding: var(--gutter);
+}
+
+.site-footer__say-hello-text {
+  font-family: "Anton", var(--font-display);
+  font-size: 100px;
+  text-transform: uppercase;
+  fill: currentColor;
+}
+
+/* Contato */
+.ft-contact {
+  grid-area: contact;
+  display: flex;
+  flex-direction: column;
+  padding: var(--gutter-large) var(--gutter);
+}
+
+.ft-contact__title { margin-bottom: calc(32 * var(--u)); }
+
+.ft-contact__list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(32 * var(--u));
+}
+
+.ft-contact__row {
+  display: flex;
+  gap: calc(4 * var(--u));
+}
+
+/* Retângulo que copia o e-mail */
+.ft-contact__copy {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--button-size-large);
+  padding: 0;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Moldura: borda fina que inclina no hover e recebe o preenchimento preto */
+.ft-contact__copy-frame {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid var(--color-faint);
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+
+.ft-contact__copy-frame::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  background: var(--color-text);
+  clip-path: inset(100% 0 0);
+  transition: clip-path 0.3s var(--ease);
+}
+
+.ft-contact__copy-content {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(12 * var(--u));
+  min-width: 0;
+  padding-inline: calc(20 * var(--u));
+  font-family: var(--font-body);
+  font-size: calc(16 * var(--u));
+  line-height: 1.5;
+}
+
+.ft-contact__copy-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ft-contact__copy-icon {
+  flex-shrink: 0;
+  width: calc(16 * var(--u));
+  height: calc(16 * var(--u));
+}
+
+/* Cópia do conteúdo em branco, revelada de baixo para cima junto com o preto */
+.ft-contact__copy-mask {
+  color: var(--color-background);
+  clip-path: inset(100% 0 0);
+  pointer-events: none;
+  transition: clip-path 0.3s var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ft-contact__copy:hover .ft-contact__copy-frame {
+    transform: skewX(var(--skew-deg));
+    border-color: var(--color-text);
+  }
+
+  .ft-contact__copy:hover .ft-contact__copy-frame::before,
+  .ft-contact__copy:hover .ft-contact__copy-mask { clip-path: inset(0); }
+
+  /* Passar no botão preto também inclina o retângulo */
+  .ft-contact__row:has(.ft-btn--solid:hover) .ft-contact__copy-frame { transform: skewX(var(--skew-deg)); }
+}
+
+/* Legenda acima da caixa, com um ponto cinza preenchido */
+.ft-contact__desc {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+  margin-bottom: calc(10 * var(--u));
+  color: var(--color-subtle);
+}
+
+.ft-contact__desc::before {
+  content: "";
+  flex-shrink: 0;
+  width: calc(5 * var(--u));
+  height: calc(5 * var(--u));
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Fica no pé do bloco, mais afastado dos e-mails e perto das redes sociais */
+.ft-contact__meta {
+  margin-top: auto;
+  padding-top: calc(40 * var(--u));
+  color: var(--color-muted);
+}
+
+.ft-contact__clock { font-variant-numeric: tabular-nums; }
+
+/* Os dois pontos piscam para mostrar que o relógio está ao vivo */
+@media (prefers-reduced-motion: no-preference) {
+  .ft-contact__clock-sep { animation: ft-clock-blink 2s steps(1) infinite; }
+}
+
+@keyframes ft-clock-blink {
+  50% { opacity: 0.25; }
+}
+
+@media (min-width: 768px) {
+  .ft-contact__copy { max-width: calc(400 * var(--u)); }
+  .ft-contact__copy-content { font-size: calc(17 * var(--u)); }
+}
+
+@media (min-width: 1280px) {
+  /* No desktop o horário fica logo acima das redes sociais: espaço pequeno entre eles */
+  .ft-contact {
+    padding-bottom: calc(14 * var(--u));
+    border-right: 1px solid var(--color-faint);
+  }
+
+  .ft-contact__copy-content { font-size: calc(18 * var(--u)); }
+}
+
+/* Botões (prefixo ft- porque o site já tem um .btn global) */
+.ft-btn {
+  --button-size: var(--button-size-medium);
+  position: relative;
+  z-index: 0;
+  display: grid;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.ft-btn--large { --button-size: var(--button-size-large); }
+
+.ft-btn--square {
+  width: var(--button-size);
+  height: var(--button-size);
+}
+
+.ft-btn--pill {
+  width: fit-content;
+  height: var(--button-size);
+  --padding-inner: calc(12 * var(--u));
+}
+
+.ft-btn__content,
+.ft-btn__mask {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ft-btn--pill .ft-btn__content,
+.ft-btn--pill .ft-btn__mask { padding-inline: var(--padding-inner); }
+
+.ft-btn__icon { height: calc(20 * var(--u)); width: auto; }
+.ft-btn__icon--diagonal { transform: rotate(-45deg); }
+
+.ft-btn__bg { position: absolute; }
+
+/* Botão sólido com hover "skew" */
+.ft-btn--solid {
+  --skew-offset: calc(var(--skew-tan) * var(--button-size));
+  color: var(--color-background);
+}
+
+.ft-btn--solid .ft-btn__bg {
+  inset: 0 calc(var(--skew-offset) / -2);
+  z-index: -1;
+  background: var(--color-text);
+  clip-path: polygon(
+    calc(var(--skew-offset) / 2) 0%,
+    calc(100% - var(--skew-offset) / 2) 0%,
+    calc(100% - var(--skew-offset) / 2) 100%,
+    calc(var(--skew-offset) / 2) 100%
+  );
+  transition: clip-path 0.3s var(--ease);
+}
+
+/* Botão outline com hover "mask" (redes sociais) */
+.ft-btn--outline .ft-btn__bg {
+  inset: 0;
+  border: 1px solid;
+  opacity: 0.2;
+}
+
+.ft-btn__mask {
+  z-index: 1;
+  pointer-events: none;
+  color: var(--color-background);
+  background: var(--color-text);
+  clip-path: inset(100% 0 0);
+  transition: clip-path 0.3s var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ft-btn--solid:hover .ft-btn__bg {
+    clip-path: polygon(var(--skew-offset) 0%, 100% 0%, calc(100% - var(--skew-offset)) 100%, 0% 100%);
+  }
+
+  .ft-btn--outline:hover .ft-btn__mask { clip-path: inset(0); }
+}
+
+@media (min-width: 768px) {
+  .ft-btn--pill { --padding-inner: calc(16 * var(--u)); }
+}
+
+@media (min-width: 1280px) {
+  .ft-btn--pill { --padding-inner: calc(20 * var(--u)); }
+}
+
+/* Redes sociais */
+.ft-social {
+  grid-area: social;
+  display: flex;
+  gap: calc(4 * var(--u));
+  padding: var(--gutter-large) var(--gutter) 0;
+}
+
+@media (min-width: 1280px) {
+  .ft-social {
+    height: 100%;
+    align-items: flex-end;
+    padding-top: 0;
+    padding-bottom: var(--gutter-large);
+    border-right: 1px solid var(--color-faint);
+  }
+}
+
+/* Escritórios (conteúdo ainda do protótipo — a substituir) */
+.ft-offices {
+  grid-area: offices;
+  display: flex;
+  /* o site tem section{padding:110px …} global */
+  padding: 0;
+}
+
+.ft-offices__links {
+  --row-padding: calc(4 * var(--u));
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--gutter-large) - var(--row-padding)) calc(var(--gutter) - var(--row-padding));
+}
+
+.ft-offices__link {
+  display: flex;
+  width: fit-content;
+  padding: var(--row-padding);
+  overflow: clip;
+  transform-origin: 0 100%;
+  transition: transform 0.3s var(--ease);
+}
+
+.ft-offices__link-label {
+  font-family: var(--font-display);
+  font-size: calc(32 * var(--u));
+  line-height: 0.81;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-box: trim-both cap alphabetic;
+}
+
+.ft-offices__details { display: none; }
+
+@media (hover: hover) and (pointer: fine) {
+  .ft-offices__link:hover { transform: skewX(var(--skew-deg)); }
+}
+
+@media (min-width: 768px) {
+  .ft-offices__link-label { font-size: calc(40 * var(--u)); line-height: 0.8; }
+}
+
+@media (min-width: 1280px) {
+  .ft-offices {
+    justify-content: space-between;
+    gap: var(--gutter);
+    padding: var(--gutter-large) var(--gutter);
+  }
+
+  .ft-offices__links {
+    flex-shrink: 0;
+    width: calc(160 * var(--u));
+    padding: 0;
+  }
+
+  .ft-offices__link[data-active="true"] { transform: skewX(var(--skew-deg)); }
+  .ft-offices__link-label { font-size: calc(48 * var(--u)); line-height: 0.83; }
+
+  .ft-offices__details {
+    display: grid;
+    width: calc(var(--single-column-width) * 8 + var(--gutter) * 7);
+    height: fit-content;
+  }
+}
+
+@media (min-width: 1600px) {
+  .ft-offices__details { width: calc(var(--single-column-width) * 6 + var(--gutter) * 5); }
+}
+
+.ft-office {
+  grid-area: 1 / 1;
+  display: flex;
+  justify-content: space-between;
+  column-gap: var(--gutter);
+  width: 100%;
+}
+
+.ft-office[data-active="false"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.ft-office__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.ft-office__content {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-muted);
+}
+
+.ft-office__address { margin-block: var(--gutter-small); }
+
+@media (hover: hover) and (pointer: fine) {
+  .ft-office__content a:hover {
+    text-decoration: underline 1px;
+    text-underline-offset: calc(2 * var(--u));
+  }
+}
+
+@media (min-width: 1600px) {
+  .ft-office__address { margin-block: var(--gutter-large); }
+}
+
+.ft-office__image {
+  display: grid;
+  flex-shrink: 0;
+  width: var(--asset-height);
+  height: var(--asset-height);
+  overflow: clip;
+  background: var(--color-faint);
+}
+
+.ft-office__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  align-self: center;
+}
+
+/* Navegação */
+.ft-nav {
+  --row-padding: calc(6 * var(--u));
+  grid-area: nav;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  padding: calc(var(--gutter-large) - var(--row-padding)) calc(var(--gutter) - var(--row-padding));
+  border-top: 1px solid var(--color-faint);
+}
+
+.ft-nav__link {
+  display: flex;
+  width: fit-content;
+  padding: var(--row-padding);
+  overflow: clip;
+}
+
+.ft-nav__label {
+  transform-origin: 0 100%;
+  transition: transform 0.3s var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ft-nav__link:hover .ft-nav__label { transform: skewX(var(--skew-deg)); }
+}
+
+@media (min-width: 1280px) {
+  .ft-nav {
+    flex-direction: row;
+    margin-top: auto;
+    border-top: none;
+  }
+}
+
+/* Barra inferior */
+.ft-bottom { display: contents; }
+
+.ft-bottom__logo {
+  grid-area: logo;
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  padding: var(--gutter-large) var(--gutter);
+}
+
+.ft-bottom__logo svg {
+  height: calc(48 * var(--u));
+  width: auto;
+}
+
+.ft-bottom__legal {
+  grid-area: legal;
+  display: flex;
+  justify-content: space-between;
+  height: var(--row-height-small);
+  border-top: 1px solid var(--color-faint);
+}
+
+.ft-bottom__legal > * {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-inline: var(--gutter);
+  color: var(--color-subtle);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ft-bottom__legal a:hover { color: var(--color-text); }
+}
+
+@media (min-width: 1280px) {
+  .ft-bottom {
+    grid-area: bottom;
+    display: flex;
+    height: var(--row-height-large);
+    border-top: 1px solid var(--color-faint);
+  }
+
+  .ft-bottom__logo { padding-block: calc(16 * var(--u)); }
+
+  .ft-bottom__legal {
+    width: var(--right-column-width);
+    height: 100%;
+    margin-left: auto;
+    border-top: none;
+  }
+}
+
+/* ---------- Cursor "Let's talk" (área do título) ----------
+   Renderizado via portal no body: o transform da animação do footer
+   quebraria o position:fixed se ficasse dentro dele. */
+.talk-cursor-dot,
+.talk-cursor-pill {
+  position: fixed;
+  top: 0;
+  left: 0;
+  /* Mesmo nível do cursor contextual, abaixo da loading screen */
+  z-index: 9999;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Ponto que substitui o cursor; o blend inverte a cor sobre as letras pretas */
+.talk-cursor-dot { mix-blend-mode: difference; }
+
+.talk-cursor-dot::before {
+  content: "";
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.14, 1, 0.34, 1);
+}
+
+.talk-cursor-dot.is-visible::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* O transform de posição é do JS; a entrada/saída fica no elemento interno */
+.talk-cursor-pill__glass {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 20px;
+  border-radius: 999px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: rgba(255, 255, 255, 0.28);
+  -webkit-backdrop-filter: blur(10px) saturate(180%) brightness(1.15);
+  backdrop-filter: blur(10px) saturate(180%) brightness(1.15);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+    inset 0 0 18px rgba(255, 255, 255, 0.35),
+    0 10px 30px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform: scale(0.4);
+  transform-origin: 0 0;
+  transition: opacity 0.25s ease, transform 0.5s var(--ease);
+}
+
+/* Brilho especular na parte de cima, típico do efeito de vidro */
+.talk-cursor-pill__glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 55%);
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.talk-cursor-pill.is-visible .talk-cursor-pill__glass {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.talk-cursor-pill__label { position: relative; }
+
+.talk-cursor-pill__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--color-background);
+  background: var(--color-text);
+}
+
+.talk-cursor-pill__icon svg {
+  width: 16px;
+  height: 16px;
+  transform: rotate(-45deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cursor-pill],
+  [data-cursor-pill] * { cursor: none; }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .talk-cursor-dot,
+  .talk-cursor-pill { display: none; }
+}
+
+/* ---------- Animação de entrada ----------
+   O footer fica "preso" atrás da seção anterior (translateY de -100svh até 0)
+   enquanto o conteúdo interno sobe de 50svh até 0. A seção de cima, ao rolar,
+   parece subir e revelar o footer por trás. Sem suporte a view(), o fallback
+   em JS fica no Footer.jsx. */
+@keyframes ft-pin {
+  from { transform: translateY(-100svh); }
+  to { transform: translateY(0); }
+}
+
+@keyframes ft-rise {
+  from { transform: translateY(50svh); }
+  to { transform: translateY(0); }
+}
+
+@keyframes ft-image-shift {
+  from { transform: translateY(-2svh); }
+  to { transform: translateY(2svh); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .site-footer {
+      animation: ft-pin linear both;
+      animation-timeline: view();
+      animation-range: entry;
+    }
+
+    .site-footer__container {
+      animation: ft-rise linear both;
+      animation-timeline: view();
+      animation-range: entry;
+    }
+
+    .ft-office__image img {
+      height: calc(100% + 4svh);
+      animation: ft-image-shift linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
+  }
+}

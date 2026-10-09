@@ -3,12 +3,17 @@ import { useLenis } from 'lenis/react'
 import { useHeaderScroll } from '../hooks/useHeaderScroll'
 import { useActiveSection } from '../hooks/useActiveSection'
 import { useLanguage } from '../context/LanguageContext'
+import { usePrevLabelHeld } from '../utils/pageTransition'
 import { DecodeText } from './DecodeText'
 import { Menu } from './Menu'
 import logo from '../assets/logo.svg'
 
-export function Header() {
-  const scrolled = useHeaderScroll()
+// page="contact": mesmo header, mas o rótulo é fixo ("Contato"), o fundo fica
+// sempre no estado com vidro e o logo leva de volta pra home.
+export function Header({ page = 'home' }) {
+  const isContact = page === 'contact'
+  const scrolled = useHeaderScroll() || isContact
+  const entering = usePrevLabelHeld()
   const { t } = useLanguage()
   const lenis = useLenis()
 
@@ -16,6 +21,7 @@ export function Header() {
   // getBoundingClientRect().top never changes — a native #top jump would be
   // a no-op. Scroll to the real document top instead.
   const handleHomeClick = (e) => {
+    if (isContact) return
     e.preventDefault()
     e.stopPropagation()
     lenis?.scrollTo(0)
@@ -35,12 +41,14 @@ export function Header() {
 
   useEffect(() => () => clearTimeout(toggleTimeoutRef.current), [])
 
-  const activeId = useActiveSection(['top', 'manifesto', 'trabalhos', 'carreiras'])
+  const homeSectionId = useActiveSection(isContact ? [] : ['top', 'manifesto', 'trabalhos', 'carreiras'])
+  const activeId = isContact ? 'contato' : homeSectionId
   const sectionLabels = {
     top: t.header.home,
     manifesto: t.header.manifesto,
     trabalhos: t.header.work,
     carreiras: t.header.careers,
+    contato: t.header.contact,
   }
 
   useEffect(() => {
@@ -62,12 +70,17 @@ export function Header() {
       ref={headerRef}
       className={[scrolled && 'scrolled', open && 'menu-open'].filter(Boolean).join(' ')}
     >
-      <a href="#top" className="brand" onClick={handleHomeClick}>
+      <a href={isContact ? '/' : '#top'} className="brand" onClick={handleHomeClick}>
         <img src={logo} alt="MyTigency" className="brand-logo" />
       </a>
 
       <div className="header-right">
-        <DecodeText value={sectionLabels[activeId]} className="section-label" />
+        {/* Chegando pela cortina de dither: o rótulo começa no da página
+            anterior e decodifica para o desta durante a revelação */}
+        <DecodeText
+          value={entering ? sectionLabels[isContact ? 'top' : 'contato'] : sectionLabels[activeId]}
+          className="section-label"
+        />
 
         <button
           type="button"
@@ -93,7 +106,7 @@ export function Header() {
         </button>
       </div>
 
-      <Menu open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} activeId={activeId} />
+      <Menu open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} activeId={activeId} isContact={isContact} />
     </header>
   )
 }

@@ -78,7 +78,7 @@
        até embaixo da marquee junto com o scroll, enquanto ela chega ao topo. */
     --header-base:0px;
     position:fixed;left:0;right:0;
-    top:calc(var(--header-base) + (var(--marquee-h, 52px) - var(--header-base)) * var(--dock-t, 0));
+    top:calc(var(--header-base) + (var(--marquee-h, 52px) - var(--header-base)) * var(--dock-t, 0) + var(--chrome-push, 0px));
     background:transparent;
     z-index:60;
     isolation:isolate;
@@ -90,7 +90,7 @@
     pointer-events:none;
   }
   html.marquee-docked header{
-    top:var(--marquee-h, 52px);
+    top:calc(var(--marquee-h, 52px) + var(--chrome-push, 0px));
   }
   /* isolation:isolate above makes header its own stacking context, so
      .menu-panel's z-index:70 only wins against header's own children —
@@ -582,15 +582,36 @@
   .reveal-spacer.reveal-spacer--active{
     height:calc(var(--hero-h, 100vh) * 1.8);
   }
+  /* z-index:1 mantém o painel por cima do footer (z-index:0, irmão logo
+     abaixo), que fica "preso" atrás dele e é revelado pelo scroll — ver
+     Footer.css. O painel já vira contexto de empilhamento no sweep (transform);
+     isso só fixa esse estado depois do dock (nada dentro dele precisa passar
+     do header). */
   .reveal-panel{
     position:relative;
+    z-index:1;
     background:var(--bg);
   }
 
   .marquee.marquee--reveal{
     position:sticky;
-    top:0;
+    top:var(--chrome-push, 0px);
     z-index:61;
+  }
+
+  /* Footer empurrando (Footer.jsx → --chrome-push, px ≤ 0): quando o topo
+     do footer encosta na base do header, header e marquee sobem junto com
+     ele, ligados ao scroll. Nos dois vai em `top`: no header, transform
+     viraria o containing block do .menu-panel (ver acima); na marquee, o
+     GSAP grava transform e `translate:none` inline (sweep/refresh), então
+     só o top do sticky é nosso. Menu aberto ignora o empurrão. Totalmente
+     fora da tela, visibility tira os links do foco por teclado. */
+  header.menu-open{
+    --chrome-push:0px;
+  }
+  html.footer-revealed header:not(.menu-open),
+  html.footer-revealed .marquee{
+    visibility:hidden;
   }
 
   /* ---------- Manifesto ----------
@@ -1317,21 +1338,6 @@
     line-height:1.05;max-width:16ch;
   }
   .cta-band h2 .accent{color:var(--accent);}
-
-  /* ---------- Footer ---------- */
-  footer{padding:56px clamp(20px,4vw,48px) 32px;}
-  .footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;margin-bottom:50px;}
-  @media(max-width:760px){ .footer-grid{grid-template-columns:1fr 1fr;} }
-  .footer-grid h5{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:16px;}
-  .footer-grid ul{list-style:none;}
-  .footer-grid li{margin-bottom:10px;}
-  .footer-grid a{font-size:13.5px;opacity:.85;}
-  .footer-grid a:hover{opacity:1;color:var(--accent);}
-  .footer-bottom{
-    display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;
-    padding-top:22px;border-top:1px solid var(--line);
-    font-size:11px;color:var(--ink-dim);
-  }
 
   .reveal{opacity:0;transform:translateY(20px);transition:opacity .8s ease,transform .8s ease;}
   .reveal.in{opacity:1;transform:translateY(0);}

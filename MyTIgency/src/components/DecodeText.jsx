@@ -12,14 +12,15 @@ export function DecodeText({
   const text = String(value)
   const originalChars = useMemo(() => text.split(''), [text])
   const [displayChars, setDisplayChars] = useState(originalChars)
-  const mounted = useRef(false)
+  // Compara com o texto anterior em vez de uma flag de "montado": o StrictMode
+  // roda o efeito duas vezes no mount e a flag fazia o texto decodificar sem
+  // ter mudado.
+  const prevText = useRef(text)
   const [autoActive, setAutoActive] = useState(animateOnMount)
 
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true
-      return
-    }
+    if (prevText.current === text) return
+    prevText.current = text
     if (controlledActive === undefined) setAutoActive(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text])

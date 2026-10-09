@@ -25,7 +25,7 @@ export function Work(){
 
               <section className="cta-band" id="contato">
         <h2>{t.work.ctaPre}<RedText>{t.work.ctaAccent}</RedText></h2>
-        <a href="#" className="btn solid">{t.work.ctaButton}</a>
+        <a href="/contato" className="btn solid">{t.work.ctaButton}</a>
       </section>
       </section>
     )

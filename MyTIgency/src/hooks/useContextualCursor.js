@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { initialPointer } from '../utils/pageTransition'
 
 const LABELS = {
   link: '→',
@@ -105,6 +106,15 @@ export function useContextualCursor(ringRef, dotRef, labelRef) {
       label.style.top = `${my + 18}px`
 
       rafId = requestAnimationFrame(animCursor)
+    }
+
+    // Chegando de outra página: o navegador não informa onde o mouse está até
+    // ele se mover — começa onde ele estava na página anterior, em vez de
+    // sumir (o cursor do sistema está escondido por contextual-cursor-active).
+    const start = initialPointer()
+    if (start) {
+      Object.assign(motionRef.current, { mx: start.x, my: start.y, cx: start.x, cy: start.y })
+      applyKind(getCursorKind(resolveTarget(start.x, start.y)))
     }
 
     window.addEventListener('mousemove', handleMove, { passive: true })

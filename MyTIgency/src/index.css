@@ -1,0 +1,54 @@
+/* ---------- Transição entre páginas (home ⇄ contato) ----------
+   Cortina de dither — lógica em src/utils/pageTransition.js. Abaixo do
+   cursor contextual (9999): a pessoa continua vendo o próprio cursor (que é
+   mix-blend: difference, então aparece claro sobre a tinta). O rótulo tem a
+   mesma tipografia do primeiro frame pintado pelo <head> (html.vt-covered),
+   para a troca de página não dar salto. */
+.vt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+
+.vt-overlay canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.vt-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font: 500 13px/1 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #FAFAF8;
+  white-space: pre;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.vt-overlay.is-labelled .vt-label {
+  opacity: 1;
+}
+
+.vt-label__caret {
+  animation: loadingCursorBlink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vt-label__caret {
+    animation: none;
+  }
+}
+
+/* Dither: 1 pixel do canvas por célula, ampliado sem suavizar */
+.vt-overlay canvas {
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
