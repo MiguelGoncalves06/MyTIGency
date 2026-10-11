@@ -5,20 +5,15 @@ import { decodeAt, decodeDuration, DECODE_TICK_MS } from '../hooks/useAsciiGlitc
 // Cortina de dither: a página atual é coberta de tinta por uma onda de
 // pixels em dither retrô (Bayer, a mesma linguagem da TV do Manifesto) que
 // nasce de onde a pessoa clicou; o destino aparece no centro decodificando
-// (CONTATO_); a página navega; a nova nasce coberta e só se revela — os
-// pontos encolhendo a partir do centro — quando está pronta de verdade (na
-// home: fontes + modelo 3D, o mesmo gate do LoadingScreen). A cortina é a
-// tela de carregamento entre páginas, não um efeito por cima de uma troca.
+// (CONTATO_); a rota troca por baixo da cortina (sem recarregar — ver
+// "Roteador"); a página nova só se revela, os pixels clareando a partir do
+// centro, quando está pronta de verdade (home: fontes + modelo 3D, o mesmo
+// gate do LoadingScreen). A cortina é a tela de carregamento entre páginas.
 //
 // Referências estudadas no Awwwards: estrutura cobrir → rótulo → revelar
 // (Spatzek Studio, Constantinos Haritos); onda de textura (Yuga Labs).
-//
-// Primeiro frame da página nova: o <head> de index.html/contato.html já pinta
-// a tinta + rótulo (html.vt-covered) antes de qualquer JS; este módulo assume
-// dali sem emenda. Sem View Transitions: funciona em qualquer navegador.
 
 const INK = '#0B0B0C'
-const KEY = 'myt-vt'
 const PAGES = {
   '/': { pt: 'home', en: 'home' },
   '/contato': { pt: 'contato', en: 'contact' },
@@ -234,41 +229,103 @@ export function usePrevLabelHeld() {
   return useSyncExternalStore(subscribe, () => prevLabelHeld, () => false)
 }
 
-// Última posição do ponteiro: a página nova nasce com o cursor customizado
-// onde o mouse está (sem isso ele some até o primeiro movimento).
-// Começa na posição trazida da página anterior: sem movimento nesta página
-// (clicar de novo com o mouse parado), ela continua valendo.
-const pointer = { x: window.__mytVT?.x ?? null, y: window.__mytVT?.y ?? null }
-window.addEventListener('pointermove', (e) => {
-  pointer.x = e.clientX
-  pointer.y = e.clientY
-}, { passive: true })
+// ---------- Roteador: navegação sem recarregar ----------
+// Como nos sites de referência (Barba.js, Taxi, Nuxt): um documento só. A
+// cortina fecha, a rota troca por baixo dela, a página nova avisa que está
+// pronta e a cortina abre. Cursor, Lenis e o próprio documento continuam
+// vivos — o navegador nunca "esquece" onde o mouse está (com recarga de
+// página o Chrome não reaplica cursor:none até o mouse se mexer).
+const TITLES = { '/': 'mytigency', '/contato': 'Contato — MyTIgency' }
 
-// ---------- Chegando (página nova) ----------
-// Lido no <head> (window.__mytVT) para o primeiro frame já sair coberto.
-const incoming = window.__mytVT ?? null
+let route = PAGES[normalize(window.location.pathname)] ? normalize(window.location.pathname) : '/'
+let navigated = false
+let lenis = null
+let prefetchPage = () => {}
+let readyResolve = null
+let busy = false
 let overlay = null
-let revealing = false
 
-/** Esta página foi aberta pela cortina (a home usa isso pra pular o LoadingScreen). */
-export const arrivedByTransition = () => incoming !== null
-/** Posição do ponteiro trazida da página anterior, se houver. */
-export const initialPointer = () => (incoming && incoming.x != null ? { x: incoming.x, y: incoming.y } : null)
+// O scroll volta pro topo por nós (por baixo da cortina), não pelo navegador
+if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'
 
-if (incoming) {
-  overlay = createOverlay(incoming.label)
-  overlay.solid()
-  overlay.showLabel(true)
-  document.documentElement.classList.remove('vt-covered')
-  setCovered(true)
-  prevLabelHeld = true
-  setTimeout(() => markPageReady(), MAX_WAIT_MS)
+/** Rota atual ('/' ou '/contato'). */
+export function useRoute() {
+  return useSyncExternalStore(subscribe, () => route, () => route)
+}
+/** false só na primeira página aberta (a home usa pra decidir o LoadingScreen). */
+export const hasNavigated = () => navigated
+/** SmoothScroll registra o Lenis (scroll pro topo/âncora por baixo da cortina). */
+export function setPageLenis(instance) {
+  lenis = instance
+}
+/** App registra como baixar o código de uma página (adiantado durante a cortina). */
+export function setPagePrefetch(fn) {
+  prefetchPage = fn
+}
+/** A página nova avisa que está pronta (home: useAppReady; contato: fontes). */
+export function markPageReady() {
+  readyResolve?.()
+  readyResolve = null
 }
 
-/** A página avisa que está pronta (home: useAppReady; contato: fontes) → revela. */
-export async function markPageReady() {
-  if (!overlay || revealing) return
-  revealing = true
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+function scrollTo(target) {
+  if (lenis) lenis.scrollTo(target, { immediate: true, force: true })
+  else if (target === 0) window.scrollTo(0, 0)
+}
+
+// Âncora vinda de outra página (/#trabalhos): os pins do GSAP da home ainda
+// estão se montando e empurram o layout, então repete até a seção parar no
+// topo — tudo ainda por baixo da cortina.
+async function scrollToAnchor(hash) {
+  const el = document.getElementById(decodeURIComponent(hash.slice(1)))
+  if (!el) return
+  for (let i = 0; i < 12; i++) {
+    scrollTo(el)
+    await nextFrame()
+    if (Math.abs(el.getBoundingClientRect().top) < 2) return
+  }
+}
+
+async function go(to, url, { push, ox, oy }) {
+  busy = true
+  prefetchPage(to)
+  if (document.querySelector('.menu-panel')) await wait(MENU_EXIT_MS)
+
+  // 1. Cobre
+  overlay = createOverlay(labelFor(to))
+  setCovered(true)
+  if (reduceMotion) {
+    overlay.root.style.opacity = '0'
+    overlay.solid()
+    overlay.showLabel(true)
+    await overlay.fade(true, 200)
+  } else {
+    let labelStarted = null
+    await overlay.wave(ox, oy, COVER_MS, false, (t) => {
+      if (!labelStarted && t >= LABEL_AT) {
+        overlay.showLabel(true)
+        labelStarted = overlay.decode()
+      }
+    })
+    await labelStarted
+    await wait(PAUSE_MS)
+  }
+
+  // 2. Troca a rota por baixo da cortina
+  const ready = new Promise((r) => { readyResolve = r })
+  if (push) window.history.pushState({ myt: true }, '', url.pathname + url.search + url.hash)
+  scrollTo(0)
+  navigated = true
+  prevLabelHeld = true
+  route = to
+  document.title = TITLES[to]
+  listeners.forEach((fn) => fn())
+  await Promise.race([ready, wait(MAX_WAIT_MS)])
+  readyResolve = null
+  if (url.hash) await scrollToAnchor(url.hash)
+
+  // 3. Revela
   await wait(HOLD_MS)
   overlay.showLabel(false)
   if (reduceMotion) {
@@ -282,65 +339,25 @@ export async function markPageReady() {
   overlay.remove()
   overlay = null
   setCovered(false)
-}
+  busy = false
 
-// ---------- Saindo (clique num link para a outra página) ----------
-let leaving = false
-
-async function leave(url, to, ox, oy) {
-  leaving = true
-  // Adianta o download da página de destino enquanto a cortina fecha
-  const prefetch = document.createElement('link')
-  prefetch.rel = 'prefetch'
-  prefetch.href = url.href
-  document.head.appendChild(prefetch)
-
-  if (document.querySelector('.menu-panel')) await wait(MENU_EXIT_MS)
-
-  const label = labelFor(to)
-  const ov = createOverlay(label)
-  overlay = ov
-  setCovered(true)
-
-  if (reduceMotion) {
-    ov.root.style.opacity = '0'
-    ov.solid()
-    ov.showLabel(true)
-    await ov.fade(true, 200)
-  } else {
-    let labelStarted = null
-    await ov.wave(ox, oy, COVER_MS, false, (t) => {
-      if (!labelStarted && t >= LABEL_AT) {
-        ov.showLabel(true)
-        labelStarted = ov.decode()
-      }
-    })
-    await labelStarted
-    await wait(PAUSE_MS)
+  // Voltar/avançar apertado no meio da transição: segue até onde a URL está
+  const pending = normalize(window.location.pathname)
+  if (PAGES[pending] && pending !== route) {
+    go(pending, new URL(window.location.href), { push: false, ox: window.innerWidth / 2, oy: window.innerHeight / 2 })
   }
-
-  try {
-    sessionStorage.setItem(KEY, JSON.stringify({ to, label, t: Date.now(), x: pointer.x, y: pointer.y }))
-  } catch {
-    // sem storage a página nova só não nasce coberta
-  }
-  window.location.href = url.href
 }
 
 document.addEventListener('click', (e) => {
-  if (leaving || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
   const a = e.target.closest?.('a[href]')
   if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return
   const url = new URL(a.href, window.location.href)
   if (url.origin !== window.location.origin) return
   const to = normalize(url.pathname)
-  if (!PAGES[to] || to === normalize(window.location.pathname)) return
+  if (!PAGES[to] || to === route) return // outra página do site (créditos) ou âncora na mesma: segue normal
   e.preventDefault()
-  // Clique de mouse: a posição do clique é a mais atual que existe
-  if (e.detail > 0) {
-    pointer.x = e.clientX
-    pointer.y = e.clientY
-  }
+  if (busy) return
   // Teclado (Enter) não tem coordenada: a onda nasce do próprio link
   let { clientX: x, clientY: y } = e
   if (!x && !y) {
@@ -348,16 +365,14 @@ document.addEventListener('click', (e) => {
     x = r.left + r.width / 2
     y = r.top + r.height / 2
   }
-  leave(url, to, x, y)
+  go(to, url, { push: true, ox: x, oy: y })
 }, true)
 
-// Voltar pelo navegador (bfcache) devolve esta página ainda coberta: limpa.
-window.addEventListener('pageshow', (e) => {
-  if (!e.persisted || !leaving) return
-  leaving = false
-  overlay?.remove()
-  overlay = null
-  setCovered(false)
+// Voltar/avançar do navegador: mesma cortina, nascendo do centro
+window.addEventListener('popstate', () => {
+  const to = normalize(window.location.pathname)
+  if (busy || !PAGES[to] || to === route) return
+  go(to, new URL(window.location.href), { push: false, ox: window.innerWidth / 2, oy: window.innerHeight / 2 })
 })
 
 window.addEventListener('resize', () => overlay?.relayout())

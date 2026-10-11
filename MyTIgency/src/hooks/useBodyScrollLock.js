@@ -7,12 +7,14 @@ export function useBodyScrollLock(locked) {
   useEffect(() => {
     if (!locked) return undefined
 
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    // Trava no <html>, não no <body>: overflow no root vale pra viewport, que
+    // continua sendo o contêiner de rolagem. No <body> (somado ao clip que o
+    // Lenis põe no <html>) o body virava um contêiner próprio e todo
+    // position:sticky — a marquee ancorada no topo — pulava pra fora da tela.
+    document.documentElement.style.overflow = 'hidden'
     lenis?.stop()
 
     return () => {
-      document.body.style.overflow = prevOverflow
       lenis?.start()
       // Corrida do Lenis com autoToggle: stop() só põe overflow:clip inline no
       // <html> e marca isStopped no transitionend. Se o start() vem antes desse
@@ -21,6 +23,12 @@ export function useBodyScrollLock(locked) {
       // (reproduzido no fim do LoadingScreen). Tirar o clip aqui faz o próprio
       // Lenis reler o overflow (liberado) e voltar, em qualquer ordem.
       document.documentElement.style.removeProperty('overflow')
+      // Rede de segurança: o Lenis (autoToggle) só reavalia se está parado no
+      // transitionend do overflow; se esse evento se perder (troca rápida,
+      // aba em segundo plano), ele fica "parado" com a página liberada e
+      // engole a roda do mouse — o scroll trava até recarregar. Reavalia no
+      // frame seguinte, pelo overflow real.
+      requestAnimationFrame(() => lenis?.checkOverflow?.())
     }
   }, [locked, lenis])
 }

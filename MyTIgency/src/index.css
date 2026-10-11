@@ -1,9 +1,7 @@
 /* ---------- Transição entre páginas (home ⇄ contato) ----------
    Cortina de dither — lógica em src/utils/pageTransition.js. Abaixo do
    cursor contextual (9999): a pessoa continua vendo o próprio cursor (que é
-   mix-blend: difference, então aparece claro sobre a tinta). O rótulo tem a
-   mesma tipografia do primeiro frame pintado pelo <head> (html.vt-covered),
-   para a troca de página não dar salto. */
+   mix-blend: difference, então aparece claro sobre a tinta). */
 .vt-overlay {
   position: fixed;
   inset: 0;

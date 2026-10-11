@@ -7,49 +7,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,700;1,400&family=Archivo+Black&family=League+Gothic&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,700&family=Syne:wght@700;800;900&family=Source+Code+Pro:wght@400;600&family=Great+Vibes&family=Just+Me+Again+Down+Here&family=Hedvig+Letters+Sans&family=Ibarra+Real+Nova:wght@400;700&family=IM+Fell+Great+Primer&family=Iansui&family=IM+Fell+English&family=Italiana&family=UnifrakturMaguntia&family=Space+Mono&family=Nothing+You+Could+Do&family=IBM+Plex+Sans+Hebrew&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,700;1,400&family=Archivo+Black&family=League+Gothic&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,700&family=Syne:wght@700;800;900&family=Source+Code+Pro:wght@400;600&family=Great+Vibes&family=Just+Me+Again+Down+Here&family=Hedvig+Letters+Sans&family=Ibarra+Real+Nova:wght@400;700&family=IM+Fell+Great+Primer&family=Iansui&family=IM+Fell+English&family=Italiana&family=UnifrakturMaguntia&family=Space+Mono&family=Nothing+You+Could+Do&family=IBM+Plex+Sans+Hebrew&family=Instrument+Serif:ital@0;1&family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&display=swap"
       rel="stylesheet"
     />
     <title>Contato — MyTIgency</title>
-    <!-- Transição entre páginas: aberta pela cortina de dither, a página já
-         nasce coberta (tinta + rótulo) antes de qualquer JS — ver
-         src/utils/pageTransition.js, que assume daqui. -->
-    <script>
-      try {
-        var vt = JSON.parse(sessionStorage.getItem("myt-vt") || "null");
-        sessionStorage.removeItem("myt-vt");
-        var here = location.pathname.replace(/\.html$/, "").replace(/\/index$/, "").replace(/\/+$/, "") || "/";
-        if (vt && vt.to === here && Date.now() - vt.t < 15000) {
-          window.__mytVT = vt;
-          document.documentElement.className += " vt-covered";
-          document.documentElement.setAttribute("data-vt-label", vt.label);
-        }
-      } catch (e) {}
-    </script>
     <style>
       /* Barra de rolagem nativa escondida no site todo (decisão de design): o
          scroll continua (roda, toque, teclado), mas a largura da página não
          muda mais quando o scroll trava — era a causa das tremidas. */
       html { scrollbar-width: none; }
       html::-webkit-scrollbar { display: none; }
-      /* Cursor do sistema escondido desde o primeiro frame enquanto a cortina
-         cobre a tela (o cursor do site assume) — sem isso o do Windows aparece
-         junto até o mouse se mover. Só onde o cursor do site existe. */
-      @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
-        html.vt-covered, html.vt-covered *, html.vt-active, html.vt-active * { cursor: none !important; }
-      }
-      html.vt-covered::after {
-        content: attr(data-vt-label) "_";
-        position: fixed; inset: 0; z-index: 9998;
-        display: flex; align-items: center; justify-content: center;
-        background: #0B0B0C; color: #FAFAF8;
-        font: 500 13px/1 "JetBrains Mono", monospace;
-        letter-spacing: 0.08em; text-transform: uppercase; white-space: pre;
-      }
     </style>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/contato.jsx"></script>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

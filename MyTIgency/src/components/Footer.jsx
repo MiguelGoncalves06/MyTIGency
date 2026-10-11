@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useLenis } from 'lenis/react'
+import { useRoute } from '../utils/pageTransition'
 import { useLanguage } from '../context/LanguageContext'
 import empresaImg from '../assets/empresa.jpg'
 import conversaImg from '../assets/conversa.jpg'
@@ -66,6 +68,15 @@ const preventDefault = (e) => e.preventDefault()
 export function Footer() {
   const { t } = useLanguage()
   const f = t.footer
+  const lenis = useLenis()
+  const route = useRoute()
+  // Já na página de contato, "Let's talk" / Contact Us não troca de página:
+  // sobe suave até o topo do contato.
+  const toContact = (e) => {
+    if (route !== '/contato') return
+    e.preventDefault()
+    lenis?.scrollTo(0, { duration: 1.6 })
+  }
 
   const footerRef = useRef(null)
   const containerRef = useRef(null)
@@ -303,6 +314,7 @@ export function Footer() {
           <a
             className="site-footer__title"
             href="/contato"
+            onClick={toContact}
             ref={titleRef}
             data-cursor="hidden"
             data-cursor-pill
@@ -416,7 +428,7 @@ export function Footer() {
           <ol className="ft-nav">
             {NAV.map((label) => (
               <li key={label}>
-                <a className="ft-nav__link" href={NAV_LINKS[label] ?? '#'} onClick={NAV_LINKS[label] ? undefined : preventDefault}><span className="ft-nav__label t-heading">{label}</span></a>
+                <a className="ft-nav__link" href={NAV_LINKS[label] ?? '#'} onClick={NAV_LINKS[label] ? toContact : preventDefault}><span className="ft-nav__label t-heading">{label}</span></a>
               </li>
             ))}
           </ol>

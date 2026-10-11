@@ -1,10 +1,14 @@
-import { ReactLenis } from 'lenis/react'
+import { useEffect } from 'react'
+import { ReactLenis, useLenis } from 'lenis/react'
 import 'lenis/dist/lenis.css'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
-import { usePageCovered } from '../utils/pageTransition'
+import { setPageLenis, usePageCovered } from '../utils/pageTransition'
 
-// Scroll travado enquanto a cortina da transição entre páginas cobre a tela
-function PageTransitionScrollLock() {
+// Transição entre páginas: scroll travado enquanto a cortina cobre a tela, e
+// o Lenis registrado para a troca de rota rolar pro topo/âncora por baixo dela
+function PageTransitionScroll() {
+  const lenis = useLenis()
+  useEffect(() => setPageLenis(lenis), [lenis])
   useBodyScrollLock(usePageCovered())
   return null
 }
@@ -28,7 +32,7 @@ const LENIS_OPTIONS = {
 export function SmoothScroll({ children }) {
   return (
     <ReactLenis root options={LENIS_OPTIONS}>
-      <PageTransitionScrollLock />
+      <PageTransitionScroll />
       {children}
     </ReactLenis>
   )

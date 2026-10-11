@@ -1,0 +1,581 @@
+<!doctype html>
+<!-- Laboratório da página de contato (não faz parte do site). Finalistas
+     após teste com usuário: V1 e V2 (eram V0 e V5), trocadas pela barra de
+     baixo, pelas teclas 1/2 ou por ?v=1|2. Título C1; V2 em escada (?v=2) ou em linha (?v=3). Estático: nada é enviado. Abrir com o servidor do Vite:
+     /lab/contato/  — usa as fontes do projeto em /src/assets/fonts.
+     Título "Want to start a new project?" é PROVISÓRIO (vai ser trocado). -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lab — Contato</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,700&family=IM+Fell+English&family=Instrument+Serif:ital@0;1&family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&display=swap" rel="stylesheet" />
+<style>
+/* Fontes gratuitas (Google Fonts, OFL): Instrument Serif (títulos, frases,
+   e-mails) no lugar da Roslindale Condensed; Fraunces (campos, pílulas,
+   seletor, link de privacidade) no lugar da Roslindale Display; ENVIAR em
+   JetBrains Mono bold no lugar da Droog. */
+
+/* ---------- Base comum ---------- */
+:root {
+  --bg: #E6E3DD;
+  --paper: #F3F2EF;
+  --ink: #141414;
+  --ink-2: #3B3536;
+  --soft: #6B6B64;     /* texto secundário legível (≈4.6:1 no fundo) */
+  --mute: #959180;     /* só placeholders e números */
+  --field: #fff;
+  --accent: #FF4438;
+  --line: #141414;
+  /* Piso de legibilidade: nenhuma versão desce disso */
+  --fs-small: clamp(13px, 0.35vw + 9px, 15px);
+  --fs-body: clamp(15px, 0.45vw + 10px, 19px);
+  --fs-input: clamp(16px, 0.6vw + 10px, 22px);
+  --gutter: clamp(16px, 2.4vw, 48px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scrollbar-width: none; }
+html::-webkit-scrollbar { display: none; }
+body { background: var(--bg); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: var(--fs-body); -webkit-font-smoothing: antialiased; letter-spacing: -0.015em; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; letter-spacing: inherit; }
+input, textarea { font: inherit; color: inherit; background: none; border: 0; outline: none; letter-spacing: inherit; }
+input::placeholder, textarea::placeholder { color: var(--mute); opacity: 1; }
+:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+/* campos já mostram o foco pela linha vermelha */
+input:focus-visible, textarea:focus-visible { outline: none; }
+::selection { background: var(--accent); color: #fff; }
+
+.hdr { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; height: 72px; padding: 0 var(--gutter); background: var(--paper); border-bottom: 1px solid rgba(20,20,20,.12); }
+.hdr img { height: 30px; }
+.hdr__r { display: flex; gap: 22px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.hdr__r span:first-child { color: var(--soft); }
+
+.ver { display: none; }
+body[data-v="1"] #v1, body[data-v="2"] #v2 { display: block; }
+
+.title { font-family: 'Instrument Serif', serif; font-weight: 400; line-height: .72; letter-spacing: -.025em; white-space: nowrap; }
+.title span { display: block; }
+.title i { font-style: italic; }
+.title .l1 { padding-left: .41em; } .title .l2 { padding-left: .67em; } .title .l4 { padding-left: .82em; letter-spacing: -.037em; }
+.hello { font-family: 'Instrument Serif', serif; letter-spacing: -.01em; }
+.star { fill: var(--line); }
+
+.req { color: var(--accent); }
+.opt { color: var(--soft); }
+.num { color: var(--mute); }
+
+/* linha fina com foco vermelho (igual ao site) */
+.ln { position: relative; border-bottom: 1px solid var(--line); }
+.ln::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .3s cubic-bezier(.16,1,.3,1); }
+.ln:focus-within::after { transform: scaleX(1); }
+
+/* Seletor email / WhatsApp: as duas metades são caixas de marcação (dá pra
+   marcar as duas). Marcar = o ✓ se desenha como um traço de caneta (mesma
+   ideia das linhas desenhadas pelo scroll no Manifesto) e a metade ganha um
+   fundo vermelho bem claro, com o texto em tinta. */
+.tog { display: flex; border: 1px solid var(--soft); border-radius: 999px; background: var(--field); overflow: hidden; }
+.tog .ch { position: relative; flex: 1; min-height: 48px; display: flex; align-items: center; gap: .6em; padding: 0 1.3em; font-family: 'Fraunces', serif; letter-spacing: 0; color: var(--mute); transition: background-color .3s ease, color .3s ease; }
+.tog .ch + .ch { border-left: 1px solid var(--soft); }
+.tog .ch[aria-checked="true"] { background: rgba(255, 68, 56, .09); color: var(--ink); }
+.tog .ch:focus-visible { outline: 1px solid var(--ink); outline-offset: -5px; border-radius: 999px; }
+.ch .ic { flex: none; min-width: 2.4ch; font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 1em; letter-spacing: -0.02em; text-align: center; }
+.ch[aria-checked="true"] .ic { color: var(--accent); }
+.ch__box { width: 18px; height: 18px; flex: none; border: 1.5px solid currentColor; border-radius: 3px; transition: border-color .3s ease; }
+.ch__box path { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset .2s ease-in; }
+.ch[aria-checked="true"] .ch__box { border-color: var(--accent); }
+.ch[aria-checked="true"] .ch__box path { stroke-dashoffset: 0; transition: stroke-dashoffset .45s cubic-bezier(.65, 0, .35, 1) .05s; }
+@media (prefers-reduced-motion: reduce) { .tog .ch, .ch__box, .ch__box path { transition: none !important; } }
+.reveal { display: none; }
+.reveal.is-on { display: block; }
+
+/* ajuda do e-mail: completar o provedor / corrigir digitação */
+.sugg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: var(--fs-small); }
+.sugg[hidden] { display: none; }
+.sugg span { color: var(--soft); margin-right: 4px; }
+.sugg button { min-height: 32px; padding: 0 12px; border: 1px solid var(--soft); border-radius: 999px; background: var(--field); color: var(--ink-2); }
+@media (hover: hover) { .sugg button:hover { border-color: var(--accent); color: var(--accent); } }
+
+/* [06] O que você busca — igual nas duas versões: opções como abas da caixa;
+   clicar põe uma frase pronta na caixa, em vermelho enquanto ela não for
+   editada (camada espelho atrás do textarea pinta só essas frases). */
+.need .chips { display: flex; flex-wrap: wrap; }
+.need .chip { min-height: 34px; padding: 0 16px; font-size: var(--fs-small); border-bottom: 0; border-radius: 2px 2px 0 0; margin-right: -1px; }
+.need .box { position: relative; background: var(--field); border: 1px solid var(--soft); }
+.need .box > .hl, .need .box > textarea { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-input); line-height: 1.5; letter-spacing: -0.015em; padding: 16px; white-space: pre-wrap; overflow-wrap: break-word; }
+.need .hl { position: absolute; inset: 0; overflow: hidden; color: var(--ink); pointer-events: none; }
+.need .hl mark { background: none; color: var(--accent); }
+.need textarea { position: relative; display: block; width: 100%; height: 160px; resize: none; color: transparent; caret-color: var(--ink); background: transparent; }
+
+.pill, .chip { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--soft); background: var(--field); color: var(--soft); white-space: nowrap; transition: background-color .18s, border-color .18s, color .18s; }
+.pill { border-radius: 999px; font-family: 'Fraunces', serif; letter-spacing: 0; }
+.chip { text-transform: uppercase; letter-spacing: .02em; }
+.pill[aria-checked="true"], .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+@media (hover: hover) { .pill[aria-checked="false"]:hover, .chip[aria-pressed="false"]:hover { border-color: var(--ink); color: var(--ink); } }
+
+.send { display: flex; align-items: center; justify-content: center; gap: .4em; width: 100%; background: var(--accent); color: #fff; border-radius: 2px; transition: background-color .3s, opacity .3s; }
+.send[aria-disabled="true"] { background: #E34608; opacity: .33; }
+.send b { font-family: 'JetBrains Mono', monospace; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.send em { font-family: 'IM Fell English', serif; font-style: normal; }
+.status { min-height: 1.5em; color: var(--accent); font-size: var(--fs-small); }
+
+.legal { color: var(--soft); font-size: var(--fs-small); line-height: 1.7; }
+.legal a { color: var(--ink-2); border-bottom: 1px solid currentColor; font-family: 'Fraunces', serif; letter-spacing: 0; text-decoration: none; }
+.legal b { font-weight: 400; color: var(--ink-2); }
+.legal strong { color: var(--ink); font-style: italic; }
+
+.mail { font-family: 'Instrument Serif', serif; letter-spacing: 0; color: var(--ink-2); text-decoration: none; border-bottom: 1px solid currentColor; }
+.copy { display: inline-grid; place-items: center; width: 44px; height: 44px; vertical-align: middle; }
+.copy img { width: 16px; height: 16px; }
+.copied { color: var(--accent); font-size: var(--fs-small); }
+
+/* barra do laboratório */
+.labbar { position: fixed; z-index: 50; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 5px; background: rgba(20,20,20,.92); color: #fafaf8; border-radius: 999px; font-size: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); max-width: calc(100vw - 20px); overflow-x: auto; scrollbar-width: none; }
+.labbar button { padding: 8px 12px; border-radius: 999px; white-space: nowrap; color: rgba(250,250,248,.6); }
+.labbar button[aria-pressed="true"] { background: #fafaf8; color: var(--ink); }
+.labbar__note { padding: 0 10px; color: rgba(250,250,248,.55); white-space: nowrap; }
+@media (max-width: 760px) { .labbar__note { display: none; } }
+
+/* =========================================================
+   V1 (antiga V0) — layout atual + piso de legibilidade
+   Mesma composição do Figma; só garante tamanhos mínimos.
+   ========================================================= */
+#v1 .wrap { position: relative; display: grid; grid-template-columns: 44fr 56fr; min-height: calc(100svh - 72px); }
+#v1 .wrap::before { content: ''; position: absolute; top: 0; bottom: 0; left: 44%; width: 1px; background: var(--line); }
+#v1 .left { display: grid; grid-template-rows: 1fr auto; }
+#v1 .intro { padding: clamp(40px, 8vh, 140px) var(--gutter) 40px; border-bottom: 1px solid var(--line); }
+#v1 .title { font-size: clamp(72px, 7.7vw, 170px); }
+#v1 .hello { font-size: clamp(20px, 1.6vw, 34px); margin: .6em 0 0 auto; width: max-content; padding-right: 8%; }
+#v1 .direct { padding: 36px var(--gutter) 48px; }
+#v1 .direct h3 { font-weight: 400; color: var(--ink-2); font-size: var(--fs-body); margin-bottom: 18px; }
+#v1 .direct li { list-style: none; margin-bottom: 18px; }
+#v1 .direct .mail { font-size: clamp(24px, 1.9vw, 40px); transition: color .2s; }
+@media (hover: hover) { #v1 .direct .mail:hover { color: var(--accent); font-style: italic; } }
+#v1 .direct .mail:focus-visible { color: var(--accent); font-style: italic; }
+#v1 .direct small { display: block; color: var(--soft); font-size: var(--fs-small); margin-top: 4px; }
+#v1 form { padding: clamp(40px, 8vh, 120px) var(--gutter) 60px clamp(24px, 3.6vw, 72px); display: grid; gap: clamp(18px, 2.2vh, 30px); max-width: 980px; }
+#v1 .q1 { font-size: clamp(26px, 2.1vw, 40px); margin: 6px 0 10px; }
+#v1 .ln input { width: 100%; height: 44px; font-size: var(--fs-input); }
+#v1 .lbl { font-size: var(--fs-body); margin-bottom: 6px; }
+#v1 .tog { max-width: 520px; }
+#v1 .reveal .ln { max-width: 520px; margin-top: 10px; }
+#v1 .pills { display: flex; flex-wrap: wrap; gap: 10px; }
+#v1 .pill { min-height: 40px; padding: 0 22px; font-size: var(--fs-body); }
+#v1 .send { min-height: 56px; font-size: var(--fs-body); }
+@media (max-width: 900px) {
+  #v1 .wrap { grid-template-columns: 1fr; }
+  #v1 .wrap::before { display: none; }
+  #v1 .left { display: contents; }
+  #v1 .intro { order: 0; } #v1 form { order: 1; padding: 32px var(--gutter); border-top: 1px solid var(--line); } #v1 .direct { order: 2; border-top: 1px solid var(--line); }
+  #v1 .title { font-size: clamp(64px, 21vw, 120px); }
+}
+
+/* =========================================================
+   V2 (antiga V5) — formulário primeiro, e-mails depois (IN56 + Basement)
+   ========================================================= */
+#v2 .top { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 40px; padding: clamp(36px, 6vh, 90px) var(--gutter) clamp(28px, 5vh, 60px); }
+#v2 .title { font-size: clamp(64px, 6.6vw, 150px); }
+#v2 .hello { font-size: clamp(20px, 1.6vw, 32px); max-width: 22ch; }
+#v2 .rows { border-top: 1px solid var(--line); }
+#v2 .crow { display: grid; grid-template-columns: minmax(130px, 22%) 1fr auto; align-items: center; gap: 20px; padding: clamp(14px, 2.4vh, 28px) var(--gutter); border-bottom: 1px solid var(--line); }
+#v2 .crow h3 { font-weight: 400; text-transform: uppercase; font-size: var(--fs-small); letter-spacing: .06em; color: var(--soft); }
+#v2 .crow .mail { font-size: clamp(32px, 4.6vw, 104px); line-height: 1.05; border-bottom: 0; color: var(--ink); justify-self: end; transition: color .2s; }
+@media (hover: hover) { #v2 .crow .mail:hover { color: var(--accent); font-style: italic; } }
+#v2 .crow .mail:focus-visible { color: var(--accent); font-style: italic; }
+#v2 .formblock { display: grid; grid-template-columns: minmax(130px, 22%) 1fr; gap: 20px; padding: clamp(40px, 7vh, 90px) var(--gutter) 140px; }
+#v2 .formblock > h3 { font-weight: 400; text-transform: uppercase; font-size: var(--fs-small); letter-spacing: .06em; color: var(--soft); padding-top: 12px; }
+#v2 form { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(22px, 3vh, 36px) clamp(20px, 2.4vw, 48px); max-width: 1300px; }
+#v2 .full { grid-column: 1 / -1; }
+#v2 label, #v2 .lbl { display: block; font-size: var(--fs-small); color: var(--soft); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+#v2 .ln input { width: 100%; height: 52px; font-family: 'Fraunces', serif; letter-spacing: 0; font-size: clamp(20px, 1.5vw, 28px); }
+#v2 .tog .ch { min-height: 52px; font-size: clamp(16px, 1.1vw, 20px); }
+#v2 .reveal .ln { margin-top: 10px; }
+#v2 .pills { display: flex; flex-wrap: wrap; gap: 10px; }
+#v2 .pill { min-height: 46px; padding: 0 20px; font-size: clamp(15px, 1vw, 19px); }
+#v2 .send { min-height: clamp(72px, 9vh, 110px); justify-content: space-between; padding: 0 clamp(20px, 2vw, 36px); }
+#v2 .send b, #v2 .send em { font-size: clamp(30px, 3.4vw, 70px); }
+@media (max-width: 900px) {
+  #v2 .top { grid-template-columns: 1fr; }
+  #v2 .title { font-size: clamp(64px, 21vw, 120px); }
+  #v2 .crow { grid-template-columns: 1fr auto; } #v2 .crow h3 { grid-column: 1 / -1; }
+  #v2 .crow .mail { justify-self: start; font-size: clamp(26px, 8vw, 40px); }
+  #v2 .formblock { grid-template-columns: 1fr; }
+  #v2 form { grid-template-columns: 1fr; }
+}
+#v2 .formblock { border-top: 1px solid var(--line); padding-bottom: clamp(40px, 7vh, 90px); }
+#v2 .rows { margin-bottom: 140px; }
+
+/* =========================================================
+   TÍTULO — C1 "colagem" (escolhido): serifada (design) + mono (código),
+   estrela e as fotos de vocês. "Vamos construir algo incrível juntos." /
+   "Ou só bater um papo." Tamanho pela largura do bloco (container query).
+   V1 e V2: escada. V2 linha: duas linhas largas + frase à direita.
+   ========================================================= */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tslot { container-type: inline-size; }
+.tslot[data-layout="1"] { --tfs: clamp(54px, 17.5cqi, 170px); --sfs: clamp(20px, 4.2cqi, 34px); }
+.tslot[data-layout="2"] { --tfs: clamp(54px, 11cqi, 150px); --sfs: clamp(20px, 2.6cqi, 34px); }
+
+/* V2: título à esquerda, frase de apoio à direita (como era antes) */
+#v2 .top { display: grid; grid-template-columns: 1fr minmax(180px, 22ch); align-items: end; gap: 40px; }
+/* escada na V2 menor que na V1: o topo não pode empurrar o formulário pra baixo */
+body[data-f="escada"] #v2 .top { grid-template-columns: minmax(0, 40%) 1fr; padding-top: clamp(28px, 4.5vh, 70px); padding-bottom: clamp(24px, 4vh, 50px); }
+body[data-f="escada"] #v2 .tslot { --tfs: clamp(48px, 13cqi, 112px); --sfs: clamp(18px, 3.4cqi, 28px); }
+/* escada deslocada pra direita: fica perto do "Ou só bater um papo." sem ir ao centro */
+body[data-f="escada"] #v2 .tslot .nt { margin-left: 24cqi; }
+body[data-f="escada"] #v2 .tslot .ns { padding-right: 0; }
+@media (max-width: 900px) { body[data-f="escada"] #v2 .tslot .nt { margin-left: 0; } }
+body[data-f="escada"] #v2 .hello { justify-self: end; }
+@media (max-width: 900px) { #v2 .top, body[data-f="escada"] #v2 .top { grid-template-columns: 1fr; } }
+
+.nt { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: var(--tfs); line-height: .84; letter-spacing: -.02em; color: var(--ink); }
+.nt .nl { display: block; white-space: nowrap; }
+.nt i { font-style: italic; }
+.ns { font-family: 'Instrument Serif', serif; font-size: var(--sfs); letter-spacing: -.01em; margin-top: .7em; }
+.tslot[data-layout="1"] .ns { width: max-content; margin-left: auto; padding-right: 6%; }
+.tslot[data-layout="1"] .s1 { padding-left: .5em; }
+.tslot[data-layout="1"] .s2 { padding-left: .15em; }
+.tslot[data-layout="1"] .s3 { padding-left: .95em; }
+.tslot[data-layout="2"] .s1 { padding-left: 1.2em; }
+
+.c1-code { display: inline-flex; align-items: center; gap: .05em; height: 1.55em; padding: 0 .32em; margin: 0 .04em; vertical-align: .04em; border: max(1.5px, .018em) solid var(--ink); border-radius: 999px; background: var(--paper); font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: .5em; letter-spacing: -.03em; line-height: 1; }
+.c1-caret { color: var(--accent); animation: caretBlink 1s step-end infinite; }
+@keyframes caretBlink { 50% { opacity: 0; } }
+/* estrela: entra girando meia volta e crescendo (animação do antigo C4) */
+.c1-star { display: inline-block; width: .34em; height: .56em; margin-left: .1em; vertical-align: .32em; fill: var(--accent); animation: starTurn 1.4s cubic-bezier(.65, 0, .35, 1) .2s both; }
+@keyframes starTurn { from { transform: rotate(-180deg) scale(.4); opacity: 0; } }
+.c1-faces { display: inline-flex; vertical-align: -.02em; margin: 0 .08em 0 .14em; }
+.c1-faces img { width: .66em; height: .66em; border-radius: 50%; object-fit: cover; border: max(2px, .025em) solid var(--bg); background: var(--paper); transform-origin: 50% 80%; animation: facePop .7s cubic-bezier(.34, 1.56, .64, 1) both; }
+.c1-faces img + img { margin-left: -.2em; animation-delay: .12s; }
+@keyframes facePop { from { transform: scale(0) rotate(-12deg); } }
+@media (hover: hover) { .c1-faces img:hover { transform: translateY(-.06em) rotate(-6deg); transition: transform .25s; } }
+@media (prefers-reduced-motion: reduce) { .c1-caret, .c1-star, .c1-faces img { animation: none; } }
+</style>
+</head>
+<body data-v="2">
+<header class="hdr">
+  <img src="/src/assets/logo.svg" alt="MyTIgency" />
+  <div class="hdr__r"><span>Contato</span><span>Menu &gt;_</span></div>
+</header>
+
+<!-- ================= V0 ================= -->
+<main class="ver" id="v1" data-form>
+  <div class="wrap">
+    <div class="left">
+      <div class="intro"><div class="tslot"></div></div>
+      <div class="direct">
+        <h3>Prefere escrever direto? Manda um e-mail:</h3>
+        <ul data-emails></ul>
+      </div>
+    </div>
+    <form novalidate>
+      <div>
+        <p class="num">[01]</p>
+        <label class="q1" for="v1-name">Como a gente te chama? <span class="req">*</span></label>
+        <div class="ln"><input id="v1-name" data-f="name" placeholder="digite seu nome" /></div>
+      </div>
+      <div><p class="lbl"><span class="num">[02]</span> Seu negócio <span class="opt">(opcional)</span></p><div class="ln"><input data-f="business" placeholder="Ex.: [nome do estabelecimento], [localização]" /></div></div>
+      <div><p class="lbl"><span class="num">[03]</span> Como quer entrar em contato? <span class="req">*</span> <span class="opt">(pode marcar os dois)</span></p><div data-channel></div></div>
+      <div><p class="lbl"><span class="num">[04]</span> Quanto pretende investir? <span class="opt">(opcional)</span></p><div class="ln"><input data-f="budget" placeholder="Ex.: R$ [valor aproximado]" /></div></div>
+      <div><p class="lbl"><span class="num">[05]</span> Tem prazos? <span class="req">*</span></p><div class="pills" data-radio="deadline"></div></div>
+      <div class="need"><p class="lbl"><span class="num">[06]</span> O que você está buscando? <span class="req">*</span></p><div class="chips" data-multi="need"></div><div class="box"><div class="hl" aria-hidden="true"></div><textarea data-f="message" placeholder="Conte do seu jeito, sem precisar de termo técnico."></textarea></div></div>
+      <div class="legal" data-legal></div>
+      <div><p class="status" data-status></p><button type="button" class="send" data-send><b>Enviar</b> <em>&gt;_</em></button></div>
+    </form>
+  </div>
+</main>
+
+<!-- ================= V5 ================= -->
+<main class="ver" id="v2" data-form>
+  <div class="top"><div class="tslot"></div><p class="hello">Escreva direto pra gente — quem lê somos nós dois.</p></div>
+  <section class="formblock">
+    <h3>Preencha</h3>
+    <form novalidate>
+      <div><label for="v2-name"><span class="num">[01]</span> Como a gente te chama? <span class="req">*</span></label><div class="ln"><input id="v2-name" data-f="name" placeholder="seu nome" /></div></div>
+      <div><label for="v2-bus"><span class="num">[02]</span> Negócio <span class="opt">(opcional)</span></label><div class="ln"><input id="v2-bus" data-f="business" placeholder="Nome e cidade" /></div></div>
+      <div><p class="lbl"><span class="num">[03]</span> Como quer entrar em contato? <span class="req">*</span> <span class="opt">(um ou os dois)</span></p><div data-channel></div></div>
+      <div><label for="v2-bud"><span class="num">[04]</span> Investimento <span class="opt">(opcional)</span></label><div class="ln"><input id="v2-bud" data-f="budget" placeholder="R$ aproximado" /></div></div>
+      <div class="full"><p class="lbl"><span class="num">[05]</span> Tem prazos? <span class="req">*</span></p><div class="pills" data-radio="deadline"></div></div>
+      <div class="full need"><p class="lbl"><span class="num">[06]</span> O que você está buscando? <span class="req">*</span></p><div class="chips" data-multi="need"></div><div class="box"><div class="hl" aria-hidden="true"></div><textarea data-f="message" placeholder="Conte do seu jeito, sem precisar de termo técnico."></textarea></div></div>
+      <div class="full legal" data-legal></div>
+      <div class="full"><p class="status" data-status></p><button type="button" class="send" data-send><b>Enviar</b><em>&gt;_</em></button></div>
+    </form>
+  </section>
+  <div class="rows" data-email-rows></div>
+</main>
+
+<nav class="labbar" aria-label="Versões do laboratório">
+  <button data-go="1">V1 · atual + piso</button>
+  <button data-go="2">V2 · escada</button>
+  <button data-go="3">V2 · linha</button>
+  <span class="labbar__note">teclas 1–3</span>
+</nav>
+
+<script>
+const EMAILS = [['info@mytigency.com.br', 'Assuntos gerais'], ['projetos@mytigency.com.br', 'Novos projetos']]
+// "1 a 2": o hífen da Roslindale some entre números ("1-2" foi lido como "12")
+const DEADLINES = ['Sem pressa', '1 a 2 semanas', '1 a 2 meses', 'É urgente']
+const NEEDS = ['Site novo', 'Loja online', 'Refazer meu site', 'Identidade visual', 'Ainda não sei']
+// frase que cada opção escreve na caixa (fica vermelha enquanto não for editada)
+const PHRASES = [
+  '[Quero um site novo para o meu negócio.]',
+  '[Quero uma loja online para vender meus produtos.]',
+  '[Quero refazer o site que já tenho.]',
+  '[Preciso de uma identidade visual (logo, cores, estilo).]',
+  '[Ainda não sei bem o que preciso, quero conversar.]',
+]
+const COPY = '/src/assets/contact/copy.png'
+// "Ícones" tipográficos em mono: o sinal já diz o que digitar (@ = e-mail,
+// +55 = número), no mesmo idioma do [01] e do >_ do site
+const ICONS = { email: '@', whatsapp: '+55' }
+const LEGAL = 'Utilizamos seus dados somente para responder este contato. <a href="#">Política de privacidade</a><br>Quem lê somos nós: <b>Thiago</b> e <b>Miguel</b>. Respondemos em até <strong>1 dia útil.</strong>'
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+// ---------- ajuda do e-mail ----------
+const POPULAR = ['gmail.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'yahoo.com.br']
+const KNOWN = [...POPULAR, 'yahoo.com', 'live.com', 'msn.com', 'uol.com.br', 'bol.com.br', 'terra.com.br']
+function lev(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i])
+  for (let j = 1; j <= b.length; j++) d[0][j] = j
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+  }
+  return d[a.length][b.length]
+}
+// Sem "@" ou sem provedor completo → sugere completar; provedor conhecido com
+// erro de digitação (até 2 letras) → sugere a correção; senão nada.
+function emailHelp(raw) {
+  const v = raw.trim()
+  if (!v) return null
+  const at = v.indexOf('@')
+  if (at < 0) return { kind: 'complete', options: POPULAR.map((d) => `${v}@${d}`) }
+  const local = v.slice(0, at)
+  const dom = v.slice(at + 1).toLowerCase()
+  if (!local) return null
+  if (!dom.includes('.')) {
+    const opts = POPULAR.filter((d) => d.startsWith(dom))
+    return opts.length ? { kind: 'complete', options: opts.map((d) => `${local}@${d}`) } : null
+  }
+  if (KNOWN.includes(dom)) return null
+  let best = null
+  let bd = 3
+  for (const k of KNOWN) { const d = lev(dom, k); if (d < bd) { bd = d; best = k } }
+  return best ? { kind: 'typo', options: [`${local}@${best}`] } : null
+}
+// checagem mínima da lógica acima (aparece no console se quebrar)
+console.assert(emailHelp('ana').options[0] === 'ana@gmail.com', 'emailHelp: sem @')
+console.assert(emailHelp('ana@h').options[0] === 'ana@hotmail.com', 'emailHelp: provedor parcial')
+console.assert(emailHelp('ana@gmial.com').kind === 'typo' && emailHelp('ana@gmial.com').options[0] === 'ana@gmail.com', 'emailHelp: typo')
+console.assert(emailHelp('ana@gmail.com') === null && emailHelp('ana@empresa.com.br') === null, 'emailHelp: válidos')
+
+function maskWhatsapp(raw) {
+  if (raw.startsWith('+')) return '+' + raw.slice(1).replace(/[^\d ]/g, '')
+  const d = raw.replace(/\D/g, '').slice(0, 11)
+  if (!d) return ''
+  let out = '(' + d.slice(0, 2)
+  if (d.length > 2) out += ') ' + d[2]
+  if (d.length > 3) out += ' ' + d.slice(3, 7)
+  if (d.length > 7) out += '-' + d.slice(7)
+  return out
+}
+const waValid = (v) => { const n = v.replace(/\D/g, '').length; return v.startsWith('+') ? n >= 8 && n <= 15 : n === 11 }
+const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild }
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const listPt = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} e ${a[a.length - 1]}`)
+const face = (ch, label) => `<svg class="ch__box" viewBox="0 0 18 18" aria-hidden="true"><path d="M4.2 9.4l3.2 3.1 6.4-7"/></svg><b class="ic">${ICONS[ch]}</b>${label}`
+
+// ---------- monta as partes de cada versão ----------
+document.querySelectorAll('[data-form]').forEach((root) => {
+  const state = { channels: new Set(), deadline: null, need: new Set() }
+  root._state = state
+  const update = () => validate(root)
+
+  root.querySelectorAll('[data-legal]').forEach((n) => { n.innerHTML = LEGAL })
+  root.querySelectorAll('[data-emails]').forEach((ul) => {
+    EMAILS.forEach(([a, d]) => ul.appendChild(el(`<li><a class="mail" href="mailto:${a}">${a}</a><button type="button" class="copy" aria-label="Copiar ${a}"><img src="${COPY}" alt=""></button><span class="copied" hidden>copiado!</span><small>${d}</small></li>`)))
+  })
+  root.querySelectorAll('[data-email-rows]').forEach((box) => {
+    EMAILS.forEach(([a, d]) => box.appendChild(el(`<div class="crow"><h3>${d}</h3><a class="mail" href="mailto:${a}">${a}</a><span><button type="button" class="copy" aria-label="Copiar ${a}"><img src="${COPY}" alt=""></button><span class="copied" hidden>copiado!</span></span></div>`)))
+  })
+
+  // canais: duas caixas de marcação (água) + um campo para cada canal marcado
+  root.querySelectorAll('[data-channel]').forEach((box) => {
+    box.innerHTML = `
+      <div class="tog" role="group" aria-label="Como responder (pode marcar os dois)">
+        <button type="button" class="ch" role="checkbox" aria-checked="false" data-ch="email">${face('email', 'email')}</button>
+        <button type="button" class="ch" role="checkbox" aria-checked="false" data-ch="whatsapp">${face('whatsapp', 'whatsapp')}</button>
+      </div>
+      <div class="reveal" data-for="email"><div class="ln"><input type="email" inputmode="email" autocomplete="email" data-contact="email" placeholder="ex.: seunome@gmail.com" aria-label="Seu e-mail"></div><div class="sugg" data-sugg hidden></div></div>
+      <div class="reveal" data-for="whatsapp"><div class="ln"><input type="tel" inputmode="tel" autocomplete="tel" data-contact="whatsapp" placeholder="(31) 9 0000-0000" aria-label="Seu WhatsApp"></div></div>`
+    box.querySelectorAll('.ch').forEach((b) => b.addEventListener('click', () => {
+      const ch = b.dataset.ch
+      const on = !state.channels.has(ch)
+      on ? state.channels.add(ch) : state.channels.delete(ch)
+      b.setAttribute('aria-checked', on)
+      box.querySelector(`[data-for="${ch}"]`).classList.toggle('is-on', on)
+      if (on) box.querySelector(`[data-contact="${ch}"]`).focus({ preventScroll: true })
+      update()
+    }))
+    const wa = box.querySelector('[data-contact="whatsapp"]')
+    wa.addEventListener('input', () => { wa.value = maskWhatsapp(wa.value); update() })
+    const mail = box.querySelector('[data-contact="email"]')
+    const sugg = box.querySelector('[data-sugg]')
+    const renderSugg = () => {
+      const h = emailHelp(mail.value)
+      sugg.hidden = !h
+      if (!h) return
+      sugg.innerHTML = h.kind === 'typo'
+        ? `<span>Quis dizer</span><button type="button" data-pick="${h.options[0]}">${h.options[0]}</button><span>?</span>`
+        : `<span>Completar:</span>${h.options.map((o) => `<button type="button" data-pick="${o}">@${o.split('@')[1]}</button>`).join('')}`
+    }
+    mail.addEventListener('input', () => { renderSugg(); update() })
+    sugg.addEventListener('click', (e) => {
+      const pick = e.target.closest('[data-pick]')?.dataset.pick
+      if (!pick) return
+      mail.value = pick; renderSugg(); update(); mail.focus()
+    })
+  })
+
+  // prazo (único) e o que busca (múltiplo → frase na caixa)
+  const ta = root.querySelector('.need textarea')
+  const hl = root.querySelector('.need .hl')
+  const paint = () => {
+    let html = esc(ta.value)
+    state.need.forEach((k) => { const ph = esc(PHRASES[k]); html = html.split(ph).join(`<mark>${ph}</mark>`) })
+    hl.innerHTML = html + (ta.value.endsWith('\n') ? ' ' : '')
+    hl.scrollTop = ta.scrollTop
+  }
+  ta.addEventListener('input', () => { paint(); update() })
+  ta.addEventListener('scroll', () => { hl.scrollTop = ta.scrollTop })
+
+  root.querySelectorAll('[data-radio], [data-multi]').forEach((box) => {
+    const multi = box.hasAttribute('data-multi')
+    const key = box.dataset.radio || box.dataset.multi
+    const labels = key === 'need' ? NEEDS : DEADLINES
+    const cls = box.classList.contains('pills') ? 'pill' : 'chip'
+    box.setAttribute('role', multi ? 'group' : 'radiogroup')
+    labels.forEach((lab, i) => {
+      const b = el(`<button type="button" class="${cls}" ${multi ? 'aria-pressed="false"' : 'role="radio" aria-checked="false"'}>${lab}</button>`)
+      b.addEventListener('click', () => {
+        if (multi) {
+          const on = !state.need.has(i)
+          on ? state.need.add(i) : state.need.delete(i)
+          b.setAttribute('aria-pressed', on)
+          if (on) {
+            const v = ta.value
+            ta.value = v + (v && !v.endsWith('\n') ? '\n' : '') + PHRASES[i]
+            ta.focus()
+            ta.setSelectionRange(ta.value.length, ta.value.length)
+            ta.scrollTop = ta.scrollHeight
+          } else {
+            // só tira a frase se ela ainda estiver intacta (editou → é do usuário)
+            const lines = ta.value.split('\n')
+            const at = lines.indexOf(PHRASES[i])
+            if (at >= 0) { lines.splice(at, 1); ta.value = lines.join('\n') }
+          }
+          paint()
+        } else {
+          state.deadline = i
+          box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-checked', x === b))
+        }
+        update()
+      })
+      box.appendChild(b)
+    })
+  })
+
+  root.querySelectorAll('input[data-f]').forEach((i) => i.addEventListener('input', update))
+  root.querySelectorAll('.copy').forEach((b) => b.addEventListener('click', () => {
+    const addr = b.getAttribute('aria-label').replace('Copiar ', '')
+    navigator.clipboard?.writeText(addr)
+    const tag = b.parentElement.querySelector('.copied')
+    tag.hidden = false; setTimeout(() => { tag.hidden = true }, 1500)
+  }))
+  root.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => {
+    const miss = validate(root)
+    const st = b.parentElement.querySelector('[data-status]')
+    st.textContent = miss.length ? `Falta: ${listPt(miss)}.` : 'Laboratório: nada é enviado de verdade ✓'
+  }))
+  update()
+})
+
+// O que falta, dito com nome (não só "Faltam N campos")
+function validate(root) {
+  const s = root._state
+  const val = (sel) => root.querySelector(sel)?.value.trim() ?? ''
+  const miss = []
+  if (!val('[data-f="name"]')) miss.push('seu nome')
+  const email = val('[data-contact="email"]')
+  const wa = val('[data-contact="whatsapp"]')
+  const emailOk = s.channels.has('email') && EMAIL_RE.test(email)
+  const waOk = s.channels.has('whatsapp') && waValid(wa)
+  if (!s.channels.size) miss.push('como responder (e-mail ou WhatsApp)')
+  else {
+    if (s.channels.has('email') && email && !EMAIL_RE.test(email)) miss.push('completar o e-mail (ex.: @gmail.com)')
+    if (s.channels.has('whatsapp') && wa && !waValid(wa)) miss.push('completar o WhatsApp (DDD + número)')
+    if (!emailOk && !waOk && !(email || wa)) miss.push(s.channels.has('email') ? 'seu e-mail' : 'seu WhatsApp')
+  }
+  if (s.deadline === null) miss.push('o prazo')
+  if (s.need.size === 0 && !val('.need textarea')) miss.push('o que você busca')
+  root.querySelectorAll('[data-send]').forEach((b) => b.setAttribute('aria-disabled', miss.length > 0))
+  return miss
+}
+
+
+// ---------- Título C1 (colagem) ----------
+// Fotos reais de Thiago e Miguel (recortes quadrados do rosto)
+const FACES = ['fotos/foto-thiago.jpg', 'fotos/foto-miguel.jpg']
+const STAR = '<svg class="c1-star" viewBox="722.99 161.49 67.01 109.02" aria-hidden="true"><path d="M789.99 215.51L771.28 219.28C754.81 225.72 759.11 256.43 756.5 270.51C755.56 258.92 756.03 246.89 753.55 235.45C749.96 218.88 738.1 216.92 722.99 216C738.63 214.78 749.83 213.65 753.55 196.55C756.04 185.12 755.55 173.08 756.5 161.49L758.13 186.87C760.82 208.19 767.27 216.18 790 215.51H789.99Z"/></svg>'
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+
+function titleC1(layout) {
+  const code = '<span class="c1-code"><span class="c1-type">construir</span><span class="c1-caret">_</span></span>'
+  const faces = `<span class="c1-faces">${FACES.map((f) => `<img src="${f}" alt="">`).join('')}</span>`
+  const lines = layout === '1'
+    ? ['Vamos', `<span class="s1">${code}</span>`, `<span class="s2">algo <i>incrível</i>${STAR}</span>`, `<span class="s3">juntos${faces}.</span>`]
+    : [`Vamos ${code} algo`, `<span class="s1"><i>incrível</i>${STAR} juntos${faces}.</span>`]
+  return `<h1 class="nt"><span class="sr">Vamos construir algo incrível juntos.</span><span aria-hidden="true">${lines.map((l) => `<span class="nl">${l}</span>`).join('')}</span></h1><p class="ns">Ou só bater um papo.</p>`
+}
+
+// "construir" é digitado letra a letra
+function typeConstruir(slot) {
+  const el = slot.querySelector('.c1-type')
+  if (!el || reduce) return
+  const word = el.textContent
+  el.textContent = ''
+  let i = 0
+  const tick = () => { el.textContent = word.slice(0, ++i); if (i < word.length) slot._t = setTimeout(tick, 95) }
+  slot._t = setTimeout(tick, 450)
+}
+
+// (re)monta o título da versão visível; o render novo reinicia as animações
+function renderTitle() {
+  const v = document.body.dataset.v
+  const slot = document.querySelector(`#v${v} .tslot`)
+  if (!slot) return
+  slot.dataset.layout = v === '2' && document.body.dataset.f === 'linha' ? '2' : '1'
+  clearTimeout(slot._t)
+  slot.innerHTML = titleC1(slot.dataset.layout)
+  document.fonts.ready.then(() => typeConstruir(slot))
+}
+
+// troca de versão
+// "3" = a mesma V2 com o título em linha (em vez de escada)
+function go(key) {
+  document.body.dataset.v = key === '3' ? '2' : key
+  document.body.dataset.f = key === '3' ? 'linha' : 'escada'
+  document.querySelectorAll('[data-go]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.go === key))
+  const u = new URL(location.href); u.searchParams.set('v', key); u.searchParams.delete('t'); history.replaceState(null, '', u)
+  window.scrollTo(0, 0)
+  renderTitle()
+}
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)))
+window.addEventListener('keydown', (e) => {
+  if (/^[123]$/.test(e.key) && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) go(e.key)
+})
+const startV = new URLSearchParams(location.search).get('v')
+go(['1', '2', '3'].includes(startV) ? startV : '2')
+</script>
+</body>
+</html>
