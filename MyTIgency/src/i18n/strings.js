@@ -83,14 +83,17 @@ export const strings = {
         sentence: 'Sem gerente de conta, sem terceirizar, sem intermediários.',
         cue: 'continue rolando',
       },
-      // Seção 3. Textos do protótipo (PAINTest/export-secao3); o design final
-      // deles ainda vai ser refinado.
+      // Seção 3: "quem conversa com você · é quem DESENHA / e quem PROGRAMA"
+      // (utils/manifestoSplit.js). title = a frase inteira, para leitores de tela.
       who: {
-        word: 'quem',
-        rest: 'conversa com você',
-        title: ['é quem desenha', 'e quem programa.'],
-        hand: ['ideias', 'viram', 'produtos'],
-        alt: 'Anjo apontando, em gravura azul, sobre um mapa celestial, com lua, planetas e órbitas vermelhas',
+        mark: 'quem conversa com você',
+        kickA: 'é quem',
+        wordA: 'Desenha',
+        kickB: 'e quem',
+        wordB: 'Programa',
+        tag: 'nós dois',
+        note: 'Sem gerente de conta, sem terceirizar, sem intermediários.',
+        title: 'Quem conversa com você é quem desenha e quem programa.',
       },
       lines: [
         'Na MyTigency, acreditamos que um site não se apresenta. Ele conduz.',
@@ -269,11 +272,14 @@ export const strings = {
         cue: 'keep scrolling',
       },
       who: {
-        word: 'who',
-        rest: 'talks to you',
-        title: ['is who designs', 'and who codes.'],
-        hand: ['ideas', 'become', 'products'],
-        alt: 'Pointing angel, in blue engraving, over a celestial map with a moon, planets and red orbits',
+        mark: 'who talks to you',
+        kickA: 'who',
+        wordA: 'Designs',
+        kickB: 'and who',
+        wordB: 'Codes',
+        tag: 'the two of us',
+        note: 'No account manager, no outsourcing, no middlemen.',
+        title: 'The one who talks to you is the one who designs and who codes.',
       },
       lines: [
         "At MyTigency, we believe a website doesn't introduce itself. It leads.",

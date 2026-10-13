@@ -18,7 +18,7 @@ import ornamentImg from '../assets/ornamento-ascii.png'
 import smileyImg from '../assets/smiley.svg'
 import searchBoxImg from '../assets/s2-busca.png'
 import searchCursorImg from '../assets/s2-cursor.svg'
-import tvUrl from '../assets/tv.min.glb?url'
+import tvUrl from '../assets/pc-terrarium.min.glb?url'
 // Inline (não <img>): o traço vive numa <mask> com um <path> — é esse path
 // que vai receber stroke-dashoffset quando a elipse passar a se desenhar.
 import brandStrokeRaw from '../assets/myt-stroke.svg?raw'
@@ -62,94 +62,31 @@ function Segment({ text, role }) {
   return text.split(/(\s+)/).map((part, i) => (/^\s*$/.test(part) ? part : <span key={i} className="ms-w">{part}</span>))
 }
 
-// Seção 3: estrutura do protótipo (PAINTest/export-secao3/secao3.html). O
-// desenho/animação é montado por utils/manifestoS3.js (via
-// useManifestoHorizontal); tudo aqui é posicionado em vh, como lá.
+// Seção 3: a composição visual é montada por utils/manifestoSplit.js dentro de
+// .s3-vis (as palavras viram letras animadas — DOM fora do React, remontado
+// quando o idioma muda). Aqui ficam a frase para leitores de tela e os textos
+// (data-who) que a montagem usa. Posição/tempo: useManifestoHorizontal.
 function Section3({ who }) {
   return (
     <section className="s3" aria-labelledby="s3-title">
-      {/* Marca-texto (s3-marca-texto.svg): barras com ponta nas duas bordas e
-          caixa translúcida que anda com --mark (timeline da seção 3). */}
-      <p className="s3-who">
-        <span className="s3-who-word">
-          <svg className="s3-mark-bar" viewBox="0 0 17 88" aria-hidden="true">
-            <rect x="5.22" y="5.68" width="6.49" height="75.25" rx="1" /><path d="M8.5 10.54 1.15 2.67 15.76 2.63Z" />
-          </svg>
-          {who.word} {who.rest}
-          <svg className="s3-mark-bar s3-mark-bar--end" viewBox="714 0 17 88" aria-hidden="true">
-            <rect x="718.86" y="7" width="6.41" height="75.25" rx="1" /><path d="M722.04 77.39 729.3 85.27 714.87 85.3Z" />
-          </svg>
-        </span>
-      </p>
-
-      <div className="s3-comp" role="img" aria-label={who.alt}>
-        {/* de baixo para cima: gravuras (WebGL) · linhas · planetas (WebGL) · estrelas */}
-        <canvas className="s3-gl" />
-        <svg className="s3-ov" viewBox="0 0 1130 784" aria-hidden="true"><defs className="s3-ovdefs" /></svg>
-        <canvas className="s3-gl2" />
-        <svg className="s3-ov2" viewBox="0 0 1130 784" aria-hidden="true" />
-      </div>
-
-      <p className="s3-hand" aria-hidden="true">{who.hand.map((w, i) => <span key={i}>{w}</span>)}</p>
-
-      <h2 className="s3-title" id="s3-title">{/* key = índice: troca de idioma atualiza o texto no mesmo nó (o filtro de foco fica nele) */}
-        {who.title.map((l, i) => <span key={i}>{l}</span>)}</h2>
-
-      <p className="s3-mono s3-bin" aria-hidden="true">+&nbsp;&nbsp;0101<br />+&nbsp;&nbsp;1100<br />+&nbsp;&nbsp;0110<br />+&nbsp;&nbsp;1001</p>
-
-      {/* decoração em coordenadas vh (viewBox 233×100 = seção 233vh × 100vh) */}
-      <svg className="s3-deco" viewBox="0 0 233 100" aria-hidden="true">
-        <defs>
-          <symbol id="s3-star" viewBox="-1 -1 2 2"><path d="M0-1C.1-.1.1-.1 1 0 .1.1.1.1 0 1-.1.1-.1.1-1 0-.1-.1-.1-.1 0-1Z" /></symbol>
-          <marker id="s3-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-            <path d="M0 0 10 5 0 10 3 5Z" fill="#F04A3F" />
-          </marker>
-          <pattern id="s3-dots" width="1.5" height="1.5" patternUnits="userSpaceOnUse"><circle cx=".75" cy=".75" r=".15" fill="#24489a" /></pattern>
-        </defs>
-
-
-        <g className="s3-title-deco" transform="translate(-13 0)">
-          {/* seta curva de baixo entrando no "e" */}
-          <path className="r" strokeWidth=".16" markerEnd="url(#s3-head)" d="M151 70C155 68 158 64 160.5 59" />
-          {/* linhas de construção do título */}
-          <g className="r" strokeWidth=".08">
-            <path d="M154 38.8H213" />
-            <path d="M154 46H211M159 56.6H230" strokeDasharray=".4 .4" />
-            <path d="M157 35V52M211 35.5V49M161.3 50V64.5M228 50V60" />
-            <path d="M155 64.5H190" />
-            <path d="M195 38.8H213" strokeWidth=".16" />
-            <circle cx="211" cy="38.8" r=".3" fill="#F04A3F" />
-          </g>
-          <g fill="#F04A3F">
-            <use href="#s3-star" x="156.1" y="32.6" width="1.8" height="1.8" />
-            <use href="#s3-star" x="209.7" y="33.6" width="2.6" height="2.6" />
-            <use href="#s3-star" x="160.4" y="63.6" width="1.8" height="1.8" />
-            <use href="#s3-star" x="227" y="49" width="2" height="2" />
-            <use href="#s3-star" x="231" y="66" width="2" height="2" />
-            <use href="#s3-star" x="192.5" y="37.8" width="2" height="2" />
-          </g>
-          {/* elementos azuis */}
-          <g fill="#24489a">
-            <use href="#s3-star" x="168" y="13" width="1.4" height="1.4" />
-            <use href="#s3-star" x="240" y="36" width="1.2" height="1.2" />
-            <use href="#s3-star" x="222" y="71" width="1.6" height="1.6" />
-            <use href="#s3-star" x="186" y="69" width="1.1" height="1.1" />
-          </g>
-          <rect className="s3-dotgrid" x="196" y="60.5" width="10" height="6" fill="url(#s3-dots)" />
-          {/* rosa dos ventos */}
-          <g className="s3-rosa b" transform="translate(214.5 63.5) scale(.55)" strokeWidth=".14">
-            <circle r="6" /><circle r="4.6" strokeWidth=".07" />
-            <path d="M-7 0H7M0-7V7" strokeWidth=".07" />
-            <path d="M0-5.6.9-.9 5.6 0 .9.9 0 5.6-.9.9-5.6 0-.9-.9Z" fill="#24489a" fillOpacity=".85" />
-            <path d="M2.4-2.4 4-4" markerEnd="url(#s3-head)" />
-          </g>
-        </g>
-      </svg>
+      <h2 className="sr-only" id="s3-title">{who.title}</h2>
+      <p className="sr-only">{who.note}</p>
+      <div className="s3-vis" aria-hidden="true" data-who={JSON.stringify(who)} />
     </section>
   )
 }
 
 const TV_PALETTE = ['#1c1c1c', '#6e6e6e', '#bcbcbc', '#ffffff'] // "Cinza" do HANDOFF
+// Modelo: "PC terrário" (modelo 7 do /lab/), só a malha do computador — o
+// conteúdo do terrário saiu do GLB (fica atrás da tela MyTi e é IP de
+// terceiros). Frente, material e vidro calibrados no LAB. Créditos (CC BY 4.0)
+// em public/creditos.html.
+const TV_MODEL = {
+  front: 0,
+  colorBoost: 0.5,
+  showScreen: true,
+  screenShape: { CX: -0.15, CY: 0.175, HX: 0.41, HY: 0.3, Z0: 0.21, A: 0, B: 0, C: 0, OFFSET: 0.008, MARGIN: 1.03 },
+}
 
 // Mesmo debounce de "scroll assentou" usado no dock da Marquee.
 const SCROLL_SETTLE_MS = 150
@@ -180,7 +117,7 @@ function DitherTV() {
       if (!entry.isIntersecting) return
       observer.disconnect()
       const instance = mountDitherTV(canvas, {
-        url: tvUrl, palette: TV_PALETTE, autoPlay: false, revealDuration: 2.8, spinDuration: 3.4,
+        url: tvUrl, palette: TV_PALETTE, autoPlay: false, revealDuration: 2.8, spinDuration: 3.4, ...TV_MODEL,
         // a tela sintoniza o logo pelo pin lateral; sem ele (mobile), já sintonizada
         screenImage: mytiUrl, tune: window.matchMedia(DESKTOP_QUERY).matches ? 0 : 1,
       })
@@ -233,12 +170,14 @@ function DecodeItem({ text, className }) {
   return <DecodeText ref={ref} value={text} active={active} className={className} />
 }
 
-export function Manifesto() {
+// section3/useHorizontal: só o LAB (lab/secao3/s2/) troca a seção 3 e o pin
+// lateral, para testar outra seção 3 sobre a seção 2 real; o site usa o padrão.
+export function Manifesto({ section3, useHorizontal = useManifestoHorizontal }) {
   const { t, lang } = useLanguage()
   const { label, statement, without, who } = t.manifesto
   const [first, second, third] = statement
   const rootRef = useRef(null)
-  useManifestoHorizontal(rootRef)
+  useHorizontal(rootRef, lang) // idioma novo = seção 3 remontada com os textos dele
   useManifestoIntro(rootRef)
   useManifestoS2Enter(rootRef)
 
@@ -330,7 +269,7 @@ export function Manifesto() {
         <span className="ms-line-a-elbow" dangerouslySetInnerHTML={LINE_A_ELBOW} />
       </div>
 
-      <Section3 who={who} />
+      {section3 ?? <Section3 who={who} />}
 
       <div className="manifesto-grid" aria-hidden="true" />
       </div>

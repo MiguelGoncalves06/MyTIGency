@@ -1120,114 +1120,105 @@
   }
 
   /* ---------- Manifesto · seção 3 ----------
-     Port do protótipo (PAINTest/export-secao3): tudo em vh, a composição
-     escala com a altura da tela. A seção fica na mesma trilha das seções 1
-     e 2, logo depois do fim do traço A; left/top/quem-y vêm do
-     useManifestoHorizontal (ela ocupa exatamente a tela durante o pin). */
+     "quem conversa com você · é quem DESENHA [cursor] e quem PROGRAMA" — a
+     tipografia é o design. utils/manifestoSplit.js monta o DOM de .s3-vis;
+     uma tela na trilha, logo depois da busca da seção 2 (left/top e a altura
+     da faixa fixa do topo, --s3-chrome, vêm do useManifestoHorizontal). */
   .s3{
-    --s3-red:#F04A3F;
-    --s3-blue:#24489a;
-    --s3-text:#585858;
     position:absolute;
     left:var(--s3-left, 0px);
     top:var(--s3-top, 0px);
-    width:233vh;
+    width:100vw;
     height:100vh;
-    color:var(--s3-text);
-    pointer-events:none;
-    /* acima do traço A: a ponta dele entra um pouco no disco e some sob o
-       mapa quando ele se forma */
     z-index:2;
+    pointer-events:none;
   }
-  .s3 > *{ position:absolute; }
-  .s3 .r{ fill:none; stroke:var(--s3-red); stroke-linecap:round; }
-  .s3 .b{ fill:none; stroke:var(--s3-blue); }
-
-  /* Layout "tudo junto" (Figma): ilustração à esquerda; a seta que sai do
-     dedo do anjo aponta para "quem conversa com você" (frase inteira na
-     caixa de seleção vermelha) e, embaixo, "é quem desenha / e quem programa". */
-  .s3-who{
-    left:86vh;
-    top:25.4vh;
-    margin:0;
-    font-size:4.8vh;
-    white-space:nowrap;
+  .s3-vis{ position:absolute; inset:0; }
+  .s3-vis > *{ position:absolute; }
+  /* pílula: cai como carimbo (--m 0→1) — a sombra dura aparece no impacto */
+  .s3-mark{ left:50%; top:calc(var(--s3-chrome, 0px) + 4vh); transform:translateX(-50%); z-index:3; }
+  .s3-pill{
+    --m:1;
+    display:inline-flex; align-items:center; gap:.8em;
+    margin:0; padding:.8em 1.3em;
+    border:1.5px solid #141414; border-radius:999px; background:var(--bg);
+    font:500 clamp(11px, 1vw, 16px)/1 'JetBrains Mono', monospace;
+    letter-spacing:.08em; text-transform:uppercase; color:#141414; white-space:nowrap;
+    transform:translateY(calc((1 - var(--m)) * -18px)) rotate(calc(-4deg - (1 - var(--m)) * 9deg)) scale(calc(1 + (1 - var(--m)) * .3));
+    box-shadow:calc(var(--m) * .25em) calc(var(--m) * .25em) 0 #141414;
+    opacity:min(1, calc(var(--m) * 4));
   }
-  /* Marca-texto (Group 21, 731×88): caixa de 66 de altura = 1.375em, então
-     1 unidade = 1em/48. --mark 0→1 (timeline da seção 3) estica a caixa da
-     esquerda para a direita e leva a barra da direita junto. */
-  .s3-who-word{
-    --mark:1;
-    position:relative;
-    isolation:isolate;
-    display:inline-block;
-    padding:0 .3em;
-    font-family:'Italiana',serif;
-    line-height:1.375;
-    color:#000;
+  .s3-pill i{ width:.6em; height:.6em; border-radius:50%; background:var(--accent); }
+  .s3-pill b{ color:var(--accent); font-weight:500; }
+  /* palavras: centradas pelo meio das maiúsculas (translateY do JS) */
+  .s3-row{ left:2.5vw; right:2.5vw; top:50%; display:flex; align-items:stretch; justify-content:space-between; z-index:2; }
+  .s3-w{ position:relative; display:flex; }
+  .s3-kick{
+    position:absolute; left:.1em; bottom:calc(100% + .9vw);
+    display:flex; align-items:baseline; gap:.7em; white-space:nowrap;
+    font:500 clamp(12px, 1.25vw, 20px)/1 'JetBrains Mono', monospace;
+    color:var(--accent); letter-spacing:.02em;
   }
-  .s3-who-word::before{
-    content:'';
-    position:absolute;
-    inset:0;
-    z-index:-1;
-    background:rgba(255,68,56,.36);
-    transform:scaleX(var(--mark));
-    transform-origin:left center;
+  .s3-ix{ color:#9a9a92; }
+  .s3-caret{ display:inline-block; width:.55em; height:.12em; margin-left:.08em; background:var(--accent); visibility:hidden; }
+  .s3-caret.on{ visibility:visible; animation:s3Caret .8s steps(1) infinite; }
+  @keyframes s3Caret{ 50%{ opacity:0; } }
+  .s3-disp{
+    display:block;
+    font-family:'Anton',sans-serif; font-weight:400; font-size:13.4vw; line-height:.84;
+    text-transform:uppercase; color:#141414; white-space:nowrap;
   }
-  .s3-mark-bar{
-    position:absolute;
-    left:calc(-8em / 48);
-    top:calc(-11em / 48);
-    width:calc(17em / 48);
-    height:calc(88em / 48);
-    fill:#FF4438;
-    opacity:min(1, calc(var(--mark) * 20));
+  .s3-ch{ display:inline-block; clip-path:inset(-40% -30% 0 -30%); }
+  .s3-ch > span{ display:inline-block; }
+  .s3-w--a .s3-ch > span{ -webkit-text-stroke:1.5px #141414; }
+  .s3-w--b .s3-ch{ text-align:center; }
+  .s3-w--b .s3-ch.scr > span{ color:var(--accent); }
+  .s3-gap{ flex:none; }
+  .s3-note{
+    left:50%; bottom:7vh; width:24em; margin:0; transform:translateX(-50%);
+    text-align:center; z-index:3;
+    font:400 11px/1.4 'JetBrains Mono', monospace; color:#6B6B64; letter-spacing:.06em; text-transform:uppercase;
   }
-  .s3-mark-bar--end{ left:calc(var(--mark) * 100% - 8em / 48); }
-
-  /* composição do anjo: frame do Figma 1130×784 */
-  .s3-comp{
-    left:2vh;
-    top:17vh;
-    height:66vh;
-    aspect-ratio:1130 / 784;
-    z-index:1;
-    pointer-events:auto;
-    cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Ccircle cx='13' cy='13' r='10' fill='none' stroke='%23F04A3F' stroke-width='1.4'/%3E%3Ccircle cx='13' cy='13' r='2.2' fill='%23F04A3F'/%3E%3C/svg%3E") 13 13, crosshair;
+  /* seleção (Figma) na 1ª palavra · inspeção (DevTools) na 2ª */
+  .s3-sel{ z-index:4; }
+  .s3-sel svg{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .s3-sel rect{ fill:none; stroke:var(--accent); stroke-width:1.25; vector-effect:non-scaling-stroke; }
+  .s3-h{ position:absolute; width:8px; height:8px; margin:-4px; background:var(--bg); border:1.25px solid var(--accent); transform:scale(0); }
+  .s3-badge{
+    position:absolute; left:50%; top:calc(100% + 10px); padding:3px 6px; border-radius:3px;
+    background:var(--accent); color:var(--bg); white-space:nowrap;
+    font:500 10.5px/1 'JetBrains Mono', monospace; letter-spacing:.04em;
   }
-  .s3-comp > *{ position:absolute; inset:0; width:100%; height:100%; }
-  .s3-ov, .s3-ov2{ overflow:visible; }
-
-  .s3-deco{ inset:0; width:100%; height:100%; overflow:visible; z-index:2; }
-
-  .s3-hand{
-    left:144vh; top:17vh; margin:0;
-    font-family:'Nothing You Could Do',cursive; color:var(--s3-red);
-    font-size:2.1vh; line-height:1.05;
-    transform:rotate(-22deg); transform-origin:left bottom;
+  .s3-dash{ position:absolute; inset:0; border:1.25px dashed #141414; }
+  .s3-tip{
+    position:absolute; right:0; top:calc(100% + 12px); /* à direita: longe da etiqueta do cursor */
+    display:flex; gap:.8em; align-items:center; padding:6px 9px; border-radius:3px;
+    background:#141414; color:#d8d8d2; white-space:nowrap;
+    font:400 10.5px/1 'JetBrains Mono', monospace;
   }
-  .s3-hand span{ display:block; }
-  .s3-hand span:nth-child(2){ padding-left:1.6vh; }
-  .s3-hand span:nth-child(3){ padding-left:3.2vh; }
-
-  /* provisório — o usuário ainda vai refinar este bloco */
-  .s3-title{
-    left:100vh; top:32.6vh; margin:0;
-    font-family:'Ibarra Real Nova',serif; font-weight:700; color:#595959;
-    font-size:5.2vh; line-height:1.18; white-space:nowrap;
+  .s3-tip::before{ content:''; position:absolute; right:12px; top:-5px; border:5px solid transparent; border-top:0; border-bottom-color:#141414; }
+  .s3-tip b{ color:#FF6A5E; font-weight:500; }
+  .s3-tip i{ font-style:normal; color:#7d7d77; }
+  /* etiqueta de multiplayer do cursor */
+  .s3-tag{
+    left:0; top:0; z-index:5; padding:4px 8px 5px; border-radius:0 6px 6px 6px;
+    background:var(--accent); color:var(--bg); white-space:nowrap; transform-origin:0 0;
+    font:500 11px/1 'JetBrains Mono', monospace; letter-spacing:.04em;
   }
-  .s3-title span{ display:block; }
-  .s3-title span + span{ padding-left:1.6vh; }
-  /* fora do layout novo (a timeline ainda os anima; só não aparecem) */
-  .s3-hand, .s3-bin, .s3-title-deco{ display:none; }
-
-  .s3-mono{
-    margin:0;
-    font-family:'Space Mono',monospace; text-transform:uppercase; color:var(--s3-blue);
-    font-size:1.15vh; line-height:1.75; letter-spacing:.12em; white-space:nowrap;
+  .s3-crop{ z-index:1; width:14px; height:14px; border:0 solid rgba(20,20,20,.45); }
+  .s3-crop:nth-of-type(1){ border-width:1px 0 0 1px; }
+  .s3-crop:nth-of-type(2){ border-width:1px 1px 0 0; }
+  .s3-crop:nth-of-type(3){ border-width:0 0 1px 1px; }
+  .s3-crop:nth-of-type(4){ border-width:0 1px 1px 0; }
+  .s3-readout{
+    left:3vw; bottom:7vh; z-index:3; display:flex; gap:1.4em;
+    font:400 10.5px/1 'JetBrains Mono', monospace; color:#9a9a92; letter-spacing:.06em; font-variant-numeric:tabular-nums;
   }
-  .s3-bin{ left:207vh; top:60.8vh; font-size:1vh; }
+  .s3-readout b{ color:#141414; font-weight:500; }
+  /* Cursor 3D (utils/cursor3d.js): canvas da tela inteira, abaixo do header.
+     Com ele no ar, o cursor SVG da busca sai (o 3D ocupa o lugar dele). */
+  .ms-cursor-cv{ position:fixed; inset:0; width:100vw; height:100vh; z-index:40; pointer-events:none; }
+  .manifesto.has-cursor3d .s2-search-cursor{ visibility:hidden; }
 
   /* Grid: guia de layout do Figma trazido pra tela, acima de tudo da seção
      (header/marquee vivem fora dela, então ficam por cima). Tiles com
@@ -1265,7 +1256,7 @@
        composição desktop (no mobile a frase quebra diferente), então
        ficam escondidos até termos a versão mobile deles. */
     .ms1{ height:auto; min-height:100svh; padding:120px 0 200px; justify-content:center; }
-    .ms-frame, .s2-line, .s3{ display:none; }
+    .ms-frame, .s2-line{ display:none; }
     .ms2{
       min-height:100svh;
       display:flex;
@@ -1281,6 +1272,20 @@
       --cell:25vw;
       background-position:12.5vw 0;
     }
+    /* Seção 3 empilhada: pílula, é quem DESENHA, cursor 3D (já assentado, no
+       vão), e quem PROGRAMA, nota. Os efeitos de texto seguem o scroll
+       vertical (useManifestoHorizontal → mobile). */
+    .s3{ position:relative; left:auto; top:auto; width:auto; height:auto; padding:72px 16px 96px; }
+    .s3-vis{ position:relative; inset:auto; display:flex; flex-direction:column; align-items:center; gap:36px; }
+    .s3-vis > *{ position:relative; }
+    .s3-vis > .s3-sel, .s3-vis > .s3-tag, .s3-vis > .s3-crop{ position:absolute; }
+    .s3-mark{ left:auto; top:auto; transform:none; }
+    .s3-row{ left:auto; right:auto; top:auto; flex-direction:column; align-items:center; gap:64px; padding-top:28px; }
+    .s3-kick{ bottom:calc(100% + 10px); }
+    .s3-gap{ position:relative; width:min(52vw, 220px); height:min(52vw, 220px); }
+    .s3-gap canvas{ position:absolute; inset:0; width:100%; height:100%; }
+    .s3-note{ left:auto; bottom:auto; width:auto; max-width:22em; margin-top:40px; transform:none; } /* abaixo do tooltip do DevTools */
+    .s3-readout{ display:none; }
   }
 
   /* ---------- Services ---------- */

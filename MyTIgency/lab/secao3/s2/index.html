@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- LAB: seção 2 real → seção 3 "Split + cursor 3D" (só em dev: /lab/secao3/s2/). -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Seção 2 → 3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,700;1,400&family=Archivo+Black&family=League+Gothic&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,700&family=Syne:wght@700;800;900&family=Source+Code+Pro:wght@400;600&family=Great+Vibes&family=Just+Me+Again+Down+Here&family=Hedvig+Letters+Sans&family=Ibarra+Real+Nova:wght@400;700&family=IM+Fell+Great+Primer&family=Iansui&family=IM+Fell+English&family=Italiana&family=UnifrakturMaguntia&family=Space+Mono&family=Nothing+You+Could+Do&family=IBM+Plex+Sans+Hebrew&family=Instrument+Serif:ital@0;1&family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&display=swap" rel="stylesheet" />
+  <style>
+    /* seção 3 nova: uma tela, posicionada pelo pin (useLabHorizontal) */
+    .s3x { position: absolute; left: var(--s3-left, 200vw); top: var(--s3-top, 0); width: 100vw; height: 100vh; z-index: 2; --red: #FF4438; --dim: #6B6B64; }
+    /* o cursor SVG da busca fica no layout (o cursor 3D lê a posição e o clique dele) */
+    .s2-search-cursor { opacity: 0; }
+    .lab-ext { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; z-index: 1; pointer-events: none; }
+    .lab-cursor { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 50; pointer-events: none; }
+    .lab-tail { height: 60vh; display: grid; place-items: center; font: 12px 'JetBrains Mono', monospace; color: #6B6B64; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="./main.jsx"></script>
+</body>
+</html>

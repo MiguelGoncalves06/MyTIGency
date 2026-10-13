@@ -1,0 +1,302 @@
+// LAB: pin lateral da seção 2 do site (mesma lógica de useManifestoHorizontal)
+// com a seção 3 trocada pelo "Split + cursor 3D". O cursor da busca
+// (set:mytigency.com) vira o cursor 3D: na seção 2 ele é um cursor de
+// interface (chapado, inclinado como o SVG); no pin lateral ele "clica e
+// solta" e percorre UM caminho só (motion path, como nas refs de objeto que
+// viaja entre seções): desce da busca até o fim do traço A, pega a ponta e,
+// como caneta, desenha o resto até o centro da seção 3, onde assenta em 3/4.
+//   · velocidade constante no comprimento do caminho + uma easing só no
+//     trajeto inteiro (sem parar no meio);
+//   · rotação pela tangente com amortecimento e inclinação na curva;
+//   · tamanho interpolado em escala geométrica (cresce em ritmo constante).
+import { useLayoutEffect } from 'react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin'
+import { LINE_A_EXT, LINE_A_JOIN, LINE_A_LEN } from '../../../src/utils/manifestoLineA'
+import { introPinDuration, lineAPen } from '../../../src/utils/manifestoScroll'
+import { DESKTOP_QUERY } from '../../../src/hooks/useManifestoHorizontal'
+import { mountCursor3D } from '../cursor3d.js'
+import { splitScene, curve, stroke, ramp } from '../protos.js'
+import { warpBrush } from './brushWarp.js'
+import { polishSplit } from './s3Polish.js'
+
+gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
+
+const START_EARLY = 0.06 // = site
+// = caneta do traço A (useManifestoIntro, 1.2): com scrubs diferentes, rolando
+// rápido o cursor chegava em J antes do traço (ou o traço passava dele)
+const SCRUB = 1.2
+const TV_TURN = 1.6 // = site
+const TV_TURN_END_AT = 0.2
+const TV_TUNE_AT = 0.42
+const turnEase = gsap.parseEase('sine.inOut')
+// Seção 3 nova: uma tela (100vw), logo depois da caixa de busca.
+const S3_GAP_VW = 0.06
+const HOLD_VH = 1.1 // scroll parado com a seção 3 centrada (palavras, marca)
+// Trajeto do cursor (em px de scroll dentro do pin):
+const GO_AT = 0.16 // sai da busca a 16% do percurso lateral
+const DRAW_END_HOLD = 0.35 // chega a 35% do scroll parado
+const PRESS = 0.05 // "clique" antes de soltar (fração do percurso lateral)
+// ponta na busca: logo depois da lupa, na borda de baixo da caixa (frações do texto/caixa)
+const START = { textX: 0.04, boxY: 0.86 }
+const PICK_AFTER_VW = 0.16 // o cursor pega o traço A a 16vw à direita da ponta na busca
+const SIZE_IN_SEARCH = 1.6 // altura do cursor / altura da caixa de busca
+const BRUSH_GAIN = 1.25 // o pincel engrossa até 125% no fim (a seção 3 é maior)
+const sineIO = (t) => (1 - Math.cos(Math.PI * t)) / 2
+const sineIOinv = (v) => Math.acos(1 - 2 * v) / Math.PI
+const smooth = (t) => t * t * (3 - 2 * t)
+const clamp01 = (v) => Math.min(1, Math.max(0, v))
+const TAU = Math.PI * 2
+
+export function useLabHorizontal(rootRef) {
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root) return undefined
+    const q = (s) => root.querySelector(s)
+    const track = q('.ms-track')
+    const ms2 = q('.ms2')
+    const groups = root.querySelectorAll('.s2-group')
+    const lineLow = q('.s2-line-a')
+    const guides = root.querySelectorAll('.la-guide')
+    const s3 = q('.s3x')
+    const tvCanvas = q('.s2-tv')
+    const searchBox = q('.s2-search-box')
+    const searchCursor = q('.s2-search-cursor')
+    const searchText = q('.s2-search-text')
+    const search = q('.s2-search') // useManifestoS2Enter anima o x dele (entrada)
+    if (!track || !ms2 || !lineLow || !s3 || !searchBox || !searchCursor || !searchText) return undefined
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    const docTop = (el) => { let y = 0; for (let n = el; n; n = n.offsetParent) y += n.offsetTop; return y }
+    const boxIn = (el) => {
+      let x = 0, y = 0
+      for (let n = el; n && n !== root; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop }
+      return { x, y, w: el.offsetWidth, h: el.offsetHeight }
+    }
+    const startY = () => {
+      let top = Infinity, bottom = -Infinity
+      groups.forEach((g) => { top = Math.min(top, g.offsetTop); bottom = Math.max(bottom, g.offsetTop + g.offsetHeight) })
+      return docTop(ms2) + (top + bottom) / 2 - innerHeight * (0.5 + START_EARLY)
+    }
+    const pinAt = () => startY() + introPinDuration()
+
+    let travelA = 0, scrollB = 0, vw = 1, vh = 1, tvCx = 0, tvF0 = 1
+    let s3Left = 0, s3Top = 0, dGo = 0, dEnd = 0, rootDoc = 0, T = [0, 0], st = null
+    let J = [0, 0], Jdir = [1, 0], pickS = 0, artScale = 1
+    function layout() {
+      vh = innerHeight
+      vw = innerWidth
+      const sb = boxIn(searchBox)
+      s3Left = sb.x + sb.w + vw * S3_GAP_VW
+      s3Top = startY() - docTop(root)
+      rootDoc = docTop(root)
+      root.style.setProperty('--s3-left', `${s3Left}px`)
+      root.style.setProperty('--s3-top', `${s3Top}px`)
+      travelA = s3Left
+      scrollB = vh * HOLD_VH
+      dGo = travelA * GO_AT
+      dEnd = travelA + scrollB * DRAW_END_HOLD
+      // O traço A do site segue pela extensão até um ponto à DIREITA da busca
+      // (PICK_AFTER_VW): ali o cursor o pega — assim ele só anda para frente.
+      const line = boxIn(lineLow) // SVG 2135×1216
+      const sx = line.w / 2135, sy = line.h / 1216
+      const at = ([u, v]) => [line.x + u * sx, line.y + v * sy]
+      const pickX = startIn(boxIn(searchBox), boxIn(searchText))[0] + vw * PICK_AFTER_VW
+      const ext = [LINE_A_JOIN, ...LINE_A_EXT]
+      let lenAll = 0, lenTo = -1
+      for (let i = 1; i < ext.length; i++) {
+        const seg = Math.hypot(ext[i][0] - ext[i - 1][0], ext[i][1] - ext[i - 1][1])
+        const a = at(ext[i - 1]), b = at(ext[i])
+        if (lenTo < 0 && b[0] >= pickX) {
+          const f = Math.max(0, Math.min(1, (pickX - a[0]) / (b[0] - a[0])))
+          J = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]
+          const n = Math.hypot(b[0] - a[0], b[1] - a[1])
+          Jdir = [(b[0] - a[0]) / n, (b[1] - a[1]) / n]
+          lenTo = lenAll + seg * f
+        }
+        lenAll += seg
+      }
+      if (lenTo < 0) { lenTo = lenAll; J = at(ext[ext.length - 1]) }
+      pickS = lenTo
+      // a máscara do traço A usa pincel redondo de 40 unid.: a ponta dele vai 20
+      // além do fim do drawSVG — termina 20 antes para a arte parar exatamente em J
+      lineAPen.frac = (LINE_A_LEN + lenTo - 20) / (LINE_A_LEN + lenAll)
+      lineAPen.end = pinAt() + travelA * 0.4 // provisório; buildExt() acerta com o caminho
+      if (reduced) gsap.set(guides, { drawSVG: `${lineAPen.frac * 100}%` })
+      artScale = sx
+      root.style.setProperty('--ms-travel', `${travelA}px`)
+      if (tvCanvas) {
+        const tvBox = boxIn(tvCanvas)
+        tvCx = tvBox.x + tvBox.w / 2
+        tvF0 = Math.max(TV_TURN_END_AT + 0.1, tvCx / vw)
+      }
+      buildExt()
+    }
+
+    /* ---------- seção 3 (split) + traço novo + cursor ---------- */
+    let split = null, pol = null, cur = null, ext = null, sF = 200, s0 = 40, F = [0, 0], cancelled = false
+    let L = 1, L1 = 1
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('class', 'lab-ext')
+    // pincel (arte do traço A deformada) revelado por uma máscara de caneta,
+    // como o traço A do site; motion/seg1 são só geometria (invisíveis)
+    svg.innerHTML = '<defs><mask id="lab-brush-mask" maskUnits="userSpaceOnUse" x="-20000" y="-20000" width="60000" height="60000">'
+      // ponta reta (butt): a redonda avançava meia espessura além da cabeça e o
+      // traço aparecia na frente da ponta do cursor
+      + '<path fill="none" stroke="#fff" stroke-linecap="butt" stroke-linejoin="round"/></mask></defs>'
+      + '<path fill="#FF4438" mask="url(#lab-brush-mask)"/><path fill="none"/><path fill="none"/>'
+    track.append(svg)
+    const extPath = svg.querySelector('mask path')
+    const [, brushArt, motion, seg1] = svg.children
+    const canvas = Object.assign(document.createElement('canvas'), { className: 'lab-cursor' })
+    document.body.append(canvas)
+    // ponta do cursor na busca (caixas em px: trilha sem transforms, ou tela)
+    const startIn = (box, text) => [text.x + text.w * START.textX, box.y + box.h * START.boxY]
+    function buildExt() {
+      if (!split || !cur) return
+      const gap = (() => { const a = split.q('.ts-c').getBoundingClientRect(), b = s3.getBoundingClientRect(); return { x: a.left - b.left, w: a.width } })()
+      sF = Math.min(gap.w * 0.78, vh * 0.3)
+      const [bx, by] = cur.body(sF)
+      F = [s3Left + gap.x + gap.w / 2 - bx, s3Top + vh / 2 - by]
+      T = startIn(boxIn(searchBox), boxIn(searchText))
+      // 1) da busca desce para a frente até a ponta do traço A (J), chegando na
+      // direção dele; 2) dali segue na mesma direção e sobe reto pelo vão até a
+      // ponta final (tangente contínua em J)
+      const c1 = [T[0] + vw * 0.06, T[1] + vh * 0.12] // para frente, longe da TV
+      const c2 = [J[0] - Jdir[0] * vw * 0.12, J[1] - Jdir[1] * vw * 0.12]
+      const c3 = [J[0] + Jdir[0] * vw * 0.35, J[1] + Jdir[1] * vw * 0.35]
+      const c4 = [F[0], F[1] + vh * 0.5]
+      seg1.setAttribute('d', curve(T, c1, c2, J))
+      motion.setAttribute('d', curve(T, c1, c2, J, c3, c4, F))
+      L1 = seg1.getTotalLength()
+      L = motion.getTotalLength()
+      extPath.setAttribute('stroke-width', 70 * artScale * BRUSH_GAIN) // cobre a arte inteira
+      ext = stroke(extPath, curve(J, c3, c4, F))
+      brushArt.setAttribute('d', warpBrush(extPath, pickS, artScale, BRUSH_GAIN))
+      // o traço A do site chega em J no instante em que o cursor passa por ali
+      lineAPen.end = pinAt() + dGo + sineIOinv(L1 / L) * (dEnd - dGo)
+      s0 = searchBox.offsetHeight * SIZE_IN_SEARCH
+      // etiqueta "nós dois" junto ao corpo do cursor assentado (px do palco)
+      pol?.tagAt(F[0] - s3Left + sF * 0.7, F[1] - s3Top + sF * 1.02)
+      apply()
+    }
+    const progress = (d) => sineIO(ramp(d, dGo, dEnd)) // fração do comprimento do caminho
+    ;(async () => {
+      const box = Math.round(innerWidth * 0.2)
+      split = await splitScene(s3, '<i class="t2-gap"></i>', box, '', 'sticker') // pílula da Sobreposição
+      if (cancelled) return
+      split.q('.route')?.remove() // o traço aqui é o da trilha (.lab-ext)
+      pol = polishSplit(s3, split)
+      // tick roda DENTRO do quadro do cursor (antes de renderizar): sem um
+      // segundo rAF, o cursor não fica um quadro atrás do traço
+      cur = await mountCursor3D(canvas, { size: 40, before: tick })
+      if (cancelled) { cur.dispose(); return }
+      ScrollTrigger.refresh() // remede com o caminho pronto (lineAPen.end)
+    })()
+
+    const proxy = { d: 0 }
+    function apply() {
+      const d = proxy.d
+      const x = -Math.min(d, travelA)
+      gsap.set(track, { x })
+      const tv = tvCanvas?.tv
+      if (tv && !reduced) {
+        const t = Math.min(1, Math.max(0, (tvF0 - (tvCx + x) / vw) / (tvF0 - TV_TURN_END_AT)))
+        tv.setTurn(-TV_TURN * turnEase(t))
+        tv.setTune(t / TV_TUNE_AT)
+        tv.setShift(x)
+      }
+      // a seção 3 entra pela direita enquanto a trilha anda: rótulos digitam,
+      // DESENHA é desenhada, PROGRAMA compila; com o cursor assentado, seleção
+      // (Figma) e inspeção (DevTools), carimbo e etiqueta; por último a nota
+      pol?.update({
+        kickL: ramp(d, travelA - vw * 0.85, travelA - vw * 0.6),
+        desenha: ramp(d, travelA - vw * 0.8, travelA - vw * 0.25),
+        kickR: ramp(d, travelA - vw * 0.7, travelA - vw * 0.45),
+        programa: ramp(d, travelA - vw * 0.6, travelA - vw * 0.05),
+        crop: ramp(d, travelA - vw * 0.5, travelA),
+        sel: ramp(d, dEnd - scrollB * 0.02, dEnd + scrollB * 0.2),
+        inspect: ramp(d, dEnd + scrollB * 0.1, dEnd + scrollB * 0.3),
+        mark: ramp(d, dEnd + scrollB * 0.22, dEnd + scrollB * 0.42),
+        tag: ramp(d, dEnd + scrollB * 0.32, dEnd + scrollB * 0.45),
+        note: ramp(d, dEnd + scrollB * 0.42, travelA + scrollB * 0.95),
+      })
+      ext?.set(Math.max(0, (progress(d) * L - L1) / (L - L1)))
+    }
+
+    // Cursor a cada quadro, sem ler layout (getBoundingClientRect forçava
+    // recálculo de estilo logo depois do GSAP escrever os transforms): a
+    // posição da trilha na tela vem do y do pin + o x dela.
+    function tick() {
+      if (!ext || !st) return
+      const d = proxy.d
+      const s = progress(d)
+      const y = window.scrollY
+      // y do pin (transform) que o GSAP aplicou no bloco — soma o pin de entrada
+      // da seção 1 e o lateral; lido do cache do GSAP, sem recalcular estilo
+      const trTop = rootDoc - y + gsap.getProperty(root, 'y')
+      const trLeft = gsap.getProperty(track, 'x')
+      const click = gsap.getProperty(searchCursor, 'scale')
+      const press = 1 - 0.14 * Math.sin(Math.PI * ramp(d, dGo - travelA * PRESS, dGo + travelA * 0.015))
+      // escala geométrica: cada trecho cresce a mesma proporção (sem "estourar" no fim)
+      const size = s0 * (sF / s0) ** smooth(ramp(s, 0.08, 0.95)) * press * (s > 0 ? 1 : click)
+      // até pegar o traço (trecho 1): continua cursor de interface e gira aos
+      // poucos, no sentido horário, até apontar na direção do traço em J — sem
+      // virar a ponta para baixo na descida
+      const w = smooth(clamp01((s * L) / L1))
+      const settle = Math.max(1 - w, smooth(ramp(s, 0.88, 1)))
+      const flat = 1 - w
+      const aimJ = cur.aimFor(Math.atan2(-Jdir[1], Jdir[0]))
+      const aim = s * L < L1 ? cur.flatZ + (((aimJ - cur.flatZ) % TAU) - TAU) % TAU * w : null
+      if (s <= 0) {
+        cur.set(trLeft + T[0] + gsap.getProperty(search, 'x'), trTop + T[1], Math.PI / 2, 1, 1, size, 1)
+        return
+      }
+      const a = motion.getPointAtLength(s * L)
+      const p0 = motion.getPointAtLength(Math.max(0, s * L - 6)), p1 = motion.getPointAtLength(Math.min(L, s * L + 6))
+      pol?.cursor(trLeft + a.x, trTop + a.y)
+      cur.set(trLeft + a.x, trTop + a.y, Math.atan2(p0.y - p1.y, p1.x - p0.x), settle, 1, size, flat, aim)
+    }
+
+    const mm = gsap.matchMedia()
+    mm.add(DESKTOP_QUERY, () => {
+      layout()
+      st = gsap.fromTo(proxy, { d: 0 }, {
+        d: () => travelA + scrollB,
+        ease: 'none',
+        onUpdate: apply,
+        scrollTrigger: {
+          trigger: root,
+          start: pinAt,
+          end: () => `+=${travelA + scrollB}`,
+          pin: true,
+          pinType: 'transform',
+          scrub: SCRUB,
+          invalidateOnRefresh: true,
+          refreshPriority: -1,
+          onRefreshInit: layout,
+          onRefresh: apply,
+        },
+      }).scrollTrigger
+      return () => {
+        gsap.set(track, { clearProps: 'transform' })
+        lineAPen.end = 0
+        tvCanvas?.tv?.setTurn(0)
+        tvCanvas?.tv?.setTune(1)
+      }
+    })
+    const onTvReady = () => apply()
+    tvCanvas?.addEventListener('s2:tv-ready', onTvReady)
+    document.fonts.ready.then(() => ScrollTrigger.refresh())
+
+    return () => {
+      cancelled = true
+      tvCanvas?.removeEventListener('s2:tv-ready', onTvReady)
+      mm.revert()
+      cur?.dispose()
+      canvas.remove()
+      svg.remove()
+    }
+  }, [rootRef])
+}
