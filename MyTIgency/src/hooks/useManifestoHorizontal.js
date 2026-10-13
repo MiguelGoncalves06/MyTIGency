@@ -7,6 +7,7 @@ import { introPinDuration, lineAPen } from '../utils/manifestoScroll'
 import { mountCursor3D } from '../utils/cursor3d'
 import { warpBrush } from '../utils/manifestoBrush'
 import { buildSplit } from '../utils/manifestoSplit'
+import { mountAct2 } from '../utils/manifestoAct2'
 
 gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 
@@ -29,6 +30,18 @@ const SCRUB = 1.2
 // centra, HOLD_VH de scroll parado para as palavras, a seleção e a pílula.
 const S3_GAP_VW = 0.06
 const HOLD_VH = 1.1
+// Fração do scroll parado em que todos os efeitos da seção 3 já terminaram;
+// de S3_DONE a 1 fica o espaço da transição (máscara) para o próximo texto.
+const S3_DONE = 0.72
+// Segundo ato (utils/manifestoAct2.js), no mesmo pin, depois da seção 3:
+// um respiro (ACT2_GAP_VH), a cortina #141414 (CURTAIN_VH) e a cena A
+// (SCENE_A_VH; a frase entra quando a cortina está em TEXT_AT). Em alturas de tela.
+const ACT2_GAP_VH = 0.1
+const CURTAIN_VH = 1.3 // caneta → tinta enche → toma a tela
+const SCENE_A_VH = 1.8
+const TEXT_AT = 0.85
+// Quanto o cursor 3D e a régua apagam no meio da cortina (0 = nada, 1 = somem)
+const ACT2_DIP = 0.65
 // Cursor (o da busca vira o cursor 3D): sai da busca a GO_AT do percurso
 // lateral e chega a DRAW_END_HOLD do scroll parado. Antes de soltar dá um
 // "clique" (PRESS). Pega o traço A num ponto à direita da busca
@@ -108,6 +121,7 @@ export function useManifestoHorizontal(rootRef, lang) {
     const guides = root.querySelectorAll('.la-guide')
     const s3 = q('.s3')
     const s3vis = q('.s3-vis')
+    const act2El = q('.ms-act2')
     const tvCanvas = q('.s2-tv')
     const search = q('.s2-search') // useManifestoS2Enter anima o x dele (entrada)
     const searchBox = q('.s2-search-box')
@@ -198,6 +212,8 @@ export function useManifestoHorizontal(rootRef, lang) {
       let rootDoc = 0
       let dGo = 0
       let dEnd = 0
+      let act2At = 0 // px no pin em que a cortina começa
+      let pinLen = 1 // pin inteiro: trilha + seção 3 + segundo ato
       let J = [0, 0] // onde o cursor pega o traço A
       let Jdir = [1, 0]
       let pickS = 0 // comprimento da extensão do traço A até J (unid. do SVG)
@@ -249,10 +265,16 @@ export function useManifestoHorizontal(rootRef, lang) {
         + who.ruler.map((t, i) => `<span class="ms-ruler-stop"><b>0${i + 1}</b> ${t}</span>`).join('')
         + '<div class="ms-ruler-head"><span>000%</span><svg viewBox="0 0 12 14"><path d="M1 1v11l3-3 2.4 4.4 1.8-1-2.4-4.3H10Z"/></svg></div>'
       document.body.append(ruler)
+      // grão do segundo ato: fixo, acima de tudo menos header/marquee (App.css → .ms-grain)
+      const grain = document.createElement('div')
+      grain.className = 'ms-grain'
+      grain.setAttribute('aria-hidden', 'true')
+      document.body.append(grain)
       const rStops = [...ruler.querySelectorAll('.ms-ruler-stop')]
       const rPath = ruler.querySelector('.ms-ruler-path'), rFill = rPath.firstChild
       const rHead = ruler.querySelector('.ms-ruler-head'), rVal = rHead.firstChild
       let rFracs = [0, 0.5, 1]
+      const act2 = act2El && mountAct2(act2El, { behind: s3 }) // a seção 3 recua sob a tinta
       const maskEl = svg.querySelector('mask')
       const extPath = maskEl.firstChild
       const [, brushArt, motion, seg1] = svg.children
@@ -279,6 +301,8 @@ export function useManifestoHorizontal(rootRef, lang) {
         scrollB = vh * HOLD_VH
         dGo = travelA * GO_AT
         dEnd = travelA + scrollB * DRAW_END_HOLD
+        act2At = travelA + scrollB * S3_DONE + vh * ACT2_GAP_VH
+        pinLen = act2At + vh * (CURTAIN_VH + SCENE_A_VH)
         // ponto da extensão do traço A a PICK_AFTER_VW à direita da busca
         const line = boxIn(lineLow) // SVG 2135×1216
         const sx = line.w / 2135
@@ -433,22 +457,36 @@ export function useManifestoHorizontal(rootRef, lang) {
           tv.setShift(x)
           tv.setTune(1) // o boot (applyBoot) ocupa a tela, sem chiado de sintonia
         }
-        // a seção 3 entra pela direita: rótulos digitam, a 1ª palavra é
-        // desenhada, a 2ª compila; com o cursor assentado, seleção (Figma) e
-        // inspeção (DevTools), carimbo e etiqueta; por último a nota
+        // a seção 3 entra pela direita: a pílula "quem conversa com você" já
+        // decodifica na entrada (está pronta quando a seção chega), rótulos
+        // digitam, a 1ª palavra é desenhada, a 2ª compila; com o cursor
+        // assentado, seleção (Figma), inspeção (DevTools), etiqueta e a nota.
+        // Tudo termina até S3_DONE do scroll parado: o resto fica livre para a
+        // transição (máscara) para o próximo texto do Manifesto.
         split?.update({
+          mark: ramp(d, travelA - vw * 0.95, travelA - vw * 0.65),
           kickA: ramp(d, travelA - vw * 0.85, travelA - vw * 0.6),
           wordA: ramp(d, travelA - vw * 0.8, travelA - vw * 0.25),
           kickB: ramp(d, travelA - vw * 0.7, travelA - vw * 0.45),
           wordB: ramp(d, travelA - vw * 0.6, travelA - vw * 0.05),
           crop: ramp(d, travelA - vw * 0.5, travelA),
-          sel: ramp(d, dEnd - scrollB * 0.02, dEnd + scrollB * 0.2),
-          inspect: ramp(d, dEnd + scrollB * 0.1, dEnd + scrollB * 0.3),
-          mark: ramp(d, dEnd + scrollB * 0.22, dEnd + scrollB * 0.42),
-          tag: ramp(d, dEnd + scrollB * 0.32, dEnd + scrollB * 0.45),
-          note: ramp(d, dEnd + scrollB * 0.42, travelA + scrollB * 0.95),
+          sel: ramp(d, dEnd - scrollB * 0.02, dEnd + scrollB * 0.12),
+          inspect: ramp(d, dEnd + scrollB * 0.05, dEnd + scrollB * 0.2),
+          tag: ramp(d, dEnd + scrollB * 0.15, dEnd + scrollB * 0.25),
+          note: ramp(d, dEnd + scrollB * 0.2, travelA + scrollB * S3_DONE),
         })
         ext?.set(Math.max(0, (progress(d) * L - L1) / (L - L1)))
+        // segundo ato: cortina e cena A (reduced motion: corte seco, cena pronta)
+        const curtain = ramp(d, act2At, act2At + vh * CURTAIN_VH)
+        const sceneA = ramp(d, act2At + vh * CURTAIN_VH * TEXT_AT, pinLen)
+        act2?.update(reduced ? { curtain: curtain > 0 ? 1 : 0, a: curtain > 0 ? 1 : 0 } : { curtain, a: sceneA })
+        // cursor 3D e régua seguem no segundo ato (a régua volta a ter papel
+        // na seção 5): mergulham devagar durante a cortina e voltam inteiros
+        const dip = reduced ? 0 : ACT2_DIP * Math.sin(Math.PI * curtain)
+        if (canvas) canvas.style.opacity = `${1 - dip}`
+        ruler.style.setProperty('--act2-dip', dip)
+        grain.style.setProperty('--grain', ramp(d, act2At + vh * CURTAIN_VH * 0.28, act2At + vh * CURTAIN_VH))
+        document.documentElement.classList.toggle('ms-dark', curtain > 0.55) // header claro sobre o escuro
         // régua: cabeçote no scroll do pin, trecho vermelho = cursor no caminho
         const p = clamp01(d / (travelA + scrollB))
         rHead.style.transform = `translateX(${p * ruler.clientWidth}px)`
@@ -532,13 +570,13 @@ export function useManifestoHorizontal(rootRef, lang) {
 
       layout()
       st = gsap.fromTo(proxy, { d: 0 }, {
-        d: () => travelA + scrollB,
+        d: () => pinLen,
         ease: 'none',
         onUpdate: apply,
         scrollTrigger: {
           trigger: root,
           start: pinAt,
-          end: () => `+=${travelA + scrollB}`,
+          end: () => `+=${pinLen}`,
           pin: true,
           // Fixa por transform, não por position:fixed. O .reveal-panel (pai)
           // pode estar com transform/will-change da transição Hero→Marquee, e
@@ -628,11 +666,14 @@ export function useManifestoHorizontal(rootRef, lang) {
         bootTw?.scrollTrigger?.kill()
         bootTw?.kill()
         tvCanvas?.tv?.setBoot?.(null)
+        act2?.dispose()
+        document.documentElement.classList.remove('ms-dark')
         cur?.dispose()
         canvas?.remove()
         svg.remove()
         impact.remove()
         ruler.remove()
+        grain.remove()
         root.classList.remove('has-cursor3d')
         gsap.set(track, { clearProps: 'transform,willChange' })
         lineAPen.end = 0 // sem o pin lateral, a caneta volta a terminar na seção 2
@@ -651,6 +692,24 @@ export function useManifestoHorizontal(rootRef, lang) {
       let stm = null
       let cv = null
       let c = null
+      // segundo ato empilhado: seção escura no fluxo, a cena A segue o scroll
+      const act2 = act2El && mountAct2(act2El)
+      const act2St = act2 && ScrollTrigger.create({
+        trigger: act2El,
+        start: 'top 70%',
+        end: 'bottom 55%',
+        scrub: SCRUB,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => act2.update({ curtain: 1, a: reduced ? 1 : self.progress / 0.9 }),
+        onRefresh: (self) => act2.update({ curtain: 1, a: reduced ? 1 : self.progress / 0.9 }),
+      })
+      // header claro enquanto a seção escura está atrás dele
+      const darkSt = act2El && ScrollTrigger.create({
+        trigger: act2El,
+        start: 'top 64px',
+        end: 'bottom 64px',
+        toggleClass: { targets: document.documentElement, className: 'ms-dark' },
+      })
       const stateAt = (p) => ({
         mark: ramp(p, 0, 0.18),
         kickA: ramp(p, 0.08, 0.2),
@@ -660,8 +719,8 @@ export function useManifestoHorizontal(rootRef, lang) {
         crop: ramp(p, 0.4, 0.62),
         sel: ramp(p, 0.55, 0.75),
         inspect: ramp(p, 0.62, 0.82),
-        tag: ramp(p, 0.7, 0.85),
-        note: ramp(p, 0.8, 1),
+        tag: ramp(p, 0.7, 0.8),
+        note: ramp(p, 0.75, S3_DONE + 0.1), // termina antes do fim (espaço da transição)
       })
       whenNear(async () => {
         await ready
@@ -677,6 +736,8 @@ export function useManifestoHorizontal(rootRef, lang) {
           onUpdate: (self) => split.update(stateAt(self.progress)),
         })
         split.update(stateAt(stm.progress))
+        // a seção 3 montada empurra o segundo ato para baixo: remede os gatilhos dele
+        ScrollTrigger.refresh()
         cv = document.createElement('canvas')
         s3vis.querySelector('.s3-gap').append(cv)
         try {
@@ -695,6 +756,10 @@ export function useManifestoHorizontal(rootRef, lang) {
       })
       return () => {
         alive = false
+        act2St?.kill()
+        darkSt?.kill()
+        document.documentElement.classList.remove('ms-dark')
+        act2?.dispose()
         stm?.kill()
         c?.dispose()
         cv?.remove()

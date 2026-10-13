@@ -23,6 +23,14 @@ import tvUrl from '../assets/pc-terrarium.min.glb?url'
 // Inline (não <img>): o traço vive numa <mask> com um <path> — é esse path
 // que vai receber stroke-dashoffset quando a elipse passar a se desenhar.
 import brandStrokeRaw from '../assets/myt-stroke.svg?raw'
+import brushRaw from '../assets/s4-brush.svg?raw'
+// kit MYT: composição dos cantos da cena A
+import sealImg from '../assets/kit/selo-feito-branco.svg'
+import ticketImg from '../assets/kit/ticket-aprovado.svg'
+import tapeImg from '../assets/kit/faixa-tile.svg'
+import sparkImg from '../assets/kit/brilho.svg'
+import spark2Img from '../assets/kit/brilho-duplo.svg'
+import starImg from '../assets/kit/estrela.svg'
 
 // No Figma a elipse foi esticada para abraçar a palavra — sem isso o SVG
 // mantém a proporção original e fica baixo demais.
@@ -73,6 +81,135 @@ function Section3({ who }) {
       <h2 className="sr-only" id="s3-title">{who.title}</h2>
       <p className="sr-only">{who.note}</p>
       <div className="s3-vis" aria-hidden="true" data-who={JSON.stringify(who)} />
+    </section>
+  )
+}
+
+// Segundo ato (fundo #141414): cortina (a caneta circula, a tinta preenche e
+// toma a tela) + cena A. Fica dentro do bloco fixado e fora da trilha (não
+// anda de lado); no desktop cobre a tela durante o pin.
+// Estado: utils/manifestoAct2.js, tempo: useManifestoHorizontal.
+
+// Pincel do marcador (s4-brush.svg, 353×19, reto): risca "promessas" e,
+// dobrado ao longo de uma elipse à mão, circula "mostrar" — a mesma linha.
+const BRUSH_D = brushRaw.match(/ d="([^"]+)"/)[1]
+const BRUSH_W = 353
+const BRUSH_MID = 9.5
+// Elipse em volta de "mostrar" (viewBox 300×100, perto da proporção da
+// palavra): ~1,15 volta, as duas voltas não coincidem.
+const RING_PTS = (() => {
+  const pts = []
+  for (let i = 0; i <= 240; i++) {
+    const u = i / 240
+    const a = Math.PI * 0.9 + u * 1.15 * Math.PI * 2
+    const g = 1 + u * 0.05
+    pts.push([150 + Math.cos(a) * 140 * g, 50 + Math.sin(a) * 42 * g - u * 4])
+  }
+  return pts
+})()
+const RING_LINE = `M${RING_PTS.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join('L')}`
+// "Art brush": x do pincel → comprimento ao longo da elipse; y → distância da
+// normal (espessura × RING_K). Cada par de coordenadas do path é levado.
+const RING_K = 0.42
+const RING_BRUSH = (() => {
+  const cum = [0]
+  for (let i = 1; i < RING_PTS.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(RING_PTS[i][0] - RING_PTS[i - 1][0], RING_PTS[i][1] - RING_PTS[i - 1][1]))
+  }
+  const total = cum[cum.length - 1]
+  const at = (x, y) => {
+    const s = Math.min(1, Math.max(0, x / BRUSH_W)) * total
+    let i = 1
+    while (i < cum.length - 1 && cum[i] < s) i++
+    const [x0, y0] = RING_PTS[i - 1]
+    const [x1, y1] = RING_PTS[i]
+    const seg = cum[i] - cum[i - 1] || 1
+    const f = (s - cum[i - 1]) / seg
+    const tx = (x1 - x0) / seg
+    const ty = (y1 - y0) / seg
+    const n = (y - BRUSH_MID) * RING_K
+    return [x0 + (x1 - x0) * f - ty * n, y0 + (y1 - y0) * f + tx * n]
+  }
+  const tok = BRUSH_D.match(/[MCLZ]|-?\d*\.?\d+(?:e-?\d+)?/g)
+  let out = ''
+  for (let i = 0; i < tok.length;) {
+    if (/[MCLZ]/.test(tok[i])) { out += tok[i++]; continue }
+    const [x, y] = at(+tok[i], +tok[i + 1])
+    out += `${x.toFixed(2)} ${y.toFixed(2)} `
+    i += 2
+  }
+  return out
+})()
+// Flor de seis pétalas (o asterisco orgânico), gira com o scroll
+const PETALS = [0, 60, 120, 180, 240, 300]
+
+function Graphic({ role }) {
+  if (role === 'flower') {
+    return (
+      <svg className="ma-g ma-flower" viewBox="-50 -50 100 100">
+        {PETALS.map((r) => <ellipse key={r} cx="0" cy="-23" rx="13" ry="25" transform={`rotate(${r})`} />)}
+        <circle r="10" />
+      </svg>
+    )
+  }
+  // olho em dither que segue o cursor (utils/ditherEye.js)
+  if (role === 'eye') return <canvas className="ma-g ma-eye" />
+  return (
+    <svg className="ma-g ma-arrow" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46" />
+      <path d="M32 68 68 32M40 32h28v28" />
+    </svg>
+  )
+}
+
+function Act2({ act }) {
+  const { a } = act
+  return (
+    <section className="ms-act2" aria-labelledby="ma-a-title">
+      {/* cortina: a tinta (pixels, canvas) por baixo da caneta (SVG) */}
+      <canvas className="ma-ink" aria-hidden="true" />
+      <svg className="ma-pen" aria-hidden="true"><path /></svg>
+      {/* cantos da cena A (kit MYT): fita, ticket e brilhos (o selo mora na 1ª linha) */}
+      <div className="ma-deco" aria-hidden="true">
+        <div className="ma-d ma-tape" style={{ backgroundImage: `url(${tapeImg})` }} />
+        <img className="ma-d ma-ticket" src={ticketImg} alt="" />
+        <img className="ma-d ma-spark ma-spark--a" src={sparkImg} alt="" />
+        <img className="ma-d ma-spark ma-spark--b" src={spark2Img} alt="" />
+        <img className="ma-d ma-spark ma-spark--c" src={starImg} alt="" />
+      </div>
+      <div className="ma-scene ma-a">
+        <h2 className="sr-only" id="ma-a-title">{a.sentence}</h2>
+        <p className="ma-eyebrow" aria-hidden="true">{a.eyebrow}</p>
+        <p className="ma-a-text" aria-hidden="true">
+          {a.lines.map((line, i) => (
+            <span className="ma-line" key={i}>
+              {/* selo "Feito pela MYT": à esquerda de POR e PROMESSAS, entre as duas linhas */}
+              {i === 0 && <img className="ma-d ma-seal" src={sealImg} alt="" />}
+              {line.map(([text, role], j) => {
+                if (!text) return <Graphic key={j} role={role} />
+                const cls = ['ma-w', role && `ma-w--${role}`, /^[,.]/.test(text) && 'ma-w--tight'].filter(Boolean).join(' ')
+                return (
+                  <span key={j} className={cls}>
+                    {text}
+                    {role === 'strike' && (
+                      <svg className="ma-strike" viewBox="0 0 353 19" preserveAspectRatio="none"><path d={BRUSH_D} /></svg>
+                    )}
+                    {role === 'show' && (
+                      <svg className="ma-ring" viewBox="0 0 300 100" preserveAspectRatio="none">
+                        {/* o pincel dobrado na elipse, revelado por uma "caneta" (máscara) que segue a elipse */}
+                        <mask id="ma-ring-mask" maskUnits="userSpaceOnUse" x="-40" y="-40" width="380" height="180">
+                          <path className="ma-ring-pen" d={RING_LINE} />
+                        </mask>
+                        <path className="ma-ring-art" d={RING_BRUSH} mask="url(#ma-ring-mask)" />
+                      </svg>
+                    )}
+                  </span>
+                )
+              })}
+            </span>
+          ))}
+        </p>
+      </div>
     </section>
   )
 }
@@ -236,6 +373,7 @@ export function Manifesto({ section3, useHorizontal = useManifestoHorizontal, wi
 
       <div className="manifesto-grid" aria-hidden="true" />
       </div>
+      <Act2 act={t.manifesto.act2} />
     </div>
   )
 }

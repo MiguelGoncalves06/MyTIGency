@@ -112,6 +112,22 @@ export const strings = {
         // régua do trajeto do cursor (pin lateral): saída da busca, onde pega o traço, chegada
         ruler: ['busca', 'traço', 'quem'],
       },
+      // Segundo ato (fundo #141414, utils/manifestoAct2.js) · cena A. Cada
+      // linha é uma lista de trechos [texto, papel?]: 'strike' = o marcador
+      // risca e a palavra fica oca; 'show' = a caneta circula e acende;
+      // grafismos (sem texto): 'flower', 'eye' (pixel), 'arrow'.
+      // sentence = a frase inteira (leitores de tela).
+      act2: {
+        a: {
+          eyebrow: '( Em vez de falar, fazer )',
+          sentence: 'Por isso, em vez de promessas, preferimos mostrar.',
+          lines: [
+            [['Por isso,'], ['', 'flower'], ['em vez de']],
+            [['promessas', 'strike'], [','], ['', 'eye']],
+            [['preferimos'], ['mostrar', 'show'], ['.'], ['', 'arrow']],
+          ],
+        },
+      },
       lines: [
         'Na MyTigency, acreditamos que um site não se apresenta. Ele conduz.',
         'Sem gerente de conta, sem terceirizar, sem intermediários: quem conversa com você é quem desenha e quem programa.',
@@ -310,6 +326,17 @@ export const strings = {
         note: 'No account manager, no outsourcing, no middlemen.',
         title: 'The one who talks to you is the one who designs and who codes.',
         ruler: ['search', 'line', 'who'],
+      },
+      act2: {
+        a: {
+          eyebrow: '( Less telling, more doing )',
+          sentence: "So instead of promises, we'd rather show you.",
+          lines: [
+            [['So,'], ['', 'flower'], ['instead of']],
+            [['promises', 'strike'], [','], ['', 'eye']],
+            [["we'd rather"], ['show', 'show'], ['you.'], ['', 'arrow']],
+          ],
+        },
       },
       lines: [
         "At MyTigency, we believe a website doesn't introduce itself. It leads.",

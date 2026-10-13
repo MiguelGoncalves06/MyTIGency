@@ -2,6 +2,7 @@ import { useLayoutEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { introPinDuration } from '../utils/manifestoScroll'
+import { ENTER_AT } from './useManifestoNos'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -20,18 +21,102 @@ gsap.registerPlugin(ScrollTrigger)
 //   useManifestoNos): uma vez, em tempo real, os itens "Sem gerente de conta /
 //   terceirizar / intermediários" entram decodificando (decoder da Header,
 //   evento 's2:decode' → DecodeItem); com o scroll (reversível), o contorno do
-//   botão continue rolando se desenha e ele enche de água (--fill + onda em CSS).
+//   botão continue rolando se desenha; chegando ao fim do contorno ele enche
+//   em pixels no tempo (cuePixels), a seta levanta de ↘ para → (--lift) e,
+//   cheio, um brilho pontilhado passa de tempos em tempos (e no hover).
 // Reduced motion: nada disso roda — CSS já mostra tudo no lugar e a TV nasce
 // pronta (tv3d.js).
 const TV_PLAY_AT = 0.3 // fração da entrada em que a TV começa a se formar
 const TYPE_SPEED = 0.075 // s por caractere
 const EDIT_EVERY = [2.5, 5.5] // s entre uma "correção" (apaga e redigita) e outra
 const CLICK_EVERY = [3.5, 7] // s entre um clique e outro do cursor
-const DECODE_STAGGER = 0.22 // s entre um item e outro decodificando
+const DECODE_STAGGER = 0.35 // s entre um item e outro decodificando
 // s depois da chegada do grupo em que os itens começam a decodificar (o NÓS já
 // carimbou — useManifestoNos)
-const ITEMS_AT = 1.2
+const ITEMS_AT = 2
 const STICKER_TURN = 240 // graus que a estrela de fora do sticker gira no trecho todo
+// Botão: fração do trecho (contorno → pin lateral) em que enche / esvazia
+// (histerese, para não piscar parado na fronteira)
+const FILL_AT = 0.8
+const UNFILL_AT = 0.72
+const GLINT_EVERY = [3.5, 6.5] // s entre um brilho e outro no botão cheio
+
+// Preenchimento do botão em pixels (46×8 células, ~6 px de design cada):
+// reescreve o path do clipPath #s2-cue-clip (ManifestoNos) a cada quadro.
+//   fill(t): enche/esvazia no tempo; a frente é uma faixa pontilhada (Bayer
+//     4×4) cujo pontilhado "ferve" — o sorteio muda a cada BOIL_MS.
+//   glint(): uma faixa de furinhos pontilhados atravessa o botão cheio.
+const COLS = 46
+const ROWS = 8
+const BAND = 0.32 // largura da frente pontilhada, em fração do botão
+const BOIL_MS = 70
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => {
+  const c = i % COLS
+  const r = (i / COLS) | 0
+  return {
+    x: (c + 0.5) / COLS,
+    n: BAYER[(r % 4) * 4 + (c % 4)] / 16,
+    d: `M${(c / COLS).toFixed(4)} ${r / ROWS}h${(1 / COLS).toFixed(4)}v${1 / ROWS}h-${(1 / COLS).toFixed(4)}z`,
+  }
+})
+function cuePixels(cue) {
+  const path = cue.querySelector('#s2-cue-clip path')
+  if (!path) return null
+  const s = { fill: 0, glint: null }
+  const jitter = new Float32Array(CELLS.length)
+  let boiledAt = 0
+  const draw = () => {
+    const now = performance.now()
+    if (now - boiledAt > BOIL_MS) {
+      boiledAt = now
+      for (let i = 0; i < jitter.length; i++) jitter[i] = (Math.random() - 0.5) * 0.45
+    }
+    const edge = s.fill * (1 + BAND)
+    let d = ''
+    for (let i = 0; i < CELLS.length; i++) {
+      const { x, n, d: cell } = CELLS[i]
+      const k = Math.min(1, Math.max(0, n + jitter[i]))
+      if (x >= edge - BAND * k) continue // ainda não chegou (frente pontilhada)
+      if (s.glint !== null) {
+        const t = 1 - Math.abs(x - s.glint) / 0.1 // 1 no centro da faixa → 0 na borda
+        if (t > 0 && k < t * 0.42) continue // furinho do brilho
+      }
+      d += cell
+    }
+    path.setAttribute('d', d || 'M0 0')
+  }
+  let fillTw = null
+  let glintTw = null
+  draw()
+  return {
+    fill(to, onDone) {
+      fillTw?.kill()
+      fillTw = gsap.to(s, {
+        fill: to,
+        duration: 0.8 + Math.abs(to - s.fill) * 1.2,
+        ease: to ? 'power1.inOut' : 'power2.in',
+        onUpdate: draw,
+        onComplete: () => { draw(); onDone?.() },
+      })
+    },
+    glint() {
+      if (glintTw?.isActive()) return
+      glintTw = gsap.fromTo(s, { glint: -0.15 }, {
+        glint: 1.15,
+        duration: 1.3,
+        ease: 'sine.inOut',
+        onUpdate: draw,
+        onComplete: () => { s.glint = null; draw() },
+      })
+    },
+    kill() {
+      fillTw?.kill()
+      glintTw?.kill()
+      path.setAttribute('d', 'M0 0H1V1H0z') // volta ao padrão: cheio
+    },
+  }
+}
 
 export function useManifestoS2Enter(rootRef) {
   useLayoutEffect(() => {
@@ -153,7 +238,7 @@ export function useManifestoS2Enter(rootRef) {
       }
       /* ---------- itens "Sem …": decoder, uma vez, quando o grupo chega ---------- */
       // (o resto da entrada do grupo — NÓS, auréola, conversa — é do
-      // useManifestoNos, no mesmo gatilho; os itens entram 1.2s depois)
+      // useManifestoNos, no mesmo gatilho; os itens entram ITEMS_AT depois)
       gsap.set(items, { autoAlpha: 0 })
       const decodeItems = () => items.forEach((item, i) => {
         alive.push(gsap.delayedCall(i * DECODE_STAGGER, () => {
@@ -164,34 +249,61 @@ export function useManifestoS2Enter(rootRef) {
       })
       const titleSt = left && ScrollTrigger.create({
         trigger: left,
-        start: () => docTop(left) - window.innerHeight * 0.8 + D1(),
+        start: () => docTop(left) - window.innerHeight * ENTER_AT + D1(),
         once: true,
         invalidateOnRefresh: true,
         onEnter: () => alive.push(gsap.delayedCall(ITEMS_AT, decodeItems)),
       })
 
-      // Botão (scrub, reversível): o contorno se desenha da esquerda pra
-      // direita e o recipiente enche (a onda só corre enquanto está enchendo).
+      // Botão: o contorno se desenha com o scroll (scrub, reversível). Ao
+      // chegar em FILL_AT do trecho, enche em pixels NO TEMPO (pixel.fill);
+      // voltando abaixo de UNFILL_AT, esvazia. Cheio, a seta levanta e aponta
+      // para a direita — para onde a página vai (pin lateral).
+      const pixel = cue && cuePixels(cue)
+      let full = false
+      const setFull = (on) => {
+        if (on === full) return
+        full = on
+        gsap.killTweensOf(cue, '--lift')
+        if (on) {
+          pixel.fill(1, () => gsap.to(cue, { '--lift': 1, duration: 0.8, ease: 'back.out(2)' }))
+        } else {
+          gsap.to(cue, { '--lift': 0, duration: 0.2, ease: 'power2.in' })
+          pixel.fill(0)
+        }
+      }
+      // brilho pontilhado de tempos em tempos (só cheio e na tela) e no hover
+      const scheduleGlint = () => alive.push(gsap.delayedCall(rand(GLINT_EVERY), () => {
+        const r = cue.getBoundingClientRect()
+        if (full && r.bottom > 0 && r.top < window.innerHeight) pixel.glint()
+        scheduleGlint()
+      }))
+      const onCueEnter = () => { if (full) pixel.glint() }
+      if (pixel) {
+        gsap.set(cue, { '--lift': 0 })
+        scheduleGlint()
+        cue.addEventListener('pointerenter', onCueEnter)
+      }
       let leftTl = null
       if (left && cue) {
         leftTl = gsap.timeline({
+          onUpdate() {
+            const p = this.progress()
+            if (p >= FILL_AT) setFull(true)
+            else if (p < UNFILL_AT) setFull(false)
+          },
           defaults: { ease: 'none' },
           scrollTrigger: {
             trigger: left,
             start: () => docTop(left) - window.innerHeight * 0.85 + D1(),
             end: () => Math.max(lateralPinAt(), docTop(left) - window.innerHeight * 0.85 + D1() + 1),
-            scrub: 1.2,
+            scrub: 2,
             invalidateOnRefresh: true,
           },
         })
         leftTl.fromTo(cue, { clipPath: 'inset(0% 100% 0% 0% round 999px)' },
           { clipPath: 'inset(0% 0% 0% 0% round 999px)', duration: 0.14, ease: 'power2.inOut' }, 0.66)
-        leftTl.fromTo(cue, { '--fill': 0 }, {
-          '--fill': 1,
-          duration: 0.22,
-          ease: 'sine.inOut',
-          onUpdate() { const p = this.progress(); cue.classList.toggle('is-filling', p > 0 && p < 1) },
-        }, 0.78)
+        leftTl.to({}, { duration: 0.2 }) // o trecho vai até o pin lateral (FILL_AT cai nele)
       }
       const st = ScrollTrigger.create({
         trigger: group,
@@ -239,8 +351,13 @@ export function useManifestoS2Enter(rootRef) {
         ringTw?.kill()
         leftTl?.scrollTrigger?.kill()
         leftTl?.kill()
+        if (pixel) {
+          pixel.kill()
+          cue.removeEventListener('pointerenter', onCueEnter)
+          gsap.killTweensOf(cue)
+          gsap.set(cue, { clearProps: '--lift' })
+        }
         titleSt?.kill()
-        cue?.classList.remove('is-filling')
         search.classList.remove('is-onscreen')
         st.kill()
         io.disconnect()
