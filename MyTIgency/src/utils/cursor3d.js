@@ -13,7 +13,7 @@ const FOV = 30
 const CAM_Z = 8
 const VIEW_H = 2 * CAM_Z * Math.tan((FOV / 2) * Math.PI / 180) // altura visível no plano z=0
 const REST = { x: 0.35, y: -0.55, z: 0.1 } // 3/4, assentado na seção 3
-const FLAT = { x: 0.12, y: -0.16, z: 0.12 } // quase chapado, de frente: cursor de interface
+const FLAT = { x: 0.12, y: -0.16, z: -0.2 } // quase chapado, de frente, borda esquerda vertical: cursor de interface real
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a))
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
 

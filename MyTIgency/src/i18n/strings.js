@@ -94,6 +94,8 @@ export const strings = {
         tag: 'nós dois',
         note: 'Sem gerente de conta, sem terceirizar, sem intermediários.',
         title: 'Quem conversa com você é quem desenha e quem programa.',
+        // régua do trajeto do cursor (pin lateral): saída da busca, onde pega o traço, chegada
+        ruler: ['busca', 'traço', 'quem'],
       },
       lines: [
         'Na MyTigency, acreditamos que um site não se apresenta. Ele conduz.',
@@ -280,6 +282,7 @@ export const strings = {
         tag: 'the two of us',
         note: 'No account manager, no outsourcing, no middlemen.',
         title: 'The one who talks to you is the one who designs and who codes.',
+        ruler: ['search', 'line', 'who'],
       },
       lines: [
         "At MyTigency, we believe a website doesn't introduce itself. It leads.",

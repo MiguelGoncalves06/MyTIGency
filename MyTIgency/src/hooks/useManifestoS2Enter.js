@@ -21,8 +21,10 @@ gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 // Grupo da esquerda, título (uma vez, em tempo real): o "S" é escrito à
 //   caneta, o "em" cai com peso e, no impacto, os itens "Gerente de conta /
 //   Terceirizar / Intermediários" entram decodificando (decoder da Header,
-//   evento 's2:decode' → DecodeItem). Só quando o último termina é que são
-//   riscados, um a um, devagar (Sem = não temos).
+//   evento 's2:decode' → DecodeItem).
+// Riscos dos itens (Sem = não temos): um a um, seguindo o scroll (scrub,
+//   reversível), na mesma timeline do traço B — mas cada um só depois que o
+//   decoder daquele item termina.
 // Grupo da esquerda, traço (scrubbed e reversível, como o traço A da seção
 //   1): o traço B se desenha como caneta e "desenha" o contorno do botão
 //   continue rolando, que então enche de água (--fill + onda em CSS).
@@ -33,8 +35,11 @@ const TYPE_SPEED = 0.075 // s por caractere
 const EDIT_EVERY = [2.5, 5.5] // s entre uma "correção" (apaga e redigita) e outra
 const CLICK_EVERY = [3.5, 7] // s entre um clique e outro do cursor
 const DECODE_STAGGER = 0.22 // s entre um item e outro decodificando
-const STRIKE_DUR = 0.9 // s de cada risco
-const STRIKE_STAGGER = 0.4 // s entre um risco e outro
+// riscos dos itens (frações da timeline do grupo da esquerda, que segue o scroll)
+const STRIKE_AT = 0.22
+const STRIKE_DUR = 0.2
+const STRIKE_STAGGER = 0.18
+const STICKER_TURN = 240 // graus que a estrela de fora do sticker gira no trecho todo
 
 export function useManifestoS2Enter(rootRef) {
   useLayoutEffect(() => {
@@ -162,16 +167,25 @@ export function useManifestoS2Enter(rootRef) {
       gsap.set(items, { autoAlpha: 0, '--strike': 0 })
       if (semGuide) gsap.set(semGuide, { drawSVG: '0%' })
       if (rest) gsap.set(rest, { autoAlpha: 0 })
+      // Risco de cada item: o scroll dirige (strikeP), mas ele só aparece
+      // depois que o decoder daquele item termina; se o scroll já passou do
+      // ponto, o risco alcança onde deveria estar com uma transição curta.
+      const strikeP = Array.from(items, () => ({ v: 0 }))
+      const decoded = Array.from(items, () => false)
+      const showStrike = (i) => { if (decoded[i]) gsap.set(items[i], { '--strike': strikeP[i].v }) }
       const decodeItems = () => items.forEach((item, i) => {
         alive.push(gsap.delayedCall(i * DECODE_STAGGER, () => {
           item.dispatchEvent(new Event('s2:decode'))
           // só aparece depois que o React já trocou o texto pelos símbolos
           alive.push(gsap.delayedCall(0.08, () => gsap.set(item, { autoAlpha: 1 })))
+          // decoder terminou: libera o risco (alcança o scroll atual)
+          const len = item.getAttribute('aria-label')?.length || item.textContent.length
+          alive.push(gsap.delayedCall(decodeDuration(len) / 1000 + 0.1, () => {
+            decoded[i] = true
+            gsap.to(item, { '--strike': strikeP[i].v, duration: 0.5, ease: 'power2.out', overwrite: true })
+          }))
         }))
       })
-      // fim do decoder do último item a terminar (s, a partir do impacto)
-      const decodeEnd = Math.max(0, ...Array.from(items, (item, i) =>
-        i * DECODE_STAGGER + decodeDuration(item.getAttribute('aria-label')?.length || 0) / 1000))
       const title = gsap.timeline({ paused: true })
       if (semGuide) title.to(semGuide, { drawSVG: '100%', duration: 1.5, ease: 'power1.inOut' }, 0)
       if (rest) {
@@ -183,10 +197,6 @@ export function useManifestoS2Enter(rootRef) {
       }
       const impact = rest ? 1.7 : 1.2
       title.call(decodeItems, null, impact)
-      items.forEach((item, i) => {
-        title.fromTo(item, { '--strike': 0 }, { '--strike': 1, duration: STRIKE_DUR, ease: 'power2.inOut' },
-          impact + decodeEnd + 0.3 + i * STRIKE_STAGGER)
-      })
       alive.push(title)
       const titleSt = ScrollTrigger.create({
         trigger: initial || left,
@@ -209,6 +219,10 @@ export function useManifestoS2Enter(rootRef) {
           },
         })
         leftTl.fromTo(lineBGuide, { drawSVG: '0%' }, { drawSVG: '100%', duration: 0.78, ease: 'sine.inOut' }, 0)
+        // riscos dos itens: um a um, seguindo o scroll (reversível)
+        items.forEach((item, i) => {
+          leftTl.fromTo(strikeP[i], { v: 0 }, { v: 1, duration: STRIKE_DUR, ease: 'power1.inOut', onUpdate: () => showStrike(i) }, STRIKE_AT + i * STRIKE_STAGGER)
+        })
         // botão: o traço chega e "desenha" o contorno da esquerda pra direita;
         // aí o recipiente enche (a onda só corre enquanto está enchendo)
         leftTl.fromTo(cue, { clipPath: 'inset(0% 100% 0% 0% round 999px)' },
@@ -231,6 +245,23 @@ export function useManifestoS2Enter(rootRef) {
         onRefresh: (self) => { if (maxP === 0 && self.progress >= 1) advance(1, true) },
       })
 
+      // Sticker: só a estrela de fora gira, devagar e ligada ao scroll (scrub
+      // com inércia), do sticker entrando na tela até bem depois do pin lateral;
+      // logo, texto e brilhos do miolo ficam parados.
+      const ring = smiley.querySelector('.s2-smiley-ring')
+      const ringTw = ring && gsap.fromTo(ring, { rotation: 0 }, {
+        rotation: STICKER_TURN,
+        svgOrigin: '200 200',
+        ease: 'none',
+        scrollTrigger: {
+          trigger: group,
+          start: () => docTop(group) - window.innerHeight + D1(),
+          end: () => docTop(group) + window.innerHeight * 4 + D1(),
+          scrub: 1.4,
+          invalidateOnRefresh: true,
+        },
+      })
+
       // Sticker acompanha o mouse (xPercent/yPercent — o x da entrada fica
       // livre). Só com mouse; em toque não existe, por decisão.
       let onMove = null
@@ -245,6 +276,8 @@ export function useManifestoS2Enter(rootRef) {
       }
 
       return () => {
+        ringTw?.scrollTrigger?.kill()
+        ringTw?.kill()
         leftTl?.scrollTrigger?.kill()
         leftTl?.kill()
         titleSt.kill()

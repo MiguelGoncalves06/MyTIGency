@@ -24,16 +24,6 @@ const NOTEBOOK_QUERY = '(max-height: 900px)'
 // = caneta do traço A (useManifestoIntro): com scrubs diferentes, rolando
 // rápido o cursor chegava ao traço antes dele (ou o traço passava do cursor).
 const SCRUB = 1.2
-// TV gira com a posição dela na tela, como um objeto real visto por uma câmera
-// que passa: à direita (onde está no início do pin) o 3/4 de repouso; no
-// centro, de frente; perto da borda esquerda (TV_TURN_END_AT da largura), o
-// lado direito dela, com o adesivo, de frente — TV_TURN rad além do repouso.
-const TV_TURN = 1.6
-const TV_TURN_END_AT = 0.2
-// A tela da TV sai do chiado e trava a imagem (setTune) até este ponto do
-// mesmo giro — ~0.42 é onde sine.inOut chega ao ângulo de frente.
-const TV_TUNE_AT = 0.42
-const turnEase = gsap.parseEase('sine.inOut')
 
 // Seção 3: uma tela (100vw) logo depois da caixa de busca; depois que ela
 // centra, HOLD_VH de scroll parado para as palavras, a seleção e a pílula.
@@ -53,6 +43,22 @@ const START = { textX: 0.04, boxY: 0.86 }
 const SIZE_IN_SEARCH = 1.6
 // O pincel do trecho novo (arte do traço A deformada) engrossa até 125% no fim.
 const BRUSH_GAIN = 1.25
+// A busca liga o PC: a tela fica desligada até o cursor clicar na busca; daí o
+// boot de CRT (tv3d.setBoot) corre com o scroll por BOOT_SPAN do percurso
+// lateral, com o logo na parte final, mais lenta.
+const BOOT_SPAN = 0.42
+// Giro da TV (rad, somado aos 0.6 do 3/4 de repouso do tv3d: −0.6 = de
+// frente, menor = esquerda): UM giro contínuo, da ESQUERDA (início do pin)
+// à DIREITA (TURN_END do percurso lateral), passando pela frente no
+// esbarrão — sem pausa parada de frente; o esbarrão só o interrompe (mola).
+const TURN_FRONT = -0.6
+const TURN_LEFT = 0.75
+const TURN_RIGHT = 0.75
+const TURN_END = 0.85
+// Esbarrão: o cursor encosta na borda direita real do monitor (raycast, numa
+// linha a EDGE_Y da altura do PC) e recua BUMP_PX no impacto.
+const EDGE_Y = 0.3
+const BUMP_PX = 22
 const sineIO = (t) => (1 - Math.cos(Math.PI * t)) / 2
 const sineIOinv = (v) => Math.acos(1 - 2 * v) / Math.PI
 const smooth = (t) => t * t * (3 - 2 * t)
@@ -168,8 +174,6 @@ export function useManifestoHorizontal(rootRef, lang) {
       let scrollB = 0
       let vw = 1
       let vh = 1
-      let tvCx = 0 // centro da TV, na trilha
-      let tvF0 = 1 // fração da tela em que o centro da TV está no início do pin
       let s3Left = 0
       let s3Top = 0
       let rootDoc = 0
@@ -186,6 +190,12 @@ export function useManifestoHorizontal(rootRef, lang) {
       let L = 1 // comprimento do caminho inteiro
       let L1 = 1 // ... até J
       let ext = null
+      let sHit = -1 // fração do caminho em que a ponta encosta no monitor
+      let prevS = -1
+      let bumpAt = -1e9
+      let bumpDir = 1
+      let hitN = [1, 0] // direção do cursor no toque
+      let dHit = -1 // scroll (px no pin) em que a ponta encosta no monitor
 
       // traço novo: arte do traço A deformada, revelada por uma máscara de
       // caneta (como a do site); motion/seg1 são só geometria
@@ -199,6 +209,28 @@ export function useManifestoHorizontal(rootRef, lang) {
         + '<path fill="none" stroke="#fff" stroke-linecap="butt" stroke-linejoin="round"/></mask></defs>'
         + '<path fill="#FF4438" mask="url(#s3-brush-mask)"/><path fill="none"/><path fill="none"/>'
       track.append(svg)
+      // marca de impacto do esbarrão: riscos vermelhos curtos que se abrem e somem
+      const impact = document.createElement('div')
+      impact.className = 'ms-impact'
+      impact.setAttribute('aria-hidden', 'true')
+      impact.innerHTML = '<svg viewBox="-50 -50 100 100">'
+        + [0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<line x1="0" y1="-16" x2="0" y2="-34" transform="rotate(${a})"/>`).join('') + '</svg>'
+      track.append(impact)
+      // Régua do trajeto: fixa no rodapé enquanto o pin lateral está ativo.
+      // Escala milimetrada (1% / 10%), as três paradas do cursor (sai da busca,
+      // pega o traço, chega) e o cabeçote com um cursor e a leitura em %.
+      // O trecho vermelho é o caminho do cursor, preenchido conforme ele anda.
+      const ruler = document.createElement('div')
+      ruler.className = 'ms-ruler'
+      ruler.setAttribute('aria-hidden', 'true')
+      ruler.innerHTML = '<div class="ms-ruler-scale"></div><div class="ms-ruler-path"><i></i></div>'
+        + who.ruler.map((t, i) => `<span class="ms-ruler-stop"><b>0${i + 1}</b> ${t}</span>`).join('')
+        + '<div class="ms-ruler-head"><span>000%</span><svg viewBox="0 0 12 14"><path d="M1 1v11l3-3 2.4 4.4 1.8-1-2.4-4.3H10Z"/></svg></div>'
+      document.body.append(ruler)
+      const rStops = [...ruler.querySelectorAll('.ms-ruler-stop')]
+      const rPath = ruler.querySelector('.ms-ruler-path'), rFill = rPath.firstChild
+      const rHead = ruler.querySelector('.ms-ruler-head'), rVal = rHead.firstChild
+      let rFracs = [0, 0.5, 1]
       const maskEl = svg.querySelector('mask')
       const extPath = maskEl.firstChild
       const [, brushArt, motion, seg1] = svg.children
@@ -256,11 +288,6 @@ export function useManifestoHorizontal(rootRef, lang) {
         lineAPen.frac = (LINE_A_LEN + lenTo - 20) / (LINE_A_LEN + lenAll)
         if (reduced) gsap.set(guides, { drawSVG: `${lineAPen.frac * 100}%` })
         root.style.setProperty('--ms-travel', `${travelA}px`)
-        if (tvCanvas) {
-          const tvBox = boxIn(tvCanvas)
-          tvCx = tvBox.x + tvBox.w / 2
-          tvF0 = Math.max(TV_TURN_END_AT + 0.1, tvCx / vw)
-        }
         buildPath()
       }
 
@@ -275,14 +302,64 @@ export function useManifestoHorizontal(rootRef, lang) {
         F = [s3Left + gap.x + gap.w / 2 - bx, s3Top + vh / 2 - by]
         // 1) da busca desce para a frente até J, chegando na direção do traço;
         // 2) segue na mesma direção e sobe reto pelo vão (tangente contínua em J)
-        const c1 = [T[0] + vw * 0.06, T[1] + vh * 0.12]
-        const c2 = [J[0] - Jdir[0] * vw * 0.12, J[1] - Jdir[1] * vw * 0.12]
+        // Esbarrão de verdade: G = borda direita REAL do monitor (raycast na
+        // malha), medida com o giro que a TV terá no instante do toque. O
+        // trecho 1 passa por G: a ponta encosta no monitor ali.
+        const findEdge = (turn) => {
+          const tv = tvCanvas?.tv
+          const pb = tv?.projBox?.(turn)
+          if (!pb) return null
+          const tb = boxIn(tvCanvas)
+          const yRow = pb.y + pb.h * EDGE_Y
+          for (let x = pb.x + pb.w; x > pb.x; x -= 3) if (tv.hit(x, yRow, turn)) return [tb.x + x, tb.y + yRow]
+          return null
+        }
         const c3 = [J[0] + Jdir[0] * vw * 0.35, J[1] + Jdir[1] * vw * 0.35]
         const c4 = [F[0], F[1] + vh * 0.5]
-        seg1.setAttribute('d', curve(T, c1, c2, J))
-        motion.setAttribute('d', curve(T, c1, c2, J, c3, c4, F))
-        L1 = seg1.getTotalLength()
-        L = motion.getTotalLength()
+        // trecho 1: T → (G) → J, tangente contínua; devolve o comprimento até G
+        const buildSeg1 = (G) => {
+          if (!G) {
+            const c1 = [T[0] + vw * 0.06, T[1] + vh * 0.12]
+            const c2 = [J[0] - Jdir[0] * vw * 0.12, J[1] - Jdir[1] * vw * 0.12]
+            seg1.setAttribute('d', curve(T, c1, c2, J))
+            return -1
+          }
+          const dTG = Math.hypot(G[0] - T[0], G[1] - T[1])
+          const dGJ = Math.hypot(J[0] - G[0], J[1] - G[1])
+          const dir = [(J[0] - G[0]) / dGJ, (J[1] - G[1]) / dGJ]
+          const a1 = [T[0], T[1] + dTG * 0.4] // sai da busca descendo
+          const a2 = [G[0] - dir[0] * dTG * 0.4, G[1] - dir[1] * dTG * 0.4]
+          seg1.setAttribute('d', curve(T, a1, a2, G))
+          const lenG = seg1.getTotalLength()
+          const k = Math.min(vw * 0.12, dGJ * 0.4)
+          const b1 = [G[0] + dir[0] * dGJ * 0.35, G[1] + dir[1] * dGJ * 0.35]
+          const b2 = [J[0] - Jdir[0] * k, J[1] - Jdir[1] * k]
+          seg1.setAttribute('d', curve(T, a1, a2, G, b1, b2, J))
+          return lenG
+        }
+        // duas passadas: o giro no toque depende de onde o toque cai no caminho
+        let lenG = -1
+        let sGuess = 0.06
+        for (let pass = 0; pass < 2; pass++) {
+          const dTouch = dGo + sineIOinv(clamp01(sGuess)) * (dEnd - dGo)
+          lenG = reduced ? -1 : buildSeg1(findEdge(turnAt(dTouch)))
+          if (reduced) buildSeg1(null)
+          L1 = seg1.getTotalLength()
+          motion.setAttribute('d', `${seg1.getAttribute('d')}${curve(J, c3, c4, F).slice(1 + String(J).length)}`)
+          L = motion.getTotalLength()
+          if (lenG < 0) break
+          sGuess = lenG / L
+        }
+        sHit = lenG > 0 ? lenG / L : -1
+        dHit = sHit > 0 ? dGo + sineIOinv(sHit) * (dEnd - dGo) : -1
+        if (sHit > 0) {
+          const h0 = motion.getPointAtLength(lenG - 4)
+          const h1 = motion.getPointAtLength(lenG + 4)
+          const hp = motion.getPointAtLength(lenG)
+          const hl = Math.hypot(h1.x - h0.x, h1.y - h0.y) || 1
+          hitN = [(h1.x - h0.x) / hl, (h1.y - h0.y) / hl]
+          Object.assign(impact.style, { left: `${hp.x}px`, top: `${hp.y}px` })
+        }
         const bw = 70 * artScale * BRUSH_GAIN // cobre a arte
         extPath.setAttribute('stroke-width', bw)
         ext = stroke(extPath, curve(J, c3, c4, F))
@@ -293,13 +370,29 @@ export function useManifestoHorizontal(rootRef, lang) {
           .forEach(([k, v]) => maskEl.setAttribute(k, v))
         brushArt.setAttribute('d', warpBrush(extPath, pickS, artScale, BRUSH_GAIN))
         // o traço A chega em J no instante em que o cursor passa por ali
-        lineAPen.end = pinAt() + dGo + sineIOinv(L1 / L) * (dEnd - dGo)
+        const dJ = dGo + sineIOinv(L1 / L) * (dEnd - dGo)
+        lineAPen.end = pinAt() + dJ
+        // paradas da régua, em fração do pin inteiro
+        const total = travelA + scrollB
+        rFracs = [dGo / total, dJ / total, dEnd / total]
+        rStops.forEach((el, i) => { el.style.left = `${rFracs[i] * 100}%` })
+        Object.assign(rPath.style, { left: `${rFracs[0] * 100}%`, width: `${(rFracs[2] - rFracs[0]) * 100}%` })
         s0 = searchBox.offsetHeight * SIZE_IN_SEARCH
         split.tagAt(F[0] - s3Left + sF * 0.7, F[1] - s3Top + sF * 1.02)
       }
 
       // fração do comprimento do caminho em que o cursor está
       const progress = (d) => (reduced ? 1 : sineIO(ramp(d, dGo, dEnd)))
+      // giro da TV em função do scroll: contínuo, com a frente no esbarrão
+      // (dF) na metade da curva (velocidade máxima ali, nada parado); acelera
+      // devagar no início e assenta devagar no fim (sine in-out no todo)
+      function turnAt(d) {
+        const dF = dHit > 0 ? dHit : dGo - travelA * PRESS + travelA * BOOT_SPAN * 0.7
+        const dE = Math.max(dF + 1, travelA * TURN_END)
+        const u = d < dF ? 0.5 * clamp01(d / dF) : 0.5 + 0.5 * clamp01((d - dF) / (dE - dF))
+        const e = sineIO(u) * 2 - 1 // −1 esquerda · 0 frente · 1 direita
+        return TURN_FRONT + e * (e < 0 ? TURN_LEFT : TURN_RIGHT)
+      }
       const proxy = { d: 0 } // px de scroll percorridos dentro do pin
 
       function apply() {
@@ -310,10 +403,12 @@ export function useManifestoHorizontal(rootRef, lang) {
         // reduced motion: a TV fica no repouso, já sintonizada)
         const tv = tvCanvas?.tv
         if (tv && !reduced) {
-          const t = clamp01((tvF0 - (tvCx + x) / vw) / (tvF0 - TV_TURN_END_AT))
-          tv.setTurn(-TV_TURN * turnEase(t))
-          tv.setTune(t / TV_TUNE_AT)
+          tv.setTurn(turnAt(d))
           tv.setShift(x)
+          // a tela fica desligada (cursor de espera) até o clique do cursor na
+          // busca (PRESS); daí o boot corre com o scroll (sem chiado de sintonia)
+          tv.setTune(1)
+          tv.setBoot?.(ramp(d, dGo - travelA * PRESS, dGo + travelA * BOOT_SPAN))
         }
         // a seção 3 entra pela direita: rótulos digitam, a 1ª palavra é
         // desenhada, a 2ª compila; com o cursor assentado, seleção (Figma) e
@@ -331,22 +426,46 @@ export function useManifestoHorizontal(rootRef, lang) {
           note: ramp(d, dEnd + scrollB * 0.42, travelA + scrollB * 0.95),
         })
         ext?.set(Math.max(0, (progress(d) * L - L1) / (L - L1)))
+        // régua: cabeçote no scroll do pin, trecho vermelho = cursor no caminho
+        const p = clamp01(d / (travelA + scrollB))
+        rHead.style.transform = `translateX(${p * ruler.clientWidth}px)`
+        rVal.textContent = `${String(Math.round(p * 100)).padStart(3, '0')}%`
+        rFill.style.transform = `scaleX(${progress(d)})`
+        rStops.forEach((el, i) => el.classList.toggle('on', p >= rFracs[i] - 0.001))
       }
 
       // Cursor a cada quadro, dentro do quadro do próprio cursor (antes de
       // renderizar — sem atraso de um quadro para o traço) e sem ler layout:
       // a posição da trilha na tela vem do y do pin (transform aplicado pelo
       // GSAP, soma o pin de entrada da seção 1 e o lateral) + o x dela.
-      function tick() {
+      function tick(now) {
         if (!ext || !st || !cur) return
         const d = proxy.d
         const s = progress(d)
+        // Esbarrão: ao cruzar o toque no monitor (em qualquer sentido do
+        // scroll), o PC leva o impacto (balança, treme, dither estoura, tela
+        // perde a sintonia — tv3d.bump), aparece a marca e o cursor recua.
+        if (sHit > 0 && prevS >= 0 && (prevS - sHit) * (s - sHit) < 0) {
+          bumpDir = Math.sign(s - prevS)
+          tvCanvas?.tv?.bump?.(bumpDir * Math.min(1.2, 0.45 + Math.abs(s - prevS) * 40))
+          bumpAt = now
+          impact.classList.remove('on')
+          void impact.offsetWidth // reinicia a animação da marca
+          impact.classList.add('on')
+        }
+        prevS = s
+        // recuo: quica para trás da direção em que vinha, achata e gira rápido
+        const age = (now - bumpAt) / 1000
+        const hitK = age < 1.4 ? Math.exp(-age * 6) : 0
+        const jolt = hitK * Math.sin(age * 26 + 0.5) * BUMP_PX * bumpDir
+        const squash = 1 - 0.2 * (age < 1 ? Math.exp(-age * 10) : 0)
+        const spin = hitK * Math.sin(age * 20) * 0.45 * bumpDir
         const trTop = rootDoc - window.scrollY + gsap.getProperty(root, 'y')
         const trLeft = gsap.getProperty(track, 'x')
         const click = gsap.getProperty(searchCursor, 'scale')
         const press = 1 - 0.14 * Math.sin(Math.PI * ramp(d, dGo - travelA * PRESS, dGo + travelA * 0.015))
         // escala geométrica: cada trecho cresce a mesma proporção
-        const size = s0 * (sF / s0) ** smooth(ramp(s, 0.08, 0.95)) * press * (s > 0 ? 1 : click)
+        const size = s0 * (sF / s0) ** smooth(ramp(s, 0.08, 0.95)) * press * (s > 0 ? 1 : click) * squash
         // até pegar o traço: continua cursor de interface (chapado) e gira aos
         // poucos, no sentido horário, até a direção do traço em J
         const w = smooth(clamp01((s * L) / L1))
@@ -362,7 +481,7 @@ export function useManifestoHorizontal(rootRef, lang) {
         const p0 = motion.getPointAtLength(Math.max(0, s * L - 6))
         const p1 = motion.getPointAtLength(Math.min(L, s * L + 6))
         split?.cursor(trLeft + a.x, trTop + a.y)
-        cur.set(trLeft + a.x, trTop + a.y, Math.atan2(p0.y - p1.y, p1.x - p0.x), settle, 1, size, flat, aim)
+        cur.set(trLeft + a.x - hitN[0] * jolt, trTop + a.y - hitN[1] * jolt, Math.atan2(p0.y - p1.y, p1.x - p0.x), settle, 1, size, flat, aim === null ? null : aim + spin)
       }
 
       layout()
@@ -390,6 +509,7 @@ export function useManifestoHorizontal(rootRef, lang) {
           onEnterBack: () => gsap.set(track, { willChange: 'transform' }),
           onLeave: () => gsap.set(track, { willChange: 'auto' }),
           onLeaveBack: () => gsap.set(track, { willChange: 'auto' }),
+          onToggle: (self) => ruler.classList.toggle('on', self.isActive),
         },
       }).scrollTrigger
 
@@ -415,15 +535,21 @@ export function useManifestoHorizontal(rootRef, lang) {
         if (!reduced) root.classList.add('has-cursor3d')
         ScrollTrigger.refresh() // corpo exato do cursor → ponta final
       })
-      const onTvReady = () => apply()
+      // TV pronta / malha carregada: remede (a borda real do monitor entra no caminho)
+      const onTvReady = () => ScrollTrigger.refresh()
       tvCanvas?.addEventListener('s2:tv-ready', onTvReady)
+      tvCanvas?.addEventListener('tv3d:loaded', onTvReady)
 
       return () => {
         alive = false
         tvCanvas?.removeEventListener('s2:tv-ready', onTvReady)
+        tvCanvas?.removeEventListener('tv3d:loaded', onTvReady)
+        tvCanvas?.tv?.setBoot?.(null)
         cur?.dispose()
         canvas?.remove()
         svg.remove()
+        impact.remove()
+        ruler.remove()
         root.classList.remove('has-cursor3d')
         gsap.set(track, { clearProps: 'transform,willChange' })
         lineAPen.end = 0 // sem o pin lateral, a caneta volta a terminar na seção 2

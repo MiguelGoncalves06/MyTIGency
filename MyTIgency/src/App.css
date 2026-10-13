@@ -993,17 +993,22 @@
     height:calc(615 * var(--g));
   }
   .s2-tv{
-    left:calc(40.1 * var(--g));
-    top:calc(135.3 * var(--g));
-    width:calc(560 * var(--g));
-    height:calc(480 * var(--g));
+    /* 30% maior que o frame original (560×480), mesmo centro: o PC terrário
+       ocupa menos do quadro que a TV antiga */
+    left:calc(-43.9 * var(--g));
+    top:calc(110 * var(--g)); /* um pouco abaixo do centro antigo: o topo do monitor sai de trás do smiley */
+    width:calc(728 * var(--g));
+    height:calc(624 * var(--g));
   }
+  /* Sticker (badge-estrela, SVG inline): 250 de 339.3 do frame original,
+     mesmo centro. Só a estrela de fora gira com o scroll (useManifestoS2Enter). */
   .s2-smiley{
     z-index:1;
-    left:0;
-    top:0;
-    width:calc(339.3 * var(--g));
+    left:calc(44.65 * var(--g));
+    top:calc(44.65 * var(--g));
+    width:calc(250 * var(--g));
   }
+  .s2-smiley svg{ display:block; width:100%; height:auto; }
   /* Busca: caixa (PNG) + texto real (digitado na entrada) + cursor, no
      frame 567×207 do export antigo (setmyt.svg). Texto: IBM Plex Sans Hebrew
      48 — medido para bater a largura do texto do SVG; linha de base y=57. */
@@ -1175,7 +1180,7 @@
   .s3-w--b .s3-ch.scr > span{ color:var(--accent); }
   .s3-gap{ flex:none; }
   .s3-note{
-    left:50%; bottom:7vh; width:24em; margin:0; transform:translateX(-50%);
+    left:50%; bottom:calc(2.6vh + 64px); /* acima da régua */ width:24em; margin:0; transform:translateX(-50%);
     text-align:center; z-index:3;
     font:400 11px/1.4 'JetBrains Mono', monospace; color:#6B6B64; letter-spacing:.06em; text-transform:uppercase;
   }
@@ -1211,7 +1216,7 @@
   .s3-crop:nth-of-type(3){ border-width:0 0 1px 1px; }
   .s3-crop:nth-of-type(4){ border-width:0 1px 1px 0; }
   .s3-readout{
-    left:3vw; bottom:7vh; z-index:3; display:flex; gap:1.4em;
+    left:3vw; bottom:calc(2.6vh + 64px); z-index:3; display:flex; gap:1.4em;
     font:400 10.5px/1 'JetBrains Mono', monospace; color:#9a9a92; letter-spacing:.06em; font-variant-numeric:tabular-nums;
   }
   .s3-readout b{ color:#141414; font-weight:500; }
@@ -1219,6 +1224,45 @@
      Com ele no ar, o cursor SVG da busca sai (o 3D ocupa o lugar dele). */
   .ms-cursor-cv{ position:fixed; inset:0; width:100vw; height:100vh; z-index:40; pointer-events:none; }
   .manifesto.has-cursor3d .s2-search-cursor{ visibility:hidden; }
+  /* Marca do esbarrão do cursor no PC (useManifestoHorizontal): riscos
+     vermelhos curtos que se abrem e somem no ponto de contato. */
+  .ms-impact{ position:absolute; width:64px; height:64px; margin:-32px 0 0 -32px; z-index:3; pointer-events:none; opacity:0; }
+  .ms-impact svg{ width:100%; height:100%; overflow:visible; }
+  .ms-impact line{ stroke:var(--accent); stroke-width:6; stroke-linecap:round; }
+  .ms-impact.on{ animation:msImpact .55s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes msImpact{
+    0%{ opacity:1; transform:scale(.35) rotate(-8deg); }
+    55%{ opacity:1; }
+    100%{ opacity:0; transform:scale(1.3) rotate(4deg); }
+  }
+  @media (prefers-reduced-motion: reduce){ .ms-impact{ display:none; } }
+  /* Régua do trajeto do cursor (useManifestoHorizontal): aparece só durante o
+     pin lateral. Linguagem de ferramenta, como a leitura X/Y da seção 3:
+     escala milimetrada em hairline, rótulos mono, vermelho só no caminho
+     que o cursor já percorreu. */
+  .ms-ruler{
+    position:fixed; left:3vw; right:3vw; bottom:2.6vh; height:34px; z-index:41;
+    pointer-events:none; opacity:0; transform:translateY(10px);
+    transition:opacity .45s cubic-bezier(.22,1,.36,1), transform .45s cubic-bezier(.22,1,.36,1);
+    font:400 10px/1 'JetBrains Mono', monospace; letter-spacing:.06em; text-transform:uppercase; color:#9a9a92;
+  }
+  .ms-ruler.on{ opacity:1; transform:none; }
+  .ms-ruler-scale{
+    position:absolute; left:0; right:0; bottom:0; height:10px;
+    border-bottom:1px solid rgba(20,20,20,.4);
+    background:
+      repeating-linear-gradient(to right, rgba(20,20,20,.45) 0 1px, transparent 1px 10%) bottom / 100% 10px no-repeat,
+      repeating-linear-gradient(to right, rgba(20,20,20,.22) 0 1px, transparent 1px 1%) bottom / 100% 5px no-repeat;
+  }
+  .ms-ruler-path{ position:absolute; bottom:-1px; height:2px; background:rgba(255,68,56,.18); }
+  .ms-ruler-path i{ position:absolute; inset:0; background:var(--accent); transform:scaleX(0); transform-origin:left center; }
+  .ms-ruler-stop{ position:absolute; bottom:15px; transform:translateX(-50%); white-space:nowrap; transition:color .3s; }
+  .ms-ruler-stop::after{ content:''; position:absolute; left:50%; top:calc(100% + 3px); width:1px; height:14px; background:currentColor; }
+  .ms-ruler-stop b{ font-weight:500; color:#141414; }
+  .ms-ruler-stop.on{ color:var(--accent); }
+  .ms-ruler-head{ position:absolute; left:0; bottom:-4px; display:flex; flex-direction:column; align-items:flex-start; will-change:transform; }
+  .ms-ruler-head span{ margin:0 0 18px 9px; /* acima dos rótulos das paradas */ color:#141414; font-weight:500; font-variant-numeric:tabular-nums; }
+  .ms-ruler-head svg{ width:11px; height:13px; margin-left:-1px; fill:#141414; stroke:var(--bg); stroke-width:1; }
 
   /* Grid: guia de layout do Figma trazido pra tela, acima de tudo da seção
      (header/marquee vivem fora dela, então ficam por cima). Tiles com

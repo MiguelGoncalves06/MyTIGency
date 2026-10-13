@@ -5,7 +5,10 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { mountDitherTV, SCREEN } from '../src/utils/tv3d.js'
-import mytiUrl from '../src/assets/MyTi.svg'
+import logoRaw from '../src/assets/logo.svg?raw'
+
+// Tela: logo oficial da MyTigency (o do header) em branco.
+const screenUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoRaw.replace(/fill="black"/g, 'fill="white"'))}`
 
 const TV_PALETTE = ['#1c1c1c', '#6e6e6e', '#bcbcbc', '#ffffff'] // mesmo do Manifesto
 const TV_SIZE = 1.7 // mesmo do tv3d.js
@@ -21,7 +24,7 @@ const MODELS = [
   { id: '6', name: '6 · Retro CRT TV (gato)', url: './models/6-retro-crt-tv.glb', front: -90, screenShape: shape(0, 0.11, 0.7742, 0.5782, 0.644, 0.1051, 0.0575, -0.0072) },
   { id: '8', name: '8 · Old PC', url: './models/8-old-pc.glb', front: -90, screenShape: shape(0.1, 0.22, 0.41, 0.29, 0.43, 0.037, 0.043, 0) },
   { id: '5', name: '5 · Retro TV (EVA)', url: './models/5-retro-tv.glb', front: -90, screenShape: shape(0, 0.105, 0.5586, 0.5537, 0.7187, 0.0669, 0.0657, -0.0135), showScreen: false },
-  { id: '7', name: '7 · PC terrário', url: './models/7-pc-terrarium.glb', front: 0, screenShape: shape(-0.15, 0.175, 0.41, 0.3, 0.21, 0, 0, 0), showScreen: false },
+  { id: '7', name: '7 · PC terrário', url: './models/7-pc-terrarium.glb', front: 0, screenShape: shape(-0.15, 0.175, 0.41, 0.3, 0.21, 0, 0, 0), colorBoost: 0.35 }, // material: site usa 0.5; aqui um pouco mais baixo
 ]
 
 const SHAPE_KEYS = [
@@ -43,7 +46,7 @@ function mount() {
   canvasRef.el = fresh
   tv = mountDitherTV(fresh, {
     url: current.url, palette: TV_PALETTE, revealDuration: 2.8, spinDuration: 3.4,
-    screenImage: mytiUrl, tune: Number($('tune').value),
+    screenImage: screenUrl, tune: Number($('tune').value),
     front: current.front * DEG,
     screenShape: current.screenShape || SCREEN,
     showScreen: current.showScreen !== false,

@@ -14,6 +14,12 @@
     /* o cursor SVG da busca fica no layout (o cursor 3D lê a posição e o clique dele) */
     .s2-search-cursor { opacity: 0; }
     .lab-ext { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; z-index: 1; pointer-events: none; }
+    /* marca de impacto do esbarrão (riscos vermelhos que se abrem e somem) */
+    .lab-impact { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; z-index: 3; pointer-events: none; opacity: 0; }
+    .lab-impact svg { width: 100%; height: 100%; overflow: visible; }
+    .lab-impact line { stroke: #FF4438; stroke-width: 6; stroke-linecap: round; }
+    .lab-impact.on { animation: labImpact .55s cubic-bezier(.2, .8, .3, 1) both; }
+    @keyframes labImpact { 0% { opacity: 1; transform: scale(.35) rotate(-8deg); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3) rotate(4deg); } }
     .lab-cursor { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 50; pointer-events: none; }
     .lab-tail { height: 60vh; display: grid; place-items: center; font: 12px 'JetBrains Mono', monospace; color: #6B6B64; }
   </style>

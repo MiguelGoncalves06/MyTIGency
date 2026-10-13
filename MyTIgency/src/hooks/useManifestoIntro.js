@@ -195,13 +195,13 @@ export function useManifestoIntro(rootRef) {
       // Caixa do "apresenta.": varre da esquerda pra direita e, na mesma
       // frente, o texto troca de cinza pra branco (--hl no CSS), depois que
       // a palavra já ganhou cor.
-      enter.fromTo('.ms-highlight', { '--hl': 0 }, { '--hl': 1, duration: 0.24, ease: 'power2.inOut' }, 0.5)
+      enter.fromTo('.ms-highlight', { '--hl': 0 }, { '--hl': 1, duration: 0.42, ease: 'power2.inOut' }, 0.46) // mais lenta (pedido do usuário)
       // MyTi: os 4 círculos carimbam um a um (giram, passam do tamanho, colam).
       root.querySelectorAll('.ms-stamp').forEach((g, i) => {
         const e = g.querySelector('ellipse')
         const svgOrigin = `${e.getAttribute('cx')} ${e.getAttribute('cy')}`
         enter.fromTo(g, { scale: 0, rotation: -35, opacity: 0, svgOrigin },
-          { scale: 1, rotation: 0, opacity: 1, svgOrigin, duration: 0.09, ease: 'back.out(2.2)' }, 0.58 + i * 0.05)
+          { scale: 1, rotation: 0, opacity: 1, svgOrigin, duration: 0.17, ease: 'back.out(2.2)' }, 0.56 + i * 0.085) // mais lento, um a um
       })
       // CONDUZ: letras chegam afastadas e assentam da esquerda pra direita.
       enter.fromTo(chars, { opacity: WORD_DIM, x: charX },

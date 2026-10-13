@@ -4,8 +4,13 @@
 // A, pin lateral da seção 2) precisa somar esta duração — o bloco fica parado
 // esse tanto de scroll. Curto de propósito: a página já tem a varredura
 // Hero→Marquee e o pin lateral.
+// DESLIGADO (decisão do usuário): a seção 1 não trava mais — a frase pinta
+// enquanto sobe com o scroll, em todas as telas (o caminho "sem pin" do
+// useManifestoIntro). 'not all' nunca casa, então a duração vale 0 e todo
+// gatilho seguinte se ajusta sozinho. Para religar, volte a query original:
+// '(min-width: 701px) and (prefers-reduced-motion: no-preference)'.
 export const INTRO_PIN_VH = 0.75
-export const INTRO_PIN_QUERY = '(min-width: 701px) and (prefers-reduced-motion: no-preference)'
+export const INTRO_PIN_QUERY = 'not all'
 
 // Caneta do traço A: um drawSVG só, do "+" (seção 1) até o disco do mapa da
 // seção 3, dirigido pelo scroll (useManifestoIntro). Onde ele termina — scroll

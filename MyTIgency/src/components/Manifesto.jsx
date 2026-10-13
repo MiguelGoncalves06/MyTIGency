@@ -11,11 +11,13 @@ import targetImg from '../assets/alvo.png'
 import arrowImg from '../assets/seta.png'
 import plusImg from '../assets/plus.svg'
 import mytiRaw from '../assets/MyTi.svg?raw'
-import mytiUrl from '../assets/MyTi.svg'
+import logoRaw from '../assets/logo.svg?raw'
 import ethosLineImg from '../assets/ethos-drawn.svg'
 import { initialPiece, lineAPiece, lineBPiece } from '../utils/manifestoLineA'
 import ornamentImg from '../assets/ornamento-ascii.png'
-import smileyImg from '../assets/smiley.svg'
+// Sticker acima do PC (badge-estrela do kit MYT). Inline: só a estrela de
+// fora (.s2-smiley-ring) gira com o scroll; logo, texto e brilhos ficam parados.
+import stickerRaw from '../assets/selo-carinha-preto.svg?raw'
 import searchBoxImg from '../assets/s2-busca.png'
 import searchCursorImg from '../assets/s2-cursor.svg'
 import tvUrl from '../assets/pc-terrarium.min.glb?url'
@@ -35,6 +37,7 @@ const brandStrokeSvg = brandStrokeRaw.replace('<svg ', '<svg preserveAspectRatio
 // pela identidade do objeto, então um literal novo a cada render regravaria o
 // SVG (e apagaria o que as animações prepararam nele: máscaras, carimbos).
 const BRAND_HTML = { __html: brandStrokeSvg }
+const STICKER_HTML = { __html: stickerRaw.replace('<polygon ', '<polygon class="s2-smiley-ring" ') }
 const MYTI_HTML = { __html: mytiRaw }
 const LINE_A_TOP = { __html: lineAPiece('la-top') }
 const LINE_A_ELBOW = { __html: lineAPiece('la-elbow', '0 409 1348 162') }
@@ -79,11 +82,13 @@ function Section3({ who }) {
 const TV_PALETTE = ['#1c1c1c', '#6e6e6e', '#bcbcbc', '#ffffff'] // "Cinza" do HANDOFF
 // Modelo: "PC terrário" (modelo 7 do /lab/), só a malha do computador — o
 // conteúdo do terrário saiu do GLB (fica atrás da tela MyTi e é IP de
-// terceiros). Frente, material e vidro calibrados no LAB. Créditos (CC BY 4.0)
+// terceiros). Frente, material e vidro calibrados no LAB; a tela sintoniza o
+// logo oficial (o do header) em branco. Créditos (CC BY 4.0)
 // em public/creditos.html.
+const TV_SCREEN_URL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoRaw.replace(/fill="black"/g, 'fill="white"'))}`
 const TV_MODEL = {
   front: 0,
-  colorBoost: 0.5,
+  colorBoost: 0.25,
   showScreen: true,
   screenShape: { CX: -0.15, CY: 0.175, HX: 0.41, HY: 0.3, Z0: 0.21, A: 0, B: 0, C: 0, OFFSET: 0.008, MARGIN: 1.03 },
 }
@@ -119,7 +124,7 @@ function DitherTV() {
       const instance = mountDitherTV(canvas, {
         url: tvUrl, palette: TV_PALETTE, autoPlay: false, revealDuration: 2.8, spinDuration: 3.4, ...TV_MODEL,
         // a tela sintoniza o logo pelo pin lateral; sem ele (mobile), já sintonizada
-        screenImage: mytiUrl, tune: window.matchMedia(DESKTOP_QUERY).matches ? 0 : 1,
+        screenImage: TV_SCREEN_URL, tune: window.matchMedia(DESKTOP_QUERY).matches ? 0 : 1,
       })
       sceneRef.current = instance
       canvas.tv = instance // o pin lateral (useManifestoHorizontal) gira e sintoniza a TV
@@ -250,7 +255,7 @@ export function Manifesto({ section3, useHorizontal = useManifestoHorizontal }) 
 
         <div className="s2-group s2-group--tv" aria-hidden="true">
           <DitherTV />
-          <img className="s2-smiley" src={smileyImg} alt="" />
+          <span className="s2-smiley" dangerouslySetInnerHTML={STICKER_HTML} />
           <div className="s2-search">
             <img className="s2-search-box" src={searchBoxImg} alt="" />
             <span className="s2-search-text" data-text="set:mytigency.com">set:mytigency.com</span>
