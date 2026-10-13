@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLenis } from 'lenis/react'
 import { useLanguage } from '../context/LanguageContext'
 import { mountDitherTV } from '../utils/tv3d'
 import { useManifestoHorizontal, DESKTOP_QUERY } from '../hooks/useManifestoHorizontal'
 import { useManifestoIntro } from '../hooks/useManifestoIntro'
 import { useManifestoS2Enter } from '../hooks/useManifestoS2Enter'
-import { DecodeText } from './DecodeText'
+import { NosGroup } from './ManifestoNos'
 import handImg from '../assets/mao-halftone.png'
 import targetImg from '../assets/alvo.png'
 import arrowImg from '../assets/seta.png'
@@ -13,8 +13,7 @@ import plusImg from '../assets/plus.svg'
 import mytiRaw from '../assets/MyTi.svg?raw'
 import logoRaw from '../assets/logo.svg?raw'
 import ethosLineImg from '../assets/ethos-drawn.svg'
-import { initialPiece, lineAPiece, lineBPiece } from '../utils/manifestoLineA'
-import ornamentImg from '../assets/ornamento-ascii.png'
+import { lineAPiece } from '../utils/manifestoLineA'
 // Sticker acima do PC (badge-estrela do kit MYT). Inline: só a estrela de
 // fora (.s2-smiley-ring) gira com o scroll; logo, texto e brilhos ficam parados.
 import stickerRaw from '../assets/selo-carinha-preto.svg?raw'
@@ -42,7 +41,6 @@ const MYTI_HTML = { __html: mytiRaw }
 const LINE_A_TOP = { __html: lineAPiece('la-top') }
 const LINE_A_ELBOW = { __html: lineAPiece('la-elbow', '0 409 1348 162') }
 const LINE_A_LOW = { __html: lineAPiece('la-low', '0 0 2135 1216') }
-const LINE_B_HTML = { __html: lineBPiece('lb') }
 
 // Cada palavra vira um .ms-w (unidade que pinta no scroll — useManifestoIntro);
 // trechos com papel (brand/highlight/lead) pintam como uma unidade só.
@@ -161,25 +159,12 @@ function DitherTV() {
   return <canvas className="s2-tv" ref={canvasRef} aria-hidden="true" />
 }
 
-// Item riscado da seção 2: entra com o mesmo decoder da Header quando
-// useManifestoS2Enter dispara 's2:decode' nele (até lá fica escondido).
-function DecodeItem({ text, className }) {
-  const ref = useRef(null)
-  const [active, setActive] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    const onDecode = () => setActive(true)
-    el.addEventListener('s2:decode', onDecode)
-    return () => el.removeEventListener('s2:decode', onDecode)
-  }, [])
-  return <DecodeText ref={ref} value={text} active={active} className={className} />
-}
-
-// section3/useHorizontal: só o LAB (lab/secao3/s2/) troca a seção 3 e o pin
-// lateral, para testar outra seção 3 sobre a seção 2 real; o site usa o padrão.
-export function Manifesto({ section3, useHorizontal = useManifestoHorizontal }) {
+// section3/useHorizontal/withoutGroup: só os LABs trocam a seção 3, o pin
+// lateral ou o grupo da esquerda da seção 2 (lab/manifesto-sem/), para testar
+// uma peça nova sobre o Manifesto real; o site usa o padrão.
+export function Manifesto({ section3, useHorizontal = useManifestoHorizontal, withoutGroup }) {
   const { t, lang } = useLanguage()
-  const { label, statement, without, who } = t.manifesto
+  const { label, statement, who } = t.manifesto
   const [first, second, third] = statement
   const rootRef = useRef(null)
   useHorizontal(rootRef, lang) // idioma novo = seção 3 remontada com os textos dele
@@ -225,33 +210,7 @@ export function Manifesto({ section3, useHorizontal = useManifestoHorizontal }) 
       </section>
 
       <section className="ms2">
-        <div className="s2-group s2-group--without">
-          <img className="s2-ornament" src={ornamentImg} alt="" aria-hidden="true" />
-          <h3 className="sr-only">{without.sentence}</h3>
-          <div className="s2-without" data-lang={lang} aria-hidden="true">
-            {initialPiece(without.initial)
-              ? <span className="s2-initial" dangerouslySetInnerHTML={initialPiece(without.initial)} />
-              : <span className="s2-initial">{without.initial}</span>}
-            <span className="s2-rest">{without.rest}</span>
-            {without.items.map((item, i) => (
-              <DecodeItem key={item} text={item} className={`s2-item s2-item--${i + 1}`} />
-            ))}
-          </div>
-          {/* Recipiente (contorno + texto vermelho) que enche de "água" vermelha
-              com texto branco por cima — .s2-cue-fill, nível em --fill. */}
-          <span className="s2-cue">
-            <span className="s2-cue-label">
-              {without.cue}
-              <span className="s2-cue-arrow" aria-hidden="true" />
-            </span>
-            <span className="s2-cue-fill" aria-hidden="true">
-              <span className="s2-cue-label">
-                {without.cue}
-                <span className="s2-cue-arrow" />
-              </span>
-            </span>
-          </span>
-        </div>
+        {withoutGroup ?? <NosGroup />}
 
         <div className="s2-group s2-group--tv" aria-hidden="true">
           <DitherTV />
@@ -265,7 +224,6 @@ export function Manifesto({ section3, useHorizontal = useManifestoHorizontal }) 
 
         {/* Metade de baixo do traço A (escala da seção 2), que segue até o disco do mapa da seção 3. */}
         <span className="s2-line s2-line-a" aria-hidden="true" dangerouslySetInnerHTML={LINE_A_LOW} />
-        <span className="s2-line s2-line-b" aria-hidden="true" dangerouslySetInnerHTML={LINE_B_HTML} />
       </section>
 
       {/* Metade de cima do traço A, na escala da seção 1 (ancorada no +). */}

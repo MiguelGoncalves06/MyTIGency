@@ -1,0 +1,180 @@
+/* LAB · variações do grupo da esquerda (variants.jsx). Tudo em px de design
+   (--g) como o resto da seção 2. Cada elemento ocupa a coluna à esquerda do
+   NÓS (onde ficava o ornamento ASCII). Estado padrão = final (reduced motion). */
+
+/* menu do LAB */
+.lab-menu{
+  position:fixed; z-index:200; left:50%; bottom:56px; translate:-50% 0;
+  display:flex; gap:4px; align-items:center; padding:5px;
+  font:12px/1 'JetBrains Mono', monospace; letter-spacing:.02em;
+  background:#111; color:#eee; border-radius:999px; box-shadow:0 6px 24px rgba(0,0,0,.18);
+  max-width:calc(100vw - 32px); overflow-x:auto; white-space:nowrap;
+}
+.lab-menu span{ padding:0 10px 0 12px; color:#888; }
+.lab-menu a{ color:inherit; text-decoration:none; padding:9px 12px; border-radius:999px; }
+.lab-menu a:hover{ background:#2a2a2a; }
+.lab-menu a:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.lab-menu a[aria-current]{ background:var(--accent); color:#fff; }
+
+/* sem o ornamento, a mira dele sai junto; lista/seta somem quando o elemento já as mostra */
+.ls:not([data-variant="0"]) .ls-target{ display:none; }
+.ls[data-hide-list] .ls-no,
+.ls[data-hide-list] .ls-star{ display:none !important; }
+.ls[data-hide-arrow] .ls-arrow{ display:none; }
+
+.lv{
+  left:calc(18 * var(--g));
+  top:calc(70 * var(--g)); /* abaixo da mão da seção 1 */
+  width:calc(220 * var(--g));
+  font-family:'JetBrains Mono', monospace;
+  font-size:calc(14 * var(--g));
+  line-height:1.25;
+  color:var(--ls-ink);
+}
+
+/* ---------- A · Organograma ---------- */
+.lv-flow{ display:flex; flex-direction:column; align-items:flex-start; gap:calc(26 * var(--g)); padding-top:calc(22 * var(--g)); }
+.lv-cap{
+  position:absolute; top:0; left:0;
+  font-size:calc(10.5 * var(--g)); letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim);
+}
+.lv-node{
+  --strike:0; --on:0;
+  position:relative;
+  padding:calc(7 * var(--g)) calc(12 * var(--g));
+  border:max(1px, calc(1.5 * var(--g))) solid currentColor;
+  border-radius:calc(6 * var(--g));
+  background:var(--bg);
+  white-space:nowrap;
+}
+/* conector vertical para o próximo nó */
+.lv-node:not(.lv-node--who)::before{
+  content:''; position:absolute; left:calc(18 * var(--g)); top:100%;
+  height:calc(26 * var(--g)); border-left:max(1px, calc(1.5 * var(--g))) dashed var(--ink-dim);
+}
+/* risco do nó (o scroll passa de 0 a 1) */
+.lv-node--mid::after{
+  content:''; position:absolute; left:-6%; right:-6%; top:50%;
+  height:max(2px, calc(3 * var(--g))); background:var(--accent); border-radius:9px;
+  transform:rotate(-4deg) scaleX(var(--strike)); transform-origin:left center;
+}
+.lv-node--mid{ --strike:1; opacity:.35; }
+.lv-node--you{ background:var(--ls-ink); color:#fff; border-color:var(--ls-ink); }
+.lv-node--who{
+  --on:1;
+  background:color-mix(in srgb, var(--accent) calc(var(--on) * 100%), var(--bg));
+  border-color:color-mix(in srgb, var(--accent) calc(var(--on) * 100%), currentColor);
+  color:color-mix(in srgb, #fff calc(var(--on) * 100%), var(--ls-ink));
+}
+/* atalho vermelho: do "você" ao "quem faz", por fora da cadeia */
+.lv-bypass{
+  position:absolute; left:calc(150 * var(--g)); top:calc(22 * var(--g));
+  width:calc(56 * var(--g)); height:calc(272 * var(--g)); overflow:visible;
+}
+.lv-bypass path{ fill:none; stroke:var(--accent); stroke-width:max(2px, calc(3 * var(--g))); stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.lv-bypass-tag{
+  position:absolute; left:calc(170 * var(--g)); top:calc(150 * var(--g));
+  padding:calc(3 * var(--g)) calc(6 * var(--g)); background:var(--accent); color:#fff;
+  font-size:calc(10 * var(--g)); letter-spacing:.12em; text-transform:uppercase; border-radius:calc(4 * var(--g));
+}
+
+/* ---------- B · Conversa ---------- */
+.lv-chat{
+  left:calc(34 * var(--g)); width:calc(212 * var(--g)); /* longe da borda da tela; para antes do NÓS */
+  background:#fff; border:max(1px, calc(1.5 * var(--g))) solid var(--ls-ink);
+  border-radius:calc(12 * var(--g)); overflow:hidden;
+  box-shadow:calc(5 * var(--g)) calc(5 * var(--g)) 0 var(--ls-ink);
+}
+.lv-chat-head{
+  display:flex; align-items:center; gap:calc(7 * var(--g));
+  padding:calc(9 * var(--g)) calc(12 * var(--g));
+  border-bottom:max(1px, calc(1.5 * var(--g))) solid var(--ls-ink);
+  font-size:calc(10.5 * var(--g)); letter-spacing:.06em; text-transform:uppercase;
+}
+.lv-chat-head i{ width:calc(8 * var(--g)); aspect-ratio:1; border-radius:50%; background:#2bb673; }
+.lv-chat-head em{ margin-left:auto; font-style:normal; color:var(--ink-dim); text-transform:none; }
+.lv-chat-body{ display:flex; flex-direction:column; gap:calc(7 * var(--g)); padding:calc(10 * var(--g)) calc(10 * var(--g)) calc(8 * var(--g)); font-size:calc(12 * var(--g)); line-height:1.2; }
+.lv-msg{ margin:0; max-width:88%; padding:calc(8 * var(--g)) calc(10 * var(--g)); border-radius:calc(12 * var(--g)); }
+.lv-msg--in{ align-self:flex-start; background:#ecebe6; border-bottom-left-radius:calc(3 * var(--g)); }
+.lv-msg--out{ align-self:flex-end; background:var(--ls-ink); color:#fff; border-bottom-right-radius:calc(3 * var(--g)); }
+/* "digitando" dentro do balão (o hook troca pelos textos); padrão = texto */
+.lv-dots{ display:none; gap:calc(4 * var(--g)); padding:calc(4 * var(--g)) calc(2 * var(--g)); }
+.lv-dots i{ width:calc(6 * var(--g)); aspect-ratio:1; border-radius:50%; background:#fff; animation:lvDot 1s infinite ease-in-out; }
+.lv-dots i:nth-child(2){ animation-delay:.15s; }
+.lv-dots i:nth-child(3){ animation-delay:.3s; }
+@keyframes lvDot{ 0%,100%{ opacity:.3; } 50%{ opacity:1; } }
+.lv-seen{ align-self:flex-end; font-size:calc(10 * var(--g)); color:var(--ink-dim); }
+
+/* ---------- C · Ticket ---------- */
+.lv-ticket{ top:calc(104 * var(--g)); left:calc(30 * var(--g)); width:calc(206 * var(--g)); rotate:-3deg; }
+.lv-paper{
+  display:flex; flex-direction:column; gap:calc(7 * var(--g));
+  padding:calc(16 * var(--g)) calc(14 * var(--g)) calc(26 * var(--g));
+  background:#fff;
+  filter:drop-shadow(0 calc(6 * var(--g)) calc(10 * var(--g)) rgba(0,0,0,.12));
+  /* borda de baixo serrilhada, como papel de impressora */
+  --z:calc(8 * var(--g));
+  -webkit-mask:conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(var(--z) * 2) 100%;
+  mask:conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(var(--z) * 2) 100%;
+}
+.lv-ticket-brand{ font-family:'Archivo Black', sans-serif; font-size:calc(22 * var(--g)); letter-spacing:-.02em; text-align:center; }
+.lv-ticket-meta{ text-align:center; font-size:calc(10 * var(--g)); letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); }
+.lv-paper hr{ width:100%; margin:calc(2 * var(--g)) 0; border:0; border-top:max(1px, calc(1.5 * var(--g))) dashed var(--ls-ink); }
+.lv-row{ display:flex; align-items:baseline; gap:calc(5 * var(--g)); }
+.lv-row s{ text-decoration-color:var(--accent); text-decoration-thickness:max(1px, calc(2 * var(--g))); }
+.lv-row i{ flex:1; border-bottom:max(1px, calc(1.5 * var(--g))) dotted var(--ink-dim); }
+.lv-row--total{ font-weight:700; font-size:calc(14 * var(--g)); }
+.lv-barcode{
+  height:calc(30 * var(--g)); margin-top:calc(6 * var(--g));
+  background:repeating-linear-gradient(90deg, var(--ls-ink) 0 2px, transparent 2px 4px, var(--ls-ink) 4px 5px, transparent 5px 8px, var(--ls-ink) 8px 11px, transparent 11px 12px);
+}
+.lv-stamp{
+  position:absolute; right:calc(-34 * var(--g)); bottom:calc(-14 * var(--g));
+  padding:calc(6 * var(--g)) calc(12 * var(--g));
+  border:max(2px, calc(3 * var(--g))) solid var(--accent); border-radius:calc(6 * var(--g));
+  color:var(--accent); font:calc(18 * var(--g))/1 'Archivo Black', sans-serif; letter-spacing:.08em; text-transform:uppercase;
+  rotate:-14deg; mix-blend-mode:multiply;
+}
+
+/* ---------- D · Janela de sistema ---------- */
+.lv-win{
+  top:calc(76 * var(--g));
+  background:#fff; border:max(1px, calc(1.5 * var(--g))) solid var(--ls-ink);
+  box-shadow:calc(5 * var(--g)) calc(5 * var(--g)) 0 var(--ls-ink);
+}
+.lv-win-bar{
+  display:flex; align-items:center; gap:calc(6 * var(--g));
+  padding:calc(5 * var(--g)) calc(8 * var(--g));
+  background:var(--ls-ink); color:#fff; font-size:calc(11 * var(--g));
+}
+.lv-win-bar span{ margin-right:auto; }
+.lv-win-bar i{ font-style:normal; width:calc(15 * var(--g)); text-align:center; border:1px solid #fff; line-height:1.1; }
+.lv-win-body{ position:relative; display:flex; flex-direction:column; gap:calc(8 * var(--g)); padding:calc(12 * var(--g)); }
+.lv-win-ask{ display:flex; gap:calc(9 * var(--g)); margin:0 0 calc(4 * var(--g)); }
+.lv-warn{
+  flex:none; display:grid; place-items:center; width:calc(26 * var(--g)); height:calc(24 * var(--g));
+  background:var(--accent); color:#fff; font-weight:700;
+  clip-path:polygon(50% 0, 100% 100%, 0 100%); padding-top:calc(6 * var(--g));
+}
+.lv-check{ --done:1; display:flex; align-items:center; gap:calc(7 * var(--g)); }
+.lv-check b{
+  flex:none; width:calc(12 * var(--g)); aspect-ratio:1; border:max(1px, calc(1.5 * var(--g))) solid var(--ls-ink);
+  background:color-mix(in srgb, var(--ls-ink) calc(var(--done) * 100%), transparent);
+}
+.lv-check span{ text-decoration:line-through; text-decoration-color:color-mix(in srgb, var(--accent) calc(var(--done) * 100%), transparent); }
+.lv-check em{ margin-left:auto; font-style:normal; font-size:calc(10 * var(--g)); color:var(--accent); opacity:var(--done); }
+.lv-bar{ height:calc(12 * var(--g)); margin-top:calc(4 * var(--g)); padding:max(1px, calc(2 * var(--g))); border:max(1px, calc(1.5 * var(--g))) solid var(--ls-ink); }
+.lv-bar i{ display:block; height:100%; background:repeating-linear-gradient(90deg, var(--ls-ink) 0 calc(6 * var(--g)), transparent calc(6 * var(--g)) calc(8 * var(--g))); transform-origin:left; }
+.lv-pct{ align-self:flex-end; font-size:calc(10 * var(--g)); color:var(--ink-dim); }
+.lv-win-btns{ display:flex; justify-content:flex-end; gap:calc(8 * var(--g)); visibility:hidden; opacity:0; }
+.lv-btn{ --press:0; padding:calc(5 * var(--g)) calc(14 * var(--g)); border:max(1px, calc(1.5 * var(--g))) solid var(--ls-ink); box-shadow:calc(3 * var(--g) * (1 - var(--press))) calc(3 * var(--g) * (1 - var(--press))) 0 var(--ls-ink); translate:calc(3 * var(--g) * var(--press)) calc(3 * var(--g) * var(--press)); }
+.lv-btn--yes{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.lv-win-done{ margin:0; padding:calc(6 * var(--g)) calc(8 * var(--g)); background:var(--ls-ink); color:#fff; }
+
+/* Mobile: a coluna à esquerda do NÓS fica estreita demais para texto —
+   o elemento desce para baixo do botão, maior, e o grupo cresce junto. */
+@media(max-width:700px){
+  .ls:not([data-variant="0"]){ height:calc(1240 * var(--g)) !important; }
+  .lv{ left:calc(150 * var(--g)); top:calc(660 * var(--g)) !important; transform-origin:0 0; scale:2.3; }
+  .lv-ticket{ left:calc(200 * var(--g)); }
+}

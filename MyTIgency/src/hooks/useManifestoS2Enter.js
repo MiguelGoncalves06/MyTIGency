@@ -1,11 +1,9 @@
 import { useLayoutEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin'
 import { introPinDuration } from '../utils/manifestoScroll'
-import { decodeDuration } from './useAsciiGlitch'
 
-gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
+gsap.registerPlugin(ScrollTrigger)
 
 // Entrada em combo do grupo da direita da seção 2 do Manifesto:
 //   sticker smiley, busca (caixa + texto + cursor) e TV vêm de fora da tela,
@@ -18,16 +16,11 @@ gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 //   tempos em tempos apaga 1–2 letras e redigita, e o cursor clica sozinho
 //   (ciclos independentes, pausados com a busca fora da tela). Ambiente (só com mouse): o sticker acompanha o
 //   cursor por poucos px, como a mão da seção 1.
-// Grupo da esquerda, título (uma vez, em tempo real): o "S" é escrito à
-//   caneta, o "em" cai com peso e, no impacto, os itens "Gerente de conta /
-//   Terceirizar / Intermediários" entram decodificando (decoder da Header,
-//   evento 's2:decode' → DecodeItem).
-// Riscos dos itens (Sem = não temos): um a um, seguindo o scroll (scrub,
-//   reversível), na mesma timeline do traço B — mas cada um só depois que o
-//   decoder daquele item termina.
-// Grupo da esquerda, traço (scrubbed e reversível, como o traço A da seção
-//   1): o traço B se desenha como caneta e "desenha" o contorno do botão
-//   continue rolando, que então enche de água (--fill + onda em CSS).
+// Grupo da esquerda (ManifestoNos; o resto da entrada dele é do
+//   useManifestoNos): uma vez, em tempo real, os itens "Sem gerente de conta /
+//   terceirizar / intermediários" entram decodificando (decoder da Header,
+//   evento 's2:decode' → DecodeItem); com o scroll (reversível), o contorno do
+//   botão continue rolando se desenha e ele enche de água (--fill + onda em CSS).
 // Reduced motion: nada disso roda — CSS já mostra tudo no lugar e a TV nasce
 // pronta (tv3d.js).
 const TV_PLAY_AT = 0.3 // fração da entrada em que a TV começa a se formar
@@ -35,10 +28,9 @@ const TYPE_SPEED = 0.075 // s por caractere
 const EDIT_EVERY = [2.5, 5.5] // s entre uma "correção" (apaga e redigita) e outra
 const CLICK_EVERY = [3.5, 7] // s entre um clique e outro do cursor
 const DECODE_STAGGER = 0.22 // s entre um item e outro decodificando
-// riscos dos itens (frações da timeline do grupo da esquerda, que segue o scroll)
-const STRIKE_AT = 0.22
-const STRIKE_DUR = 0.2
-const STRIKE_STAGGER = 0.18
+// s depois da chegada do grupo em que os itens começam a decodificar (o NÓS já
+// carimbou — useManifestoNos)
+const ITEMS_AT = 1.2
 const STICKER_TURN = 240 // graus que a estrela de fora do sticker gira no trecho todo
 
 export function useManifestoS2Enter(rootRef) {
@@ -143,9 +135,8 @@ export function useManifestoS2Enter(rootRef) {
 
       const D1 = () => introPinDuration() // o pin de entrada da seção 1 vem antes
 
-      /* ---------- grupo da esquerda: traço B, riscos, botão (scrub) ---------- */
+      /* ---------- grupo da esquerda (ManifestoNos): itens e botão ---------- */
       const left = q('.s2-group--without')
-      const lineBGuide = q('.lb-guide')
       const cue = q('.s2-cue')
       const items = root.querySelectorAll('.s2-item')
       // mesmo início do pin lateral (useManifestoHorizontal): centro dos
@@ -160,54 +151,29 @@ export function useManifestoS2Enter(rootRef) {
         })
         return docTop(ms2) + (top + bottom) / 2 - window.innerHeight * 0.56 + D1()
       }
-      /* ---------- título "Sem": caneta → queda → decoder → riscos ---------- */
-      const initial = q('.s2-initial')
-      const semGuide = q('.sem-guide')
-      const rest = q('.s2-rest')
-      gsap.set(items, { autoAlpha: 0, '--strike': 0 })
-      if (semGuide) gsap.set(semGuide, { drawSVG: '0%' })
-      if (rest) gsap.set(rest, { autoAlpha: 0 })
-      // Risco de cada item: o scroll dirige (strikeP), mas ele só aparece
-      // depois que o decoder daquele item termina; se o scroll já passou do
-      // ponto, o risco alcança onde deveria estar com uma transição curta.
-      const strikeP = Array.from(items, () => ({ v: 0 }))
-      const decoded = Array.from(items, () => false)
-      const showStrike = (i) => { if (decoded[i]) gsap.set(items[i], { '--strike': strikeP[i].v }) }
+      /* ---------- itens "Sem …": decoder, uma vez, quando o grupo chega ---------- */
+      // (o resto da entrada do grupo — NÓS, auréola, conversa — é do
+      // useManifestoNos, no mesmo gatilho; os itens entram 1.2s depois)
+      gsap.set(items, { autoAlpha: 0 })
       const decodeItems = () => items.forEach((item, i) => {
         alive.push(gsap.delayedCall(i * DECODE_STAGGER, () => {
           item.dispatchEvent(new Event('s2:decode'))
           // só aparece depois que o React já trocou o texto pelos símbolos
           alive.push(gsap.delayedCall(0.08, () => gsap.set(item, { autoAlpha: 1 })))
-          // decoder terminou: libera o risco (alcança o scroll atual)
-          const len = item.getAttribute('aria-label')?.length || item.textContent.length
-          alive.push(gsap.delayedCall(decodeDuration(len) / 1000 + 0.1, () => {
-            decoded[i] = true
-            gsap.to(item, { '--strike': strikeP[i].v, duration: 0.5, ease: 'power2.out', overwrite: true })
-          }))
         }))
       })
-      const title = gsap.timeline({ paused: true })
-      if (semGuide) title.to(semGuide, { drawSVG: '100%', duration: 1.5, ease: 'power1.inOut' }, 0)
-      if (rest) {
-        // cai com peso: acelera, achata no chão e volta com um quique curto
-        title.fromTo(rest, { autoAlpha: 0, yPercent: -140, rotation: -9 },
-          { autoAlpha: 1, yPercent: 0, rotation: 0, duration: 0.55, ease: 'power3.in' }, 1.15)
-        title.to(rest, { scaleY: 0.84, scaleX: 1.08, duration: 0.08, ease: 'power1.out', transformOrigin: '50% 85%' })
-        title.to(rest, { scaleY: 1, scaleX: 1, duration: 0.8, ease: 'elastic.out(1, 0.4)' })
-      }
-      const impact = rest ? 1.7 : 1.2
-      title.call(decodeItems, null, impact)
-      alive.push(title)
-      const titleSt = ScrollTrigger.create({
-        trigger: initial || left,
-        start: () => docTop(initial || left) - window.innerHeight * 0.8 + D1(),
+      const titleSt = left && ScrollTrigger.create({
+        trigger: left,
+        start: () => docTop(left) - window.innerHeight * 0.8 + D1(),
         once: true,
         invalidateOnRefresh: true,
-        onEnter: () => title.play(),
+        onEnter: () => alive.push(gsap.delayedCall(ITEMS_AT, decodeItems)),
       })
 
+      // Botão (scrub, reversível): o contorno se desenha da esquerda pra
+      // direita e o recipiente enche (a onda só corre enquanto está enchendo).
       let leftTl = null
-      if (left && lineBGuide && cue) {
+      if (left && cue) {
         leftTl = gsap.timeline({
           defaults: { ease: 'none' },
           scrollTrigger: {
@@ -218,13 +184,6 @@ export function useManifestoS2Enter(rootRef) {
             invalidateOnRefresh: true,
           },
         })
-        leftTl.fromTo(lineBGuide, { drawSVG: '0%' }, { drawSVG: '100%', duration: 0.78, ease: 'sine.inOut' }, 0)
-        // riscos dos itens: um a um, seguindo o scroll (reversível)
-        items.forEach((item, i) => {
-          leftTl.fromTo(strikeP[i], { v: 0 }, { v: 1, duration: STRIKE_DUR, ease: 'power1.inOut', onUpdate: () => showStrike(i) }, STRIKE_AT + i * STRIKE_STAGGER)
-        })
-        // botão: o traço chega e "desenha" o contorno da esquerda pra direita;
-        // aí o recipiente enche (a onda só corre enquanto está enchendo)
         leftTl.fromTo(cue, { clipPath: 'inset(0% 100% 0% 0% round 999px)' },
           { clipPath: 'inset(0% 0% 0% 0% round 999px)', duration: 0.14, ease: 'power2.inOut' }, 0.66)
         leftTl.fromTo(cue, { '--fill': 0 }, {
@@ -280,7 +239,7 @@ export function useManifestoS2Enter(rootRef) {
         ringTw?.kill()
         leftTl?.scrollTrigger?.kill()
         leftTl?.kill()
-        titleSt.kill()
+        titleSt?.kill()
         cue?.classList.remove('is-filling')
         search.classList.remove('is-onscreen')
         st.kill()

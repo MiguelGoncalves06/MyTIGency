@@ -1,0 +1,160 @@
+/* LAB · grupo da esquerda da seção 2 ("NÓS conversamos e resolvemos tudo.").
+   Medidas em px de design (--g) a partir do canto do ornamento ASCII, como o
+   grupo atual (App.css → .s2-group--without). Estado padrão = final (é o que
+   reduced motion vê); a entrada (SemGroup → useSemMotion) parte dele. */
+
+/* a seta nova faz o papel do traço B (que terminava no botão) */
+.s2-line-b{ display:none; }
+
+.ls{ --ls-ink:#111; }
+.ls-art{ inset:0; color:var(--ls-ink); pointer-events:none; }
+.ls-art > *{ position:absolute; display:block; }
+
+/* Serifada condensada: Abril Fatface comprimida (stand-in da fonte do layout).
+   Textura de tinta de carimbo: máscara de ruído (falhas onde o papel aparece). */
+.ls-big b,
+.ls-line b{
+  display:block;
+  font-family:'Abril Fatface',serif;
+  font-weight:400;
+  line-height:.8;
+  white-space:nowrap;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -10 0 0 0 7.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -10 0 0 0 7.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  -webkit-mask-size:calc(180 * var(--g));
+  mask-size:calc(180 * var(--g));
+}
+.ls-big{
+  left:calc(256 * var(--g));
+  top:calc(118 * var(--g));
+  font-size:calc(300 * var(--g));
+  text-transform:uppercase;
+  letter-spacing:-.01em;
+  transform-origin:0 100%;
+}
+/* comprimida na horizontal (a fonte não tem eixo de largura); no filho, porque
+   o GSAP anima o transform do pai */
+.ls-big b{ transform-origin:0 0; scale:.5 1; }
+.ls-lines{
+  left:calc(566 * var(--g));
+  top:calc(150 * var(--g));
+  font-size:calc(80 * var(--g));
+}
+.ls-line{
+  display:block;
+  overflow:hidden;
+  /* respiro para os ascendentes/descendentes não serem cortados pela máscara da linha */
+  padding:.06em 0 .1em;
+  margin-bottom:-.15em;
+}
+.ls-line > span{ display:block; }
+.ls-line b{ transform-origin:0 0; scale:.76 1; }
+.ls-line:last-child{ padding-left:.12em; }
+
+/* auréola vermelha inclinada sobre o NÓS */
+.ls-halo{
+  left:calc(214 * var(--g));
+  top:calc(84 * var(--g));
+  width:calc(330 * var(--g));
+  height:calc(96 * var(--g));
+  rotate:-8deg;
+  z-index:1; /* passa na frente do NÓS */
+}
+.ls-halo{ overflow:visible; }
+.ls-halo path{
+  fill:none; stroke:var(--accent); stroke-linecap:round; stroke-linejoin:round;
+  stroke-width:max(2.5px, calc(5.5 * var(--g))); vector-effect:non-scaling-stroke;
+}
+/* estrela y2k vermelha cortando a ponta direita da auréola (já com o giro de −8°) */
+.ls-spark{ left:calc(506 * var(--g)); top:calc(72 * var(--g)); width:calc(54 * var(--g)); z-index:2; overflow:visible; }
+.ls-spark path{ fill:var(--accent); }
+/* brilho fino preto sobre o acento do Ó */
+.ls-glint{ left:calc(362 * var(--g)); top:calc(76 * var(--g)); width:calc(54 * var(--g)); z-index:2; overflow:visible; }
+.ls-glint path{ fill:var(--ls-ink); }
+
+/* marcas finas de régua/mira, como as do grid */
+.ls-cross{ width:calc(22 * var(--g)); aspect-ratio:1; }
+.ls-cross::before,
+.ls-cross::after{ content:''; position:absolute; background:currentColor; }
+.ls-cross::before{ left:50%; top:0; bottom:0; width:max(1px, calc(1.5 * var(--g))); translate:-50% 0; }
+.ls-cross::after{ top:50%; left:0; right:0; height:max(1px, calc(1.5 * var(--g))); translate:0 -50%; }
+.ls-cross--a{ left:calc(292 * var(--g)); top:calc(46 * var(--g)); }
+.ls-cross--b{ left:calc(590 * var(--g)); top:calc(104 * var(--g)); width:calc(14 * var(--g)); }
+.ls-target{ left:calc(136 * var(--g)); top:calc(170 * var(--g)); width:calc(36 * var(--g)); aspect-ratio:1; }
+.ls-target::before{ content:''; position:absolute; inset:28%; border:max(1px, calc(1.5 * var(--g))) solid currentColor; border-radius:50%; }
+.ls-target::after{
+  content:''; position:absolute; inset:0;
+  background:
+    linear-gradient(currentColor, currentColor) center / max(1px, calc(1.5 * var(--g))) 100% no-repeat,
+    linear-gradient(currentColor, currentColor) center / 100% max(1px, calc(1.5 * var(--g))) no-repeat;
+}
+
+/* sublinhado-pincel do "tudo." */
+.ls-under{
+  left:calc(562 * var(--g));
+  top:calc(352 * var(--g)); /* abaixo da linha de base do "tudo." */
+  width:calc(212 * var(--g));
+  height:calc(24 * var(--g));
+  overflow:visible;
+}
+.ls-under path{ fill:none; stroke:var(--accent); stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.ls-under-a{ stroke-width:max(2px, calc(5 * var(--g))); }
+.ls-under-b{ stroke-width:max(1.5px, calc(3 * var(--g))); opacity:.85; }
+
+/* prova miúda: asterisco + três linhas mono */
+.ls-star{ left:calc(296 * var(--g)); top:calc(370 * var(--g)); width:calc(28 * var(--g)); overflow:visible; }
+.ls-star path{ fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; }
+.ls-no{
+  left:calc(342 * var(--g));
+  top:calc(370 * var(--g));
+  display:flex !important;
+  flex-direction:column;
+  gap:calc(4 * var(--g));
+  font-family:'JetBrains Mono',monospace;
+  font-size:max(11px, calc(13 * var(--g)));
+  letter-spacing:.14em;
+  line-height:1.2;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.ls-no .s2-item{ position:static; font:inherit; color:inherit; white-space:nowrap; }
+.ls-no .s2-item::after{ display:none; } /* sem risco: aqui o "Sem" é a frase */
+
+.ls-play{ left:calc(960 * var(--g)); top:calc(92 * var(--g)); width:calc(64 * var(--g)); fill:currentColor; }
+
+/* seta vermelha (papel do traço B): da borda até a lista */
+.ls-arrow{
+  left:calc(-6 * var(--g));
+  top:calc(346 * var(--g)); /* ponta mirando o asterisco da lista */
+  width:calc(262 * var(--g));
+  height:calc(140 * var(--g));
+  overflow:visible;
+}
+.ls-arrow path{ fill:none; stroke:var(--accent); stroke-width:max(2px, calc(3.5 * var(--g))); stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+
+/* botão: mais compacto e mais alto, junto da composição */
+.ls .s2-cue{
+  left:calc(290 * var(--g));
+  top:calc(494 * var(--g));
+  width:calc(276 * var(--g));
+  height:calc(48 * var(--g));
+  font-size:calc(26 * var(--g));
+}
+
+/* Desktop: a composição inteira desce (menos a mão, que é da seção 1) para
+   ficar centrada na tela — só visual (translate): o grupo continua medido no
+   mesmo lugar, então o início do pin lateral não muda. */
+@media(min-width:701px){
+  .ls{ --ls-drop:90; }
+  .ls-art, .ls .s2-cue{ translate:0 calc(var(--ls-drop) * var(--g)); }
+}
+
+/* Mobile: a composição escala com o grupo (--g próprio, App.css); a lista
+   mono tem piso de 11px, então o botão desce para não encostar nela, e o
+   ▶▶▶ (que aponta para a TV ao lado, no desktop) sai. */
+@media(max-width:700px){
+  .ls-play{ display:none; }
+  .ls .s2-cue{ top:calc(560 * var(--g)); width:calc(330 * var(--g)); height:calc(64 * var(--g)); font-size:calc(30 * var(--g)); }
+}
+
+.lab-tail{ height:60vh; display:grid; place-items:center; font:12px 'JetBrains Mono', monospace; color:var(--ink-dim); }

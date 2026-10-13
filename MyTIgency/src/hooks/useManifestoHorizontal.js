@@ -43,10 +43,21 @@ const START = { textX: 0.04, boxY: 0.86 }
 const SIZE_IN_SEARCH = 1.6
 // O pincel do trecho novo (arte do traço A deformada) engrossa até 125% no fim.
 const BRUSH_GAIN = 1.25
-// A busca liga o PC: a tela fica desligada até o cursor clicar na busca; daí o
-// boot de CRT (tv3d.setBoot) corre com o scroll por BOOT_SPAN do percurso
-// lateral, com o logo na parte final, mais lenta.
+// Boot de CRT do PC (tv3d.setBoot), com o scroll. As etapas antes do logo
+// (cursor de espera → CRT → terminal com barra até 100%) começam BOOT_LEAD
+// (alturas de tela) ANTES do pin lateral e vão até o esbarrão do cursor no
+// monitor; logo depois do tranco (HIT_GLITCH do percurso lateral) a tela
+// corta do terminal para o logo já em construção (LOGO_CUT) e o
+// logo abre a partir do toque, com a mesma duração de antes: (1 − LOGO_FROM)
+// do trecho PRESS + BOOT_SPAN.
 const BOOT_SPAN = 0.42
+const BOOT_LEAD = 0.15
+const LOGO_FROM = 0.4
+const HIT_GLITCH = 0.015
+// Onde o logo já está quando a tela volta do tapa (entrada da varredura,
+// antes da curva suave do tv3d: 0.47 ≈ o terço de cima do logo à mostra) —
+// "tapa para dar sinal": nada de tela preta depois do chiado.
+const LOGO_CUT = 0.47
 // Giro da TV (rad, somado aos 0.6 do 3/4 de repouso do tv3d: −0.6 = de
 // frente, menor = esquerda): UM giro contínuo, da ESQUERDA (início do pin)
 // à DIREITA (TURN_END do percurso lateral), passando pela frente no
@@ -59,6 +70,14 @@ const TURN_END = 0.85
 // linha a EDGE_Y da altura do PC) e recua BUMP_PX no impacto.
 const EDGE_Y = 0.3
 const BUMP_PX = 22
+// Janela (px de caminho, para cada lado do toque planejado) em que o
+// esbarrão espera a ponta encostar de verdade na malha do PC.
+const HIT_WIN = 70
+// Até HOLD_NEAR do percurso lateral do toque, a pose do PC perde a massa
+// (giro atrasado pela mola, inclinação pela velocidade) e chega ao toque
+// exatamente como foi medida — senão a ponta passa pela borda no ar e só
+// encosta mais embaixo. O tranco do esbarrão continua (tv3d.setHold).
+const HOLD_NEAR = 0.12
 const sineIO = (t) => (1 - Math.cos(Math.PI * t)) / 2
 const sineIOinv = (v) => Math.acos(1 - 2 * v) / Math.PI
 const smooth = (t) => t * t * (3 - 2 * t)
@@ -196,6 +215,9 @@ export function useManifestoHorizontal(rootRef, lang) {
       let bumpDir = 1
       let hitN = [1, 0] // direção do cursor no toque
       let dHit = -1 // scroll (px no pin) em que a ponta encosta no monitor
+      let tvBox = { x: 0, y: 0 } // canvas da TV em coordenadas da trilha
+      let hitD = -1 // scroll (px no pin) do último contato real, vindo de frente
+      let hitArm = null // lado (−1 antes / 1 depois) de onde o cursor vem para a janela do toque; 0 = já esbarrou
 
       // traço novo: arte do traço A deformada, revelada por uma máscara de
       // caneta (como a do site); motion/seg1 são só geometria
@@ -352,6 +374,8 @@ export function useManifestoHorizontal(rootRef, lang) {
         }
         sHit = lenG > 0 ? lenG / L : -1
         dHit = sHit > 0 ? dGo + sineIOinv(sHit) * (dEnd - dGo) : -1
+        tvBox = boxIn(tvCanvas)
+        hitArm = null // caminho novo: a janela do toque se rearma pelo lado em que o cursor está
         if (sHit > 0) {
           const h0 = motion.getPointAtLength(lenG - 4)
           const h1 = motion.getPointAtLength(lenG + 4)
@@ -404,11 +428,10 @@ export function useManifestoHorizontal(rootRef, lang) {
         const tv = tvCanvas?.tv
         if (tv && !reduced) {
           tv.setTurn(turnAt(d))
+          // perto do toque o PC assenta na pose em que o toque foi medido
+          tv.setHold?.(dHit > 0 ? 1 - smooth(clamp01(Math.abs(d - dHit) / (travelA * HOLD_NEAR))) : 0)
           tv.setShift(x)
-          // a tela fica desligada (cursor de espera) até o clique do cursor na
-          // busca (PRESS); daí o boot corre com o scroll (sem chiado de sintonia)
-          tv.setTune(1)
-          tv.setBoot?.(ramp(d, dGo - travelA * PRESS, dGo + travelA * BOOT_SPAN))
+          tv.setTune(1) // o boot (applyBoot) ocupa a tela, sem chiado de sintonia
         }
         // a seção 3 entra pela direita: rótulos digitam, a 1ª palavra é
         // desenhada, a 2ª compila; com o cursor assentado, seleção (Figma) e
@@ -442,16 +465,39 @@ export function useManifestoHorizontal(rootRef, lang) {
         if (!ext || !st || !cur) return
         const d = proxy.d
         const s = progress(d)
-        // Esbarrão: ao cruzar o toque no monitor (em qualquer sentido do
-        // scroll), o PC leva o impacto (balança, treme, dither estoura, tela
-        // perde a sintonia — tv3d.bump), aparece a marca e o cursor recua.
-        if (sHit > 0 && prevS >= 0 && (prevS - sHit) * (s - sHit) < 0) {
-          bumpDir = Math.sign(s - prevS)
-          tvCanvas?.tv?.bump?.(bumpDir * Math.min(1.2, 0.45 + Math.abs(s - prevS) * 40))
-          bumpAt = now
-          impact.classList.remove('on')
-          void impact.offsetWidth // reinicia a animação da marca
-          impact.classList.add('on')
+        // Esbarrão (em qualquer sentido do scroll): o PC leva o impacto
+        // (balança, treme, dither estoura, tela perde a sintonia — tv3d.bump),
+        // aparece a marca e o cursor recua. O caminho passa pela borda do
+        // monitor medida com o PC parado no giro planejado, mas o PC de verdade
+        // pode estar um pouco fora dessa pose (inclinado pela velocidade, ainda
+        // balançando) — então, perto do toque (HIT_WIN px de caminho para cada
+        // lado), o esbarrão sai no primeiro quadro em que a ponta encosta de
+        // fato na malha; se não encostar, no fim da janela.
+        if (sHit > 0 && prevS >= 0) {
+          const win = HIT_WIN / L
+          const zone = s < sHit - win ? -1 : s > sHit + win ? 1 : 0
+          const tip = motion.getPointAtLength(s * L)
+          const fire = (dir) => {
+            bumpDir = dir
+            // o corte terminal → logo segue o contato real (vindo de frente)
+            // (nunca depois do planejado: o fim do gatilho do boot foi medido com ele)
+            if (dir > 0) { hitD = dHit > 0 ? Math.min(d, dHit) : d; applyBoot() }
+            tvCanvas?.tv?.bump?.(bumpDir * Math.min(1.2, 0.45 + Math.abs(s - prevS) * 40))
+            bumpAt = now
+            const at = zone === 0 ? tip : motion.getPointAtLength(sHit * L)
+            Object.assign(impact.style, { left: `${at.x}px`, top: `${at.y}px` })
+            impact.classList.remove('on')
+            void impact.offsetWidth // reinicia a animação da marca
+            impact.classList.add('on')
+          }
+          if (hitArm === null) hitArm = zone
+          else if (zone !== 0) {
+            if (hitArm === -zone) fire(zone) // atravessou a janela sem encostar
+            hitArm = zone
+          } else if (hitArm !== 0 && tvCanvas?.tv?.hit(tip.x - tvBox.x, tip.y - tvBox.y)) {
+            fire(-hitArm)
+            hitArm = 0
+          }
         }
         prevS = s
         // recuo: quica para trás da direção em que vinha, achata e gira rápido
@@ -513,6 +559,41 @@ export function useManifestoHorizontal(rootRef, lang) {
         },
       }).scrollTrigger
 
+      // Boot do PC: gatilho próprio porque começa antes do pin (o proxy acima
+      // só anda dentro dele). Mesma régua (px a partir do início do pin) e o
+      // mesmo scrub, então emenda sem salto com o resto do pin.
+      // Ordem na tela: barra em 100% → esbarrão (dHit) → a tela "dá bug"
+      // (tv3d.bump tira a sintonia) e o terminal some no tranco → o logo abre.
+      const bootLead = () => vh * BOOT_LEAD
+      const bootSpan = () => travelA * (PRESS + BOOT_SPAN)
+      // sem toque medido (TV ainda não carregou): o logo fica onde ficava
+      // contato real do último esbarrão de frente; antes dele, o planejado
+      const bootHit = () => (hitD > 0 ? hitD : dHit > 0 ? dHit : dGo - travelA * PRESS + bootSpan() * LOGO_FROM)
+      const bootEnd = () => bootHit() + bootSpan() * (1 - LOGO_FROM)
+      const boot = { d: 0 }
+      function applyBoot() {
+        const tv = tvCanvas?.tv
+        if (!tv?.setBoot) return
+        // corte seco no tranco: até `cut` o terminal (100%), daí o logo já
+        // entra construído em LOGO_CUT — o chiado do tapa (tv3d.bump) cobre a troca
+        const cut = bootHit() + travelA * HIT_GLITCH
+        tv.setBoot(ramp(boot.d, -bootLead(), cut), boot.d < cut ? 0 : LOGO_CUT + (1 - LOGO_CUT) * ramp(boot.d, cut, bootEnd()))
+      }
+      const bootTw = reduced ? null : gsap.fromTo(boot, { d: () => -bootLead() }, {
+        d: bootEnd,
+        ease: 'none',
+        onUpdate: applyBoot,
+        scrollTrigger: {
+          trigger: root,
+          start: () => pinAt() - bootLead(),
+          end: () => pinAt() + bootEnd(),
+          scrub: SCRUB,
+          invalidateOnRefresh: true,
+          refreshPriority: -2, // depois do pin (layout() já mediu)
+          onRefresh: applyBoot,
+        },
+      })
+
       // seção 3 montada → remede (vão, caminho, lineAPen.end)
       ready.then(() => { if (alive && split) ScrollTrigger.refresh() })
       // cursor 3D: canvas da tela inteira (fora do bloco fixado)
@@ -544,6 +625,8 @@ export function useManifestoHorizontal(rootRef, lang) {
         alive = false
         tvCanvas?.removeEventListener('s2:tv-ready', onTvReady)
         tvCanvas?.removeEventListener('tv3d:loaded', onTvReady)
+        bootTw?.scrollTrigger?.kill()
+        bootTw?.kill()
         tvCanvas?.tv?.setBoot?.(null)
         cur?.dispose()
         canvas?.remove()
@@ -555,6 +638,7 @@ export function useManifestoHorizontal(rootRef, lang) {
         lineAPen.end = 0 // sem o pin lateral, a caneta volta a terminar na seção 2
         lineAPen.frac = 1
         tvCanvas?.tv?.setTurn(0)
+        tvCanvas?.tv?.setHold?.(0)
         tvCanvas?.tv?.setTune(1) // sem o pin lateral não há sintonia pelo scroll
       }
     })

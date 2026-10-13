@@ -53,12 +53,15 @@ const gltfs = {}
 const load = (url) => (gltfs[url] ||= new GLTFLoader().loadAsync(url))
 
 // Mola amortecida, Euler semi-implícito em passos fixos (estável com dt alto).
-function stepSpring(s, target, { k, zeta }, dt) {
+// targetVel: velocidade do alvo — o amortecimento age sobre a diferença de
+// velocidade, então um alvo andando em ritmo constante é seguido sem atraso
+// (só acelerações e impulsos fazem a mola passar do ponto e voltar).
+function stepSpring(s, target, { k, zeta }, dt, targetVel = 0) {
   const c = 2 * zeta * Math.sqrt(k)
   const n = Math.ceil(dt * 120)
   const h = dt / n
   for (let i = 0; i < n; i++) {
-    s.v += (k * (target - s.x) - c * s.v) * h
+    s.v += (k * (target - s.x) + c * (targetVel - s.v)) * h
     s.x += s.v * h
   }
   return Math.abs(target - s.x) > 0.0005 || Math.abs(s.v) > 0.002
@@ -110,7 +113,7 @@ function buildScreen(imageUrl, shape) {
   const W = cv.width, H = cv.height
   const map = new THREE.CanvasTexture(cv)
   let img = null
-  let bootP = null // null = só a imagem (padrão); 0..1 = sequência de boot
+  let bootP = null // null = só a imagem (padrão); [early, logo] 0..1 = sequência de boot
   // cabe em 72% da altura e 80% da largura (logos largos não vazam do vidro)
   const drawLogo = (reveal = 1) => {
     if (!img?.naturalWidth || reveal <= 0) return
@@ -126,20 +129,18 @@ function buildScreen(imageUrl, shape) {
   }
   // Boot de CRT (setBoot): espera com cursor → ponto → linha → abre o quadro
   // → terminal mono busca set:mytigency.com com barra de progresso → limpa →
-  // o logo entra por varredura. Tudo função de p (o scroll), reversível.
+  // o logo entra por varredura. Tudo função do scroll, reversível.
   const ease = (t) => 1 - (1 - Math.min(1, Math.max(0, t))) ** 3
   const seg = (p, a, b) => Math.min(1, Math.max(0, (p - a) / (b - a)))
-  // O logo ganha a parte final mais longa (LOGO_FROM → 1, curva suave); as
-  // etapas antes dele correm em p/BOOT_EARLY, com o mesmo ritmo de antes.
-  const BOOT_EARLY = 0.762
-  const LOGO_FROM = 0.4
   const sineIO = (t) => (1 - Math.cos(Math.PI * Math.min(1, Math.max(0, t)))) / 2
-  function drawBoot(pIn) {
-    const p = Math.min(1, pIn / BOOT_EARLY)
+  // Duas linhas do tempo: p = etapas antes do logo (cursor → CRT → terminal,
+  // até o terminal sumir) e logo = a varredura do logo (curva suave). Quem
+  // chama decide onde cada uma cai no scroll; elas se sobrepõem no fim.
+  function drawBoot(p, logo) {
     ctx.fillStyle = '#0c0c0c'
     ctx.fillRect(0, 0, W, H)
     ctx.fillStyle = '#ececec'
-    if (p <= 0.05) { // desligado: só o cursor de espera
+    if (p <= 0.03 && logo <= 0) { // desligado: só o cursor de espera
       ctx.font = '500 18px "JetBrains Mono", monospace'
       ctx.fillText('_', 18, 34)
       return
@@ -147,8 +148,8 @@ function buildScreen(imageUrl, shape) {
     // Camadas que se cruzam (nada corta seco para o preto — antes o clarão
     // cinza sumia de uma vez e parecia bug):
     // 1) CRT: ponto → linha → abre o quadro; o clarão se apaga devagar até o preto
-    const on = seg(p, 0.05, 0.14), open = seg(p, 0.14, 0.24)
-    const glow = 1 - ease(seg(p, 0.2, 0.42))
+    const on = seg(p, 0.03, 0.12), open = seg(p, 0.12, 0.24)
+    const glow = 1 - ease(seg(p, 0.2, 0.44))
     if (glow > 0) {
       const lw = Math.max(3, W * ease(on)), lh = Math.max(2, H * ease(open))
       ctx.globalAlpha = glow
@@ -156,17 +157,18 @@ function buildScreen(imageUrl, shape) {
       ctx.globalAlpha = 1
     }
     // 2) terminal: entra por fade sobre o fim do clarão e sai por fade
-    const term = seg(p, 0.32, 0.4) * (1 - seg(p, 0.74, 0.84))
+    // fica em 100% de 0.84 até o tapa; no fim (p = 1) corta seco para o logo
+    const term = sineIO(seg(p, 0.33, 0.45)) * (p < 1 ? 1 : 0)
     if (term > 0) {
       ctx.globalAlpha = term
       // elementos grandes: a textura tem 256px e passa pelo dither de 2px
       const x = 18
       ctx.font = '700 22px "JetBrains Mono", monospace'
       const q = '> mytigency.com'
-      const typed = Math.round(q.length * seg(p, 0.36, 0.52))
+      const typed = Math.round(q.length * seg(p, 0.38, 0.54))
       ctx.fillText(q.slice(0, typed) + (typed < q.length ? '_' : ''), x, 52)
-      const k = ease(seg(p, 0.54, 0.74))
-      if (p > 0.52) {
+      const k = sineIO(seg(p, 0.56, 0.84))
+      if (p > 0.54) {
         const bw = W - x * 2, by = 80
         ctx.strokeStyle = '#ececec'
         ctx.lineWidth = 3
@@ -178,14 +180,14 @@ function buildScreen(imageUrl, shape) {
       ctx.globalAlpha = 1
     }
     // 3) logo: varredura de cima para baixo, começando enquanto o terminal sai
-    drawLogo(sineIO(seg(pIn, LOGO_FROM, 1)))
+    drawLogo(sineIO(logo))
   }
   function redraw() {
     if (bootP === null) {
       ctx.fillStyle = '#161616'
       ctx.fillRect(0, 0, W, H)
       drawLogo()
-    } else drawBoot(bootP)
+    } else drawBoot(...bootP)
     map.needsUpdate = true
   }
   redraw()
@@ -201,9 +203,10 @@ function buildScreen(imageUrl, shape) {
   })
   const mesh = new THREE.Mesh(geo, mat)
   mesh.dispose = () => { geo.dispose(); mat.dispose(); map.dispose() }
-  mesh.setBoot = (p) => {
-    const v = p === null ? null : Math.round(Math.min(1, Math.max(0, p)) * 400) / 400
-    if (v === bootP) return
+  const q400 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 400) / 400
+  mesh.setBoot = (p, logo) => {
+    const v = p === null ? null : [q400(p), q400(logo)]
+    if (v === bootP || (v && bootP && v[0] === bootP[0] && v[1] === bootP[1])) return
     bootP = v
     redraw()
   }
@@ -308,7 +311,7 @@ export function mountDitherTV(canvas, {
     if (!screenScale || disposed || !pivot.children.length) return
     if (screen) { pivot.remove(screen); screen.dispose() }
     screen = buildScreen(screenImage, shape)
-    if (boot !== null) screen.setBoot(boot)
+    if (boot !== null) screen.setBoot(...boot)
     screen.scale.setScalar(screenScale)
     screen.visible = screenVisible
     pivot.add(screen)
@@ -401,10 +404,17 @@ export function mountDitherTV(canvas, {
   let scroll = 0
   let lastShift = 0
   let lastScroll = 0
+  let lastTurnTarget = 0
+  let hasTurn = false
+  let turnVel = 0 // rad / s do alvo do giro (suavizada como as outras)
   let shiftVel = 0 // larguras de tela / s
   let scrollVel = 0 // alturas de tela / s
   const turnS = { x: 0, v: 0 }
   const tiltS = { x: 0, v: 0 }
+  // tranco do esbarrão, à parte do acompanhamento do scroll (alvo 0)
+  const turnB = { x: 0, v: 0 }
+  const tiltB = { x: 0, v: 0 }
+  let hold = 0
   let blur = 0
   let hitAmt = 0 // impacto do esbarrão (1 → 0)
   let tune = reduceMotion ? 1 : initialTune
@@ -419,9 +429,11 @@ export function mountDitherTV(canvas, {
       const k = 1 - Math.pow(1 - VEL_SMOOTH, dt * 60)
       shiftVel += ((shift - lastShift) / dt / window.innerWidth - shiftVel) * k
       scrollVel += ((scroll - lastScroll) / dt / window.innerHeight - scrollVel) * k
+      turnVel += ((turnTarget - lastTurnTarget) / dt - turnVel) * k
     }
     lastShift = shift
     lastScroll = scroll
+    lastTurnTarget = turnTarget
     // Fora da tela o relógio da entrada também pausa: a TV desliza de fora
     // da tela (useManifestoS2Enter) e o play() vem antes dela aparecer — sem
     // isso os pontos terminavam de se formar invisíveis e ela já surgia pronta.
@@ -429,9 +441,11 @@ export function mountDitherTV(canvas, {
 
     let moving = false
     if (!reduceMotion && dt > 0) {
-      moving = stepSpring(turnS, turnTarget, TURN_SPRING, dt)
+      moving = stepSpring(turnS, turnTarget, TURN_SPRING, dt, turnVel)
       const lean = Math.max(-TILT_MAX, Math.min(TILT_MAX, shiftVel * TILT_GAIN))
       moving = stepSpring(tiltS, lean, TILT_SPRING, dt) || moving
+      moving = stepSpring(turnB, 0, TURN_SPRING, dt) || moving
+      moving = stepSpring(tiltB, 0, TILT_SPRING, dt) || moving
       const [s0, s1] = BLUR_SPEED
       const target = Math.min(1, Math.max(0, (Math.abs(scrollVel) - s0) / (s1 - s0)))
       blur += (target - blur) * (1 - Math.pow(1 - (target > blur ? BLUR_ATTACK : BLUR_RELEASE), dt * 60))
@@ -445,8 +459,11 @@ export function mountDitherTV(canvas, {
     // no impacto o dither "estoura" (pontos maiores) por um instante
     post.uniforms.uPx.value = Math.round(basePx * (1 + blur * BLUR_PX + hitAmt * HIT_PX))
     post.uniforms.uLevels.value = 3 - Math.round(blur * 2)
-    pivot.rotation.y = restAngle - 2 * (1 - ease(t / spinDuration)) + turnS.x
-    tilt.rotation.z = tiltS.x
+    // hold (setHold): perto do esbarrão a pose segue o scroll sem a massa
+    // (giro exato do alvo, sem inclinação) — é a pose em que o toque foi
+    // medido; o tranco (turnB/tiltB) continua por cima
+    pivot.rotation.y = restAngle - 2 * (1 - ease(t / spinDuration)) + turnS.x + (turnTarget - turnS.x) * hold + turnB.x
+    tilt.rotation.z = tiltS.x * (1 - hold) + tiltB.x
     // tremor curto e forte do impacto (além do balanço na mola)
     tilt.position.x = Math.sin(now * 0.09) * HIT_SHAKE * hitAmt
     if (mixer && dt > 0 && !reduceMotion) mixer.update(dt)
@@ -485,36 +502,53 @@ export function mountDitherTV(canvas, {
     renderer.dispose()
   }
 
-  const setTurn = (offset) => { turnTarget = offset }
+  const setTurn = (offset) => { turnTarget = offset; if (!hasTurn) { lastTurnTarget = offset; hasTurn = true } }
   // A primeira leitura vira referência (não um salto a partir de 0).
   let hasShift = false
   let hasScroll = false
   const setShift = (px) => { shift = px; if (!hasShift) { lastShift = px; hasShift = true } }
   const setScroll = (px) => { scroll = px; if (!hasScroll) { lastScroll = px; hasScroll = true } }
   const setTune = (p) => { if (!reduceMotion) tune = Math.min(1, Math.max(0, p)) }
-  // Boot da tela (opcional): null = só a imagem; 0..1 = sequência de boot
+  // Boot da tela (opcional): null = só a imagem; (early, logo) 0..1 = etapas
+  // antes do logo e varredura do logo. Só um valor (LAB antigo): a curva
+  // única de antes — terminal some em 0.64, logo de 0.4 a 1.
   let boot = null
-  const setBoot = (p) => { boot = p; screen?.setBoot(p) }
+  const setBoot = (p, logo) => {
+    boot = p === null ? null : logo === undefined ? [p / 0.64, (p - 0.4) / 0.6] : [p, logo]
+    screen?.setBoot(...(boot ?? [null]))
+  }
   // Esbarrão (opcional): impulso nas molas de inclinação (balança na base)
   // e de giro. s ~ -1..1 (sinal = lado do empurrão, módulo = força).
   const bump = (s) => {
     if (reduceMotion) return
     hitAmt = Math.min(1, hitAmt + Math.min(1, 0.55 + Math.abs(s) * 0.6))
-    tiltS.v += s * BUMP_TILT
+    tiltB.v += s * BUMP_TILT
     // o empurrão gira a TV para a esquerda (a mola devolve): base fixa + um
     // pouco da força, para ser visível mesmo rolando devagar
-    turnS.v -= Math.sign(s) * (BUMP_TURN + Math.abs(s) * BUMP_TURN * 0.5)
+    turnB.v -= Math.sign(s) * (BUMP_TURN + Math.abs(s) * BUMP_TURN * 0.5)
   }
+  // 0..1: quanto a pose ignora a massa (ver hold no loop)
+  const setHold = (w) => { hold = reduceMotion ? 0 : Math.min(1, Math.max(0, w)) }
   // Caixa do modelo projetada na tela (px CSS do canvas), com o giro atual —
   // para saber onde o PC está DESENHADO (o canvas é bem maior que ele).
-  // turn (opcional): mede como se o giro fosse esse (ex.: o do momento do esbarrão)
+  // turn (opcional): mede como se o giro fosse esse e a TV estivesse em pé,
+  // sem tremor (a pose do esbarrão — ver hold)
   const withTurn = (turn, fn) => {
+    // A câmera fica fora da cena: só o render atualiza a matriz dela. O GLB
+    // costuma carregar antes do 1º render (a TV ainda entra de fora da tela),
+    // e aí a medida saía com a câmera na origem — o toque ~1/3 do PC abaixo.
+    camera.updateMatrixWorld()
+    // idem a proporção, se o ResizeObserver ainda não rodou
+    const aspect = canvas.clientWidth / canvas.clientHeight
+    if (aspect && Math.abs(camera.aspect - aspect) > 1e-3) { camera.aspect = aspect; camera.updateProjectionMatrix() }
     if (turn == null) { scene.updateMatrixWorld(); return fn() }
-    const keep = pivot.rotation.y
+    const keep = [pivot.rotation.y, tilt.rotation.z, tilt.position.x]
     pivot.rotation.y = restAngle + turn
+    tilt.rotation.z = 0
+    tilt.position.x = 0
     scene.updateMatrixWorld()
     const out = fn()
-    pivot.rotation.y = keep
+    ;[pivot.rotation.y, tilt.rotation.z, tilt.position.x] = keep
     scene.updateMatrixWorld()
     return out
   }
@@ -539,5 +573,5 @@ export function mountDitherTV(canvas, {
   })
   const setScreenVisible = (v) => { screenVisible = v; if (screen) screen.visible = v }
 
-  return { play, dispose, setScrolling, setTurn, setShift, setScroll, setTune, setScreenVisible, setScreenShape, setBoot, bump, projBox, hit }
+  return { play, dispose, setScrolling, setTurn, setShift, setScroll, setTune, setScreenVisible, setScreenShape, setBoot, bump, setHold, projBox, hit }
 }

@@ -76,12 +76,27 @@ export const strings = {
         [{ text: 'conduz.', role: 'lead' }],
       ],
       // Seção 2: "Sem" = S (Great Vibes) + em (Just Me Again Down Here).
+      // Grupo da esquerda da seção 2 (ManifestoNos): "NÓS / conversamos e
+      // resolvemos tudo.", a prova miúda "Sem …" e a conversa direta.
       without: {
-        initial: 'S',
-        rest: 'em',
+        big: 'Nós',
+        lines: ['conversamos', 'e resolvemos', 'tudo.'],
+        no: 'Sem',
         items: ['Gerente de conta', 'Terceirizar', 'Intermediários'],
-        sentence: 'Sem gerente de conta, sem terceirizar, sem intermediários.',
+        sentence: 'Nós conversamos e resolvemos tudo. Sem gerente de conta, sem terceirizar, sem intermediários.',
         cue: 'continue rolando',
+        chat: {
+          head: 'conversa direta',
+          now: 'agora',
+          seen: 'visto',
+          // [quem, texto]: in = cliente, out = nós
+          messages: [
+            ['in', 'oi! preciso de um site novo.'],
+            ['out', 'perfeito! em menos de 24h sua proposta tá na mão, alinhada com o que você deseja.'],
+            ['in', 'sério? simples assim?'],
+            ['out', 'simples assim! aqui na MYT. não buscamos complicar sua vida, eu diria que trabalhamos exatamente pelo contrário!'],
+          ],
+        },
       },
       // Seção 3: "quem conversa com você · é quem DESENHA / e quem PROGRAMA"
       // (utils/manifestoSplit.js). title = a frase inteira, para leitores de tela.
@@ -267,11 +282,23 @@ export const strings = {
         [{ text: 'leads.', role: 'lead' }],
       ],
       without: {
-        initial: 'W',
-        rest: 'ithout',
+        big: 'We',
+        lines: ['talk it', 'through and', 'solve it.'],
+        no: 'No',
         items: ['Account manager', 'Outsourcing', 'Middlemen'],
-        sentence: 'Without an account manager, without outsourcing, without middlemen.',
+        sentence: 'We talk it through and solve it. No account manager, no outsourcing, no middlemen.',
         cue: 'keep scrolling',
+        chat: {
+          head: 'direct chat',
+          now: 'now',
+          seen: 'seen',
+          messages: [
+            ['in', 'hi! I need a new website.'],
+            ['out', "perfect! in less than 24h your proposal is in your hands, aligned with what you want."],
+            ['in', 'really? that simple?'],
+            ['out', "that simple! here at MYT. we don't try to complicate your life, I'd say we work for exactly the opposite!"],
+          ],
+        },
       },
       who: {
         mark: 'who talks to you',

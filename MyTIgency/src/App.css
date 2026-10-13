@@ -837,8 +837,6 @@
      Posição de um ponto (X, Y) do frame dentro da seção 2:
        left = --s2-jx + (X − 392.3)·g     top = --s2-jy + (Y − 707.7)·g */
   .ms2{
-    /* quanto o traço B e o botão descem (px de design) — abaixo da mão */
-    --s2-b-drop: 150;
     position:relative;
     --g:max(var(--u), (50vw + 346.3 * var(--u)) / 1185.7);
     --s2-jx:calc(50% - 346.3 * var(--u));
@@ -849,8 +847,7 @@
     position:absolute;
   }
   .s2-group > *{ position:absolute; }
-  /* Grupo "Sem": origem = canto do ornamento ASCII. Textos posicionados
-     pela linha de base (medida no frame), daí o top = base − ascendente. */
+  /* Grupo da esquerda (ManifestoNos): origem = canto de cima à esquerda. */
   .s2-group--without{
     /* Telas grandes: colado na borda esquerda (como no Figma). Telas
        menores: a posição do Figma em relação a J, que fica um pouco mais à
@@ -860,66 +857,163 @@
     width:calc(940 * var(--g));
     height:calc(780 * var(--g));
   }
-  .s2-ornament{
-    left:0;
-    top:0;
-    width:calc(623.5 * var(--g));
-    /* PNG com fundo branco: multiply some com o branco sobre o --bg. */
-    mix-blend-mode:multiply;
+  /* Grupo da esquerda (ManifestoNos): "NÓS / conversamos e resolvemos
+     tudo.", a prova miúda "Sem …" (mono), a conversa direta e a seta.
+     Medidas em px de design (--g) a partir do canto do grupo. Estado padrão =
+     final (é o que reduced motion vê); a entrada (useManifestoNos) parte dele. */
+  .ls{ --ls-ink:#111; }
+  .ls-art{ inset:0; color:var(--ls-ink); pointer-events:none; }
+  .ls-art > *{ position:absolute; display:block; }
+  /* Serifada condensada (Abril Fatface comprimida) com textura de tinta de
+     carimbo: máscara de ruído — falhas onde o papel aparece. */
+  .ls-big b,
+  .ls-line b{
+    display:block;
+    font-family:'Abril Fatface',serif;
+    font-weight:400;
+    line-height:.8;
+    white-space:nowrap;
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -10 0 0 0 7.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -10 0 0 0 7.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    -webkit-mask-size:calc(180 * var(--g));
+    mask-size:calc(180 * var(--g));
   }
-  .s2-without{
-    inset:0;
-    color:var(--ms-ink-strong); /* #333, o mesmo do MyTIgency da seção 1 */
-  }
-  .s2-without > span{ position:absolute; white-space:nowrap; line-height:1; }
-  .s2-initial{
-    font-family:'Great Vibes',cursive;
-    font-size:calc(278 * var(--g));
-    left:calc(66.1 * var(--g));
-    top:calc((424 - 199.5) * var(--g));
-  }
-  .s2-rest{
-    font-family:'Just Me Again Down Here',cursive;
-    font-size:calc(196 * var(--g));
+  .ls-big{
+    left:calc(256 * var(--g));
+    top:calc(118 * var(--g));
+    font-size:calc(300 * var(--g));
     text-transform:uppercase;
-    left:calc(333.3 * var(--g));
-    top:calc((396.7 - 160.1) * var(--g));
+    letter-spacing:-.01em;
+    transform-origin:0 100%;
   }
-  .s2-item{
-    font-family:'IM Fell Great Primer',serif;
-    font-size:calc(64 * var(--g));
-    color:var(--ms-ink);
+  /* comprimida na horizontal (a fonte não tem eixo de largura); no filho,
+     porque o GSAP anima o transform do pai */
+  .ls-big b{ transform-origin:0 0; scale:.5 1; }
+  .ls-lines{
+    left:calc(566 * var(--g));
+    top:calc(150 * var(--g));
+    font-size:calc(80 * var(--g));
   }
-  /* "Sem" = não temos: cada item é riscado (--strike 0→1 no scroll,
-     useManifestoS2Enter). Padrão 1 = riscado. */
-  .s2-item::after{
-    content:'';
-    position:absolute;
-    left:-.06em;
-    right:-.06em;
-    top:54%;
-    height:.06em;
-    border-radius:.03em;
-    background:var(--accent);
-    transform:rotate(-1.2deg) scaleX(var(--strike, 1));
-    transform-origin:left center;
+  .ls-line{
+    display:block;
+    overflow:hidden;
+    /* respiro para ascendentes/descendentes não serem cortados pela máscara da linha */
+    padding:.06em 0 .1em;
+    margin-bottom:-.15em;
   }
-  .s2-item--1{ left:calc(387.7 * var(--g)); top:calc((224.8 - 51) * var(--g)); }
-  .s2-item--2{ left:calc(525.5 * var(--g)); top:calc((294.8 - 51) * var(--g)); }
-  /* Inglês: "Without" é bem mais largo que "Sem" — a palavra encolhe para
-     60% e o último item recua para não colidir com "ITHOUT". */
-  .s2-without[data-lang="en"] .s2-initial{
-    font-size:calc(166.8 * var(--g));
-    left:calc(80 * var(--g));
-    top:calc((424 - 119.7) * var(--g));
+  .ls-line > span{ display:block; }
+  .ls-line b{ transform-origin:0 0; scale:.76 1; }
+  .ls-line:last-child{ padding-left:.12em; }
+  /* auréola: elipse à mão (traço duplo), inclinada, na frente do NÓS */
+  .ls-halo{
+    left:calc(214 * var(--g));
+    top:calc(84 * var(--g));
+    width:calc(330 * var(--g));
+    height:calc(96 * var(--g));
+    rotate:-8deg;
+    z-index:1;
+    overflow:visible;
   }
-  .s2-without[data-lang="en"] .s2-rest{
-    font-size:calc(117.6 * var(--g));
-    left:calc(314 * var(--g));
-    top:calc((396.7 - 96.1) * var(--g));
+  .ls-halo path{
+    fill:none; stroke:var(--accent); stroke-linecap:round; stroke-linejoin:round;
+    stroke-width:max(2.5px, calc(5.5 * var(--g))); vector-effect:non-scaling-stroke;
   }
-  .s2-without[data-lang="en"] .s2-item--3{ left:calc(640 * var(--g)); }
-  .s2-item--3{ left:calc(558 * var(--g)); top:calc((374.6 - 51) * var(--g)); }
+  /* estrela y2k vermelha cortando a ponta direita da auréola (já com o giro de −8°) */
+  .ls-spark{ left:calc(506 * var(--g)); top:calc(72 * var(--g)); width:calc(54 * var(--g)); z-index:2; overflow:visible; }
+  .ls-spark path{ fill:var(--accent); }
+  /* brilho fino preto sobre o acento do Ó */
+  .ls-glint{ left:calc(362 * var(--g)); top:calc(76 * var(--g)); width:calc(54 * var(--g)); z-index:2; overflow:visible; }
+  .ls-glint path{ fill:var(--ls-ink); }
+  /* marcas finas de régua, como as do grid */
+  .ls-cross{ width:calc(22 * var(--g)); aspect-ratio:1; }
+  .ls-cross::before,
+  .ls-cross::after{ content:''; position:absolute; background:currentColor; }
+  .ls-cross::before{ left:50%; top:0; bottom:0; width:max(1px, calc(1.5 * var(--g))); translate:-50% 0; }
+  .ls-cross::after{ top:50%; left:0; right:0; height:max(1px, calc(1.5 * var(--g))); translate:0 -50%; }
+  .ls-cross--a{ left:calc(292 * var(--g)); top:calc(46 * var(--g)); }
+  .ls-cross--b{ left:calc(590 * var(--g)); top:calc(104 * var(--g)); width:calc(14 * var(--g)); }
+  /* sublinhado-pincel do "tudo." (abaixo da linha de base) */
+  .ls-under{
+    left:calc(562 * var(--g));
+    top:calc(352 * var(--g));
+    width:calc(212 * var(--g));
+    height:calc(24 * var(--g));
+    overflow:visible;
+  }
+  .ls-under path{ fill:none; stroke:var(--accent); stroke-linecap:round; vector-effect:non-scaling-stroke; }
+  .ls-under-a{ stroke-width:max(2px, calc(5 * var(--g))); }
+  .ls-under-b{ stroke-width:max(1.5px, calc(3 * var(--g))); opacity:.85; }
+  /* prova miúda: asterisco + três linhas mono */
+  .ls-star{ left:calc(296 * var(--g)); top:calc(370 * var(--g)); width:calc(28 * var(--g)); overflow:visible; }
+  .ls-star path{ fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; }
+  .ls-no{
+    left:calc(342 * var(--g));
+    top:calc(370 * var(--g));
+    display:flex !important;
+    flex-direction:column;
+    gap:calc(4 * var(--g));
+    font-family:'JetBrains Mono',monospace;
+    font-size:max(11px, calc(13 * var(--g)));
+    letter-spacing:.14em;
+    line-height:1.2;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .ls-no .s2-item{ position:static; white-space:nowrap; }
+  /* ▶▶▶ aponta para onde a página vai (o pin lateral) */
+  .ls-play{ left:calc(960 * var(--g)); top:calc(92 * var(--g)); width:calc(64 * var(--g)); fill:currentColor; }
+  /* conversa direta, na coluna à esquerda do NÓS (longe da borda da tela) */
+  .ls-chat{
+    left:calc(34 * var(--g));
+    top:calc(36 * var(--g));
+    width:calc(212 * var(--g));
+    font-family:'JetBrains Mono', monospace;
+    background:#fff;
+    border:max(1px, calc(1.5 * var(--g))) solid var(--ls-ink);
+    border-radius:calc(12 * var(--g));
+    overflow:hidden;
+    box-shadow:calc(5 * var(--g)) calc(5 * var(--g)) 0 var(--ls-ink);
+    z-index:1; /* a seta passa por trás do cartão */
+  }
+  .ls-chat-head{
+    display:flex; align-items:center; gap:calc(7 * var(--g));
+    padding:calc(9 * var(--g)) calc(12 * var(--g));
+    border-bottom:max(1px, calc(1.5 * var(--g))) solid var(--ls-ink);
+    font-size:calc(10.5 * var(--g)); letter-spacing:.06em; text-transform:uppercase;
+  }
+  .ls-chat-head i{ width:calc(8 * var(--g)); aspect-ratio:1; border-radius:50%; background:#2bb673; }
+  .ls-chat-head em{ margin-left:auto; font-style:normal; color:var(--ink-dim); text-transform:none; }
+  .ls-chat-body{
+    display:flex; flex-direction:column; gap:calc(7 * var(--g));
+    padding:calc(10 * var(--g)) calc(10 * var(--g)) calc(8 * var(--g));
+    font-size:calc(12 * var(--g)); line-height:1.2;
+  }
+  .ls-msg{ margin:0; max-width:88%; padding:calc(8 * var(--g)) calc(10 * var(--g)); border-radius:calc(12 * var(--g)); }
+  .ls-msg--in{ align-self:flex-start; background:#ecebe6; border-bottom-left-radius:calc(3 * var(--g)); }
+  .ls-msg--out{ align-self:flex-end; background:var(--ls-ink); color:#fff; border-bottom-right-radius:calc(3 * var(--g)); }
+  /* "digitando" dentro do balão (useManifestoNos troca pelo texto); padrão = texto */
+  .ls-dots{ display:none; gap:calc(4 * var(--g)); padding:calc(4 * var(--g)) calc(2 * var(--g)); }
+  .ls-dots i{ width:calc(6 * var(--g)); aspect-ratio:1; border-radius:50%; background:#fff; animation:lsDot 1s infinite ease-in-out; }
+  .ls-dots i:nth-child(2){ animation-delay:.15s; }
+  .ls-dots i:nth-child(3){ animation-delay:.3s; }
+  @keyframes lsDot{ 0%,100%{ opacity:.3; } 50%{ opacity:1; } }
+  .ls-seen{ align-self:flex-end; font-size:calc(10 * var(--g)); color:var(--ink-dim); }
+  /* seta vermelha (papel do antigo traço B): da borda até o asterisco */
+  .ls-arrow{
+    left:calc(-6 * var(--g));
+    top:calc(346 * var(--g));
+    width:calc(262 * var(--g));
+    height:calc(184 * var(--g));
+    overflow:visible;
+  }
+  .ls-arrow path{ fill:none; stroke:var(--accent); stroke-width:max(2px, calc(3.5 * var(--g))); stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+  /* Desktop: a composição inteira desce (a mão é da seção 1 e fica) para
+     ficar centrada na tela — só visual (translate): o grupo continua medido
+     no mesmo lugar, então o início do pin lateral não muda. */
+  @media(min-width:701px){
+    .ls{ --ls-drop:90; }
+    .ls-art, .ls .s2-cue{ translate:0 calc(var(--ls-drop) * var(--g)); }
+  }
   /* Botão "continue rolando" = recipiente que enche: contorno + texto
      vermelho por baixo; por cima, a "água" (.s2-cue-fill, vermelho + texto
      branco) recortada por uma onda que sobe com --fill (0 vazio → 1 cheio,
@@ -927,12 +1021,12 @@
      igual ao design. ::before = onda de trás, mais clara e na contramão. */
   .s2-cue{
     --fill:1;
-    left:calc(344.4 * var(--g));
-    top:calc((468.3 + var(--s2-b-drop)) * var(--g));
-    width:calc(336 * var(--g));
-    height:calc(58 * var(--g));
+    left:calc(290 * var(--g));
+    top:calc(494 * var(--g));
+    width:calc(276 * var(--g));
+    height:calc(48 * var(--g));
     font-family:'Hedvig Letters Sans',sans-serif;
-    font-size:calc(32 * var(--g));
+    font-size:calc(26 * var(--g));
     line-height:1;
     white-space:nowrap;
     color:var(--accent);
@@ -1086,7 +1180,7 @@
     width:calc(1348 * var(--u));
     height:calc(1216 * var(--u));
   }
-  .ms-line-a svg, .s2-line-a svg, .s2-line-b svg{ display:block; width:100%; height:100%; }
+  .ms-line-a svg, .s2-line-a svg{ display:block; width:100%; height:100%; }
   /* Metade de cima em 2 partes: até o cotovelo (y 410) e, de lá até J,
      a faixa levemente esticada em --ms-gap. */
   /* A revelação "caneta" é a máscara de cada SVG (utils/manifestoLineA.js);
@@ -1114,14 +1208,6 @@
     width:calc(2135 * var(--g));
     height:calc(1216 * var(--g));
     clip-path:inset(46.875% 0 0 0);
-  }
-  .s2-line-b{
-    /* acompanha o grupo "Sem" (termina no botão) e desce junto com ele
-       (--s2-b-drop) para começar abaixo da mão girada da seção 1 */
-    left:min(calc(-27.4 * var(--g)), calc(var(--s2-jx) - 575.3 * var(--g)));
-    top:calc(var(--s2-jy) + (var(--s2-b-drop) - 107.1) * var(--g));
-    width:calc(387 * var(--g));
-    height:calc(628 * var(--g));
   }
 
   /* ---------- Manifesto · seção 3 ----------
@@ -1311,6 +1397,14 @@
     }
     .s2-group{ position:relative; left:auto; top:auto; flex:none; }
     .s2-group--without{ --g:calc((100vw - 32px) / 1015); }
+    /* Grupo da esquerda: a coluna ao lado do NÓS fica estreita demais para a
+       conversa — ela desce para baixo do botão, maior, e o grupo cresce junto;
+       a lista mono tem piso de 11px, então o botão desce para não encostar
+       nela; o ▶▶▶ (aponta para a TV ao lado, no desktop) sai. */
+    .s2-group--without.ls{ height:calc(1560 * var(--g)); }
+    .ls-play{ display:none; }
+    .ls .s2-cue{ top:calc(560 * var(--g)); width:calc(330 * var(--g)); height:calc(64 * var(--g)); font-size:calc(30 * var(--g)); }
+    .ls-chat{ left:calc(150 * var(--g)); top:calc(660 * var(--g)); transform-origin:0 0; scale:2.3; }
     .s2-group--tv{ --g:calc((100vw - 32px) / 760); align-self:flex-start; }
     .manifesto-grid{
       --cell:25vw;
