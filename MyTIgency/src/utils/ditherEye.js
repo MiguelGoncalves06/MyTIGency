@@ -76,8 +76,8 @@ function tone(x, y, gx, gy, k, n) {
     // soltos; acima, a pele da pálpebra — clara no meio, sombreada junto aos
     // cílios e na dobra; depois a pele, que escurece em direção à sobrancelha
     const d = up - y
-    const lw = 16 + 30 * (1 - t) ** 1.2
-    if (d < lw) return 0.05 + 0.16 * n * smooth(0.5, 1, d / lw) // brilho fraco no topo dos cílios
+    const lw = 9 + 16 * (1 - t) ** 1.2 // linha da pálpebra (os fios dos cílios fazem o resto)
+    if (d < lw) return 0.05 + 0.16 * n * smooth(0.5, 1, d / lw)
     if (d < lw + 46) {
       const u = (d - lw) / 46 // 0 = junto aos cílios, 1 = dobra
       let v = 0.62 + 0.3 * Math.sin(Math.PI * Math.min(1, u * 1.15)) - 0.12 * n // volume da pálpebra
@@ -137,6 +137,94 @@ function tone(x, y, gx, gy, k, n) {
   return v
 }
 
+// Cílios: fios desenhados por código (curva quadrática que afina da base à
+// ponta), "carimbados" num mapa por célula a cada quadro — seguem a pálpebra
+// quando o olho pisca e escurecem a imagem antes do pontilhado. Variação fixa
+// por fio (hash), para não parecer pente.
+//   superiores: longos e curvados para cima/fora, bem mais longos e deitados
+//     no canto de fora (à esquerda), curtos e quase retos no canto de dentro;
+//   inferiores: curtos e finos, para baixo/fora.
+const LASHES = (() => {
+  const out = []
+  // duas fileiras: a de fora (longa, varre para o canto de fora — o
+  // "gatinho") e a de dentro (curta, cruza com a outra e dá volume); o
+  // espaçamento é irregular, formando tufos
+  for (const [n, scale, seed] of [[52, 1, 3.3], [34, 0.62, 8.8]]) {
+    for (let i = 0; i < n; i++) {
+      const h = hash(i * 1.7 + seed, seed)
+      const t = 0.02 + Math.min(0.97, Math.max(0, (i + 0.5 + (h - 0.5) * 1.5) / n)) * 0.9
+      const o = (1 - t) ** 1.3 // 1 = canto de fora
+      const v = hash(i * 0.9 + seed, 9.1)
+      out.push({
+        upper: true, t,
+        len: (24 + 66 * o) * scale * (0.75 + 0.5 * v),
+        lean: 0.04 + 0.78 * o * o + 0.12 * (h - 0.5),
+        curl: 0.4 + 0.75 * o + 0.25 * (v - 0.5),
+        w: (3 + 1.6 * o) * (0.8 + 0.4 * h) * (scale < 1 ? 0.8 : 1),
+      })
+    }
+  }
+  const DOWN = 24
+  for (let i = 0; i < DOWN; i++) {
+    const h = hash(i * 2.3, 7.7)
+    const t = 0.06 + (i + 0.5 + (h - 0.5) * 0.7) / DOWN * 0.76
+    const o = (1 - t) ** 1.2
+    out.push({ upper: false, t, len: (5 + 15 * o) * (0.75 + 0.5 * hash(i, 4.4)), lean: 0.15 + 0.6 * o, curl: 0.1 + 0.15 * o, w: 1.7 })
+  }
+  return out
+})()
+// derivada da pálpebra (dy/dx, unidades da referência)
+const slope = (f, t) => (f(Math.min(1, t + 0.01)) - f(Math.max(0, t - 0.01))) / (0.02 * (XR - XL))
+
+/** Desenha os cílios no mapa `map` (0–1 por célula), com a piscada k. */
+function stampLashes(map, cw, ch, k) {
+  map.fill(0)
+  const sx = cw / W0
+  const sy = ch / H0
+  for (const L of LASHES) {
+    const lo = lowerLid(L.t)
+    const upY = upperLid(L.t) + (lo - 3 - upperLid(L.t)) * k
+    const bx = XL + L.t * (XR - XL)
+    const by = L.upper ? upY - 1 : lo + 5
+    // normal da pálpebra (para fora), deitada para o canto de fora (−x)
+    const m = L.upper ? slope(upperLid, L.t) : slope(lowerLid, L.t)
+    let nx = L.upper ? m : -m
+    let ny = L.upper ? -1 : 1
+    const nl = Math.hypot(nx, ny)
+    nx = nx / nl - L.lean
+    ny /= nl
+    const dl = Math.hypot(nx, ny)
+    nx /= dl
+    ny /= dl
+    // ponta curva: continua girando para fora/para cima (ou para baixo)
+    const p1x = bx + nx * L.len * 0.6
+    const p1y = by + ny * L.len * 0.6
+    const p2x = bx + nx * L.len - L.curl * L.len * 0.6
+    const p2y = by + ny * L.len + (L.upper ? -1 : 1) * L.curl * L.len * 0.25
+    const steps = Math.ceil(L.len / 1.5)
+    for (let q = 0; q <= steps; q++) {
+      const u = q / steps
+      const a = (1 - u) * (1 - u)
+      const b = 2 * (1 - u) * u
+      const c = u * u
+      const x = a * bx + b * p1x + c * p2x
+      const y = a * by + b * p1y + c * p2y
+      const r = (L.w * (1 - 0.78 * u)) / 2 // afina até a ponta
+      const ci = x * sx
+      const cj = y * sy
+      const rc = Math.max(0.45, r * sx)
+      for (let j = Math.floor(cj - rc); j <= Math.ceil(cj + rc); j++) {
+        if (j < 0 || j >= ch) continue
+        for (let i = Math.floor(ci - rc); i <= Math.ceil(ci + rc); i++) {
+          if (i < 0 || i >= cw) continue
+          const d = Math.hypot(i + 0.5 - ci, j + 0.5 - cj)
+          if (d <= rc + 0.35) map[j * cw + i] = 1
+        }
+      }
+    }
+  }
+}
+
 /**
  * @param canvas  <canvas> (o tamanho em tela vem do CSS)
  * @param cell    px de tela por ponto do pontilhado
@@ -151,6 +239,7 @@ export function mountDitherEye(canvas, { cell = 2 } = {}) {
   let buf = null
   let grain = null
   let thr = null
+  let lashMap = null // cílios carimbados (1 = fio), refeito a cada quadro
   let rank = null // ordem de chegada de cada célula na formação
   let reveal = 1
   let live = false
@@ -170,6 +259,7 @@ export function mountDitherEye(canvas, { cell = 2 } = {}) {
     thr = new Float32Array(cw * ch)
     rank = new Float32Array(cw * ch)
     shifts = new Int8Array(ch)
+    lashMap = new Float32Array(cw * ch)
     for (let i = 0; i < grain.length; i++) {
       const x = i % cw
       const y = (i / cw) | 0
@@ -199,6 +289,7 @@ export function mountDitherEye(canvas, { cell = 2 } = {}) {
         shifts[j] = Math.random() < p ? Math.round((Math.random() - 0.5) * (burst ? 6 : 3)) : 0
       }
     }
+    stampLashes(lashMap, cw, ch, s.k)
     const r = reveal
     const bs = r >= 1 ? 1 : Math.max(1, Math.round(6 - 5 * r ** 0.6)) // blocos que afinam
     for (let j = 0; j < ch; j++) {
@@ -213,7 +304,8 @@ export function mountDitherEye(canvas, { cell = 2 } = {}) {
         const qj = bs > 1 ? Math.min(ch - 1, Math.floor(j / bs) * bs + (bs >> 1)) : j
         const x = ((qi + 0.5) / cw) * W0
         const y = ((qj + 0.5) / ch) * H0
-        const b = tone(x, y, s.gx, s.gy, s.k, grain[qj * cw + qi]) * (1 - fadeAt(qi, qj))
+        // cílios escurecem por cima (quase preto, com um resto de brilho de fio)
+        const b = tone(x, y, s.gx, s.gy, s.k, grain[qj * cw + qi]) * (1 - fadeAt(qi, qj)) * (1 - 0.94 * lashMap[idx])
         // borda: o limiar só vibra um pouco (mistura com sorteio), não troca tudo
         const t = edge && !reduced ? thr[idx] * 0.7 + Math.random() * 0.3 : thr[idx]
         const flash = r < 1 && fade0 < 0.8 && rank[idx] > r * 1.08 - 0.06 // frente da formação acesa (só no olho)
