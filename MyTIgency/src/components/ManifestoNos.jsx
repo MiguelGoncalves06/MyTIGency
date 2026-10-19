@@ -62,18 +62,29 @@ export function NosGroup() {
         <svg className="ls-play" viewBox="0 0 84 30">
           {[0, 28, 56].map((x) => <path key={x} d={`M${x} 0h6v4h4v4h4v4h4v6h-4v4h-4v4h-4v4h-6z`} />)}
         </svg>
-        {/* Conversa genérica (sem nome de cliente): o "…" dentro dos nossos
-            balões é trocado pelo texto (useManifestoNos); padrão = texto. */}
+        {/* Conversa genérica (sem nome de cliente) num celular: as nossas
+            respostas são digitadas no campo de baixo e sobem como balão
+            (useManifestoNos); padrão = conversa inteira, campo vazio. */}
         <div className="ls-chat">
-          <div className="ls-chat-head"><i />{chat.head}<em>{chat.now}</em></div>
+          <div className="ls-chat-top">
+            <div className="ls-status">
+              <span>9:41</span>
+              <i className="ls-island" />
+              <span className="ls-status-r"><i className="ls-bars" /><i className="ls-batt" /></span>
+            </div>
+            <div className="ls-chat-head"><i />{chat.head} <b>&gt;_</b><em>{chat.now}</em></div>
+          </div>
           <div className="ls-chat-body">
-            {chat.messages.map(([who, text]) => (
-              <p className={`ls-msg ls-msg--${who}`} key={text}>
-                <span className="ls-msg-text">{text}</span>
-                {who === 'out' && <span className="ls-dots"><i /><i /><i /></span>}
-              </p>
-            ))}
-            <span className="ls-seen">{chat.seen} ✓✓</span>
+            <div className="ls-chat-scroll">
+              {chat.messages.map(([who, text]) => (
+                <p className={`ls-msg ls-msg--${who}`} key={text}>{text}</p>
+              ))}
+              <span className="ls-seen">{chat.seen} ✓✓</span>
+            </div>
+          </div>
+          <div className="ls-input">
+            <span className="ls-input-text" data-ph={chat.placeholder} />
+            <b className="ls-send">↑</b>
           </div>
         </div>
         {/* Seta à mão: entra pela borda, faz a laçada embaixo da conversa e

@@ -16,7 +16,11 @@
 //     "promessas", que fica oca; a caneta circula "mostrar", que acende; a
 //     seta se desenha. Tudo termina em A_DONE — o resto do trecho fica para a
 //     próxima transição.
+//   b (px de scroll, desktop): a cena A desliza para a esquerda, a faixa
+//     ondulada passa colada no fim do texto dela e a seção 5 entra logo
+//     depois da faixa, com a mesma folga (RIBBON_GAP) dos dois lados.
 import { mountDitherEye } from './ditherEye'
+import { mountRibbon } from './manifestoRibbon'
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
 const ramp = (p, a, b) => clamp01((p - a) / (b - a))
@@ -40,13 +44,23 @@ const END_ANGLE = Math.PI * 0.27
 const PEN = [0, 0.32]
 const FILL = [0.28, 0.6] // a tinta enche a elipse da caneta
 const TAKE = [0.6, 1] // e toma a tela
-const PEN_OUT = [0.72, 0.97] // a caneta evapora em pixels
+export const PEN_OUT = [0.72, 0.97] // a caneta evapora em pixels
+// folga (fração da largura) entre a faixa (onda + espessura) e cada texto
+const RIBBON_GAP = 0.025
+// Faixa na cena A: centro em RIBBON_REST da largura (na borda direita, só
+// espiando; nunca colada no texto — no mínimo a folga). Ela só entra DEPOIS
+// da cortina, deslizando da direita durante RIBBON_IN da cena A.
+const RIBBON_REST = 0.97
+const RIBBON_IN = [0.1, 0.45]
+// Fim do deslocamento: a seção 5 para B_END da largura à direita do centro.
+const B_END = 0.14
 
 /**
  * @param root  .ms-act2
- * @param opts  { behind?: elemento que recua durante a cortina (a seção 3) }
+ * @param opts  { behind?: elemento que recua durante a cortina (a seção 3),
+ *                ribbon?: faixa + deslocamento para a seção 5 (desktop) }
  */
-export function mountAct2(root, { behind } = {}) {
+export function mountAct2(root, { behind, ribbon = false } = {}) {
   const canvas = root.querySelector('.ma-ink')
   const ctx = canvas?.getContext('2d')
   const pen = root.querySelector('.ma-pen')
@@ -179,6 +193,7 @@ export function mountAct2(root, { behind } = {}) {
   }
   // recriar o canvas o limpa: redesenha na hora no estado atual (não espera o scroll)
   let curC = 0
+  let lit = 0 // brilho de "mostrar" (o cursor 3D acende junto)
   const onResize = () => { measure(); drawInk(curC); lastC = curC }
   window.addEventListener('resize', onResize)
 
@@ -239,7 +254,44 @@ export function mountAct2(root, { behind } = {}) {
   // com a cena na tela
   const eyeFx = eye && mountDitherEye(eye, { cell: 2 })
 
-  function update({ curtain, a }) {
+  /* ---------- faixa → seção 5 ---------- */
+  const sceneA = q('.ma-a')
+  const deco = q('.ma-deco')
+  const sceneB = q('.ma-b')
+  const aText = q('.ma-a-text')
+  const bText = q('.ma-b-text')
+  const rib = ribbon && sceneA && sceneB && aText && bText ? mountRibbon(q('.ma-ribbon')) : null
+  let rx0 = 0 // centro da faixa na cena A, antes do deslocamento (px da camada)
+  let bx0 = 0 // translate inicial da seção 5 (colada na faixa)
+  let dist = 0 // quanto a cena desliza
+  let rw = 0 // largura da camada
+  let lastShift = ''
+  // mede pela cadeia de offset* (sem os transforms do deslocamento)
+  function measureShift() {
+    if (!rib) return 0
+    rw = root.clientWidth
+    rib.resize(rw, root.clientHeight)
+    const clear = rib.reach() + rw * RIBBON_GAP
+    rx0 = Math.max(sceneA.offsetLeft + aText.offsetLeft + aText.offsetWidth + clear, rw * RIBBON_REST)
+    bx0 = rx0 + clear - (sceneB.offsetLeft + bText.offsetLeft)
+    dist = Math.max(0, bx0 - rw * B_END)
+    lastShift = ''
+    return dist
+  }
+  function shift(b, a) {
+    if (!rib || !bx0) return // sem medida ainda: a seção 5 fica no CSS (fora da tela)
+    const x = Math.min(b, dist)
+    // entrada: da direita (fora da tela) até rx0; o texto da faixa corre junto
+    const enter = (1 - easeOut(ramp(a, ...RIBBON_IN))) * (rw + rib.reach() * 2 - rx0)
+    const key = `${x}|${enter}`
+    if (key === lastShift) return
+    lastShift = key
+    sceneA.style.transform = deco.style.transform = x > 0 ? `translateX(${-x}px)` : ''
+    sceneB.style.transform = `translateX(${bx0 - x}px)`
+    rib.draw(rx0 - x + enter, x - enter)
+  }
+
+  function update({ curtain, a, b = 0 }) {
     const c = clamp01(curtain)
     curC = c
     root.style.visibility = c > 0 ? 'visible' : 'hidden'
@@ -275,6 +327,7 @@ export function mountAct2(root, { behind } = {}) {
     ringDraw?.(easeInOut(ramp(a, 0.5, 0.66)))
     const f = easeInOut(ramp(a, 0.58, A_DONE))
     words.forEach((w) => { w.style.opacity = `${1 - 0.5 * f}` })
+    lit = f
     show?.style.setProperty('--lit', f)
     // cantos entram (um depois do outro) enquanto a frase sobe; o ticket bate
     // como carimbo no fim
@@ -291,14 +344,20 @@ export function mountAct2(root, { behind } = {}) {
     // a seta se desenha por último: aponta para a próxima cena
     arrowRing?.(easeInOut(ramp(a, 0.6, 0.72)))
     arrowDraw?.(easeInOut(ramp(a, 0.66, A_DONE)))
+    shift(b, a)
   }
 
   measure()
   update({ curtain: 0, a: 0 })
   return {
     update,
+    lit: () => lit,
+    /** remede e devolve o deslocamento até a seção 5 (px); 0 sem a faixa */
+    shiftLength: measureShift,
     dispose() {
       eyeFx?.dispose()
+      rib?.dispose()
+      if (rib) sceneA.style.transform = deco.style.transform = sceneB.style.transform = ''
       window.removeEventListener('resize', onResize)
       if (behind) behind.style.transform = ''
       root.style.visibility = ''

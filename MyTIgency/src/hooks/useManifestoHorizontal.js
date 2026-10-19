@@ -7,7 +7,7 @@ import { introPinDuration, lineAPen } from '../utils/manifestoScroll'
 import { mountCursor3D } from '../utils/cursor3d'
 import { warpBrush } from '../utils/manifestoBrush'
 import { buildSplit } from '../utils/manifestoSplit'
-import { mountAct2 } from '../utils/manifestoAct2'
+import { mountAct2, PEN_OUT } from '../utils/manifestoAct2'
 
 gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 
@@ -40,8 +40,24 @@ const ACT2_GAP_VH = 0.1
 const CURTAIN_VH = 1.3 // caneta → tinta enche → toma a tela
 const SCENE_A_VH = 1.8
 const TEXT_AT = 0.85
+// Depois da cena A, a faixa ondulada: o scroll desliza a cena para a seção 5
+// (1 px de scroll = 1 px lateral, como a trilha) e SCENE_B_VH de scroll
+// parado com a seção 5 centrada.
+const SCENE_B_VH = 0.6
 // Quanto o cursor 3D e a régua apagam no meio da cortina (0 = nada, 1 = somem)
 const ACT2_DIP = 0.65
+// Cursor sai da frente da frase: começa quando a caneta da cortina evapora
+// (PEN_OUT) e termina AWAY_END da cena A. Desliza num arco suave (mesma sineIO
+// do trajeto 2→3), encolhe e gira até apontar para a direita (AWAY_DIR rad,
+// y para cima: as próximas cenas seguem por ali), ao lado do olho:
+// tamanho = altura do olho × AWAY_SIZE; ponta a AWAY_GAP (vw) + o corpo
+// (AWAY_SIZE × AWAY_REACH) depois da borda direita do olho.
+const AWAY_END = 0.2
+const AWAY_DIR = 0.22
+const AWAY_SIZE = 0.75
+const AWAY_GAP = 0.015
+const AWAY_REACH = 1.05
+const AWAY_ARC = 0.04// quanto o arco sobe (alturas de tela)
 // Cursor (o da busca vira o cursor 3D): sai da busca a GO_AT do percurso
 // lateral e chega a DRAW_END_HOLD do scroll parado. Antes de soltar dá um
 // "clique" (PRESS). Pega o traço A num ponto à direita da busca
@@ -214,6 +230,8 @@ export function useManifestoHorizontal(rootRef, lang) {
       let dEnd = 0
       let act2At = 0 // px no pin em que a cortina começa
       let pinLen = 1 // pin inteiro: trilha + seção 3 + segundo ato
+      let sceneAEnd = 0 // px no pin em que a cena A termina (e a faixa começa)
+      let shiftLen = 0 // deslocamento lateral até a seção 5 (px)
       let J = [0, 0] // onde o cursor pega o traço A
       let Jdir = [1, 0]
       let pickS = 0 // comprimento da extensão do traço A até J (unid. do SVG)
@@ -234,6 +252,10 @@ export function useManifestoHorizontal(rootRef, lang) {
       let tvBox = { x: 0, y: 0 } // canvas da TV em coordenadas da trilha
       let hitD = -1 // scroll (px no pin) do último contato real, vindo de frente
       let hitArm = null // lado (−1 antes / 1 depois) de onde o cursor vem para a janela do toque; 0 = já esbarrou
+      let away = null // ponta ao lado do olho (coordenadas do bloco); null = sem olho
+      let sAway = 100 // tamanho do cursor ao lado do olho
+      let dAway0 = 0 // scroll (px no pin) em que o cursor sai da frente da frase...
+      let dAway1 = 1 // ... e em que assenta ao lado do olho
 
       // traço novo: arte do traço A deformada, revelada por uma máscara de
       // caneta (como a do site); motion/seg1 são só geometria
@@ -274,7 +296,7 @@ export function useManifestoHorizontal(rootRef, lang) {
       const rPath = ruler.querySelector('.ms-ruler-path'), rFill = rPath.firstChild
       const rHead = ruler.querySelector('.ms-ruler-head'), rVal = rHead.firstChild
       let rFracs = [0, 0.5, 1]
-      const act2 = act2El && mountAct2(act2El, { behind: s3 }) // a seção 3 recua sob a tinta
+      const act2 = act2El && mountAct2(act2El, { behind: s3, ribbon: true }) // a seção 3 recua sob a tinta
       const maskEl = svg.querySelector('mask')
       const extPath = maskEl.firstChild
       const [, brushArt, motion, seg1] = svg.children
@@ -302,7 +324,18 @@ export function useManifestoHorizontal(rootRef, lang) {
         dGo = travelA * GO_AT
         dEnd = travelA + scrollB * DRAW_END_HOLD
         act2At = travelA + scrollB * S3_DONE + vh * ACT2_GAP_VH
-        pinLen = act2At + vh * (CURTAIN_VH + SCENE_A_VH)
+        sceneAEnd = act2At + vh * (CURTAIN_VH + SCENE_A_VH)
+        shiftLen = act2?.shiftLength() ?? 0
+        pinLen = sceneAEnd + (shiftLen ? shiftLen + vh * SCENE_B_VH : 0)
+        dAway0 = act2At + vh * CURTAIN_VH * PEN_OUT[0]
+        dAway1 = act2At + vh * (CURTAIN_VH + SCENE_A_VH * AWAY_END)
+        // olho da cena A, já no lugar final (offset* ignora a subida das linhas)
+        const eye = act2El?.querySelector('.ma-eye')
+        if (eye?.offsetHeight) {
+          const b = boxIn(eye)
+          sAway = b.h * AWAY_SIZE
+          away = [Math.min(b.x + b.w + vw * AWAY_GAP + sAway * AWAY_REACH, vw * 0.97), b.y + b.h / 2]
+        }
         // ponto da extensão do traço A a PICK_AFTER_VW à direita da busca
         const line = boxIn(lineLow) // SVG 2135×1216
         const sx = line.w / 2135
@@ -460,7 +493,8 @@ export function useManifestoHorizontal(rootRef, lang) {
         // a seção 3 entra pela direita: a pílula "quem conversa com você" já
         // decodifica na entrada (está pronta quando a seção chega), rótulos
         // digitam, a 1ª palavra é desenhada, a 2ª compila; com o cursor
-        // assentado, seleção (Figma), inspeção (DevTools), etiqueta e a nota.
+        // assentado, seleção (Figma), inspeção (DevTools) e etiqueta. A nota
+        // digita cedo, já na chegada da seção.
         // Tudo termina até S3_DONE do scroll parado: o resto fica livre para a
         // transição (máscara) para o próximo texto do Manifesto.
         split?.update({
@@ -473,17 +507,25 @@ export function useManifestoHorizontal(rootRef, lang) {
           sel: ramp(d, dEnd - scrollB * 0.02, dEnd + scrollB * 0.12),
           inspect: ramp(d, dEnd + scrollB * 0.05, dEnd + scrollB * 0.2),
           tag: ramp(d, dEnd + scrollB * 0.15, dEnd + scrollB * 0.25),
-          note: ramp(d, dEnd + scrollB * 0.2, travelA + scrollB * S3_DONE),
+          note: ramp(d, travelA - vw * 0.2, dEnd),
         })
         ext?.set(Math.max(0, (progress(d) * L - L1) / (L - L1)))
         // segundo ato: cortina e cena A (reduced motion: corte seco, cena pronta)
         const curtain = ramp(d, act2At, act2At + vh * CURTAIN_VH)
-        const sceneA = ramp(d, act2At + vh * CURTAIN_VH * TEXT_AT, pinLen)
-        act2?.update(reduced ? { curtain: curtain > 0 ? 1 : 0, a: curtain > 0 ? 1 : 0 } : { curtain, a: sceneA })
+        const sceneA = ramp(d, act2At + vh * CURTAIN_VH * TEXT_AT, sceneAEnd)
+        // faixa → seção 5: deslocamento lateral preso ao scroll (também em reduced motion, como a trilha)
+        const b = Math.min(shiftLen, Math.max(0, d - sceneAEnd))
+        act2?.update(reduced ? { curtain: curtain > 0 ? 1 : 0, a: curtain > 0 ? 1 : 0, b } : { curtain, a: sceneA, b })
         // cursor 3D e régua seguem no segundo ato (a régua volta a ter papel
         // na seção 5): mergulham devagar durante a cortina e voltam inteiros
         const dip = reduced ? 0 : ACT2_DIP * Math.sin(Math.PI * curtain)
-        if (canvas) canvas.style.opacity = `${1 - dip}`
+        if (canvas) {
+          canvas.style.opacity = `${1 - dip}`
+          // acende junto com "mostrar": o mesmo brilho do text-shadow dela
+          // (App.css → .ma-w--show), na escala do cursor ao lado do olho
+          const lit = act2?.lit() ?? 0
+          canvas.style.filter = lit > 0 ? `drop-shadow(0 0 ${(sAway * 0.32 * lit).toFixed(1)}px rgba(244,243,239,${(0.4 * lit).toFixed(3)}))` : ''
+        }
         ruler.style.setProperty('--act2-dip', dip)
         grain.style.setProperty('--grain', ramp(d, act2At + vh * CURTAIN_VH * 0.28, act2At + vh * CURTAIN_VH))
         document.documentElement.classList.toggle('ms-dark', curtain > 0.55) // header claro sobre o escuro
@@ -565,7 +607,21 @@ export function useManifestoHorizontal(rootRef, lang) {
         const p0 = motion.getPointAtLength(Math.max(0, s * L - 6))
         const p1 = motion.getPointAtLength(Math.min(L, s * L + 6))
         split?.cursor(trLeft + a.x, trTop + a.y)
-        cur.set(trLeft + a.x - hitN[0] * jolt, trTop + a.y - hitN[1] * jolt, Math.atan2(p0.y - p1.y, p1.x - p0.x), settle, 1, size, flat, aim === null ? null : aim + spin)
+        const dir = Math.atan2(p0.y - p1.y, p1.x - p0.x)
+        // segundo ato: sai da frente da frase para o lado do olho (arco
+        // suave, encolhe, gira para a direita; a inércia do giro é do cursor3d)
+        const mv = !away ? 0 : reduced ? (d >= dAway0 ? 1 : 0) : sineIO(ramp(d, dAway0, dAway1))
+        if (mv > 0) {
+          const x0 = trLeft + a.x, y0 = trTop + a.y
+          const x2 = away[0], y2 = trTop + away[1]
+          const x1 = (x0 + x2) / 2, y1 = Math.min(y0, y2) - vh * AWAY_ARC
+          const u = 1 - mv
+          const turn = Math.atan2(Math.sin(cur.aimFor(AWAY_DIR) - cur.restZ), Math.cos(cur.aimFor(AWAY_DIR) - cur.restZ))
+          cur.set(u * u * x0 + 2 * u * mv * x1 + mv * mv * x2, u * u * y0 + 2 * u * mv * y1 + mv * mv * y2, dir, 1, 1,
+            size * (sAway / size) ** mv, 0, cur.restZ + turn * mv)
+          return
+        }
+        cur.set(trLeft + a.x - hitN[0] * jolt, trTop + a.y - hitN[1] * jolt, dir, settle, 1, size, flat, aim === null ? null : aim + spin)
       }
 
       layout()
@@ -720,7 +776,7 @@ export function useManifestoHorizontal(rootRef, lang) {
         sel: ramp(p, 0.55, 0.75),
         inspect: ramp(p, 0.62, 0.82),
         tag: ramp(p, 0.7, 0.8),
-        note: ramp(p, 0.75, S3_DONE + 0.1), // termina antes do fim (espaço da transição)
+        note: ramp(p, 0.45, 0.65),
       })
       whenNear(async () => {
         await ready

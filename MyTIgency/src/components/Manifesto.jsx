@@ -27,7 +27,6 @@ import brushRaw from '../assets/s4-brush.svg?raw'
 // kit MYT: composição dos cantos da cena A
 import sealImg from '../assets/kit/selo-feito-branco.svg'
 import ticketImg from '../assets/kit/ticket-aprovado.svg'
-import tapeImg from '../assets/kit/faixa-tile.svg'
 import sparkImg from '../assets/kit/brilho.svg'
 import spark2Img from '../assets/kit/brilho-duplo.svg'
 import starImg from '../assets/kit/estrela.svg'
@@ -163,15 +162,14 @@ function Graphic({ role }) {
 }
 
 function Act2({ act }) {
-  const { a } = act
+  const { a, b } = act
   return (
     <section className="ms-act2" aria-labelledby="ma-a-title">
       {/* cortina: a tinta (pixels, canvas) por baixo da caneta (SVG) */}
       <canvas className="ma-ink" aria-hidden="true" />
       <svg className="ma-pen" aria-hidden="true"><path /></svg>
-      {/* cantos da cena A (kit MYT): fita, ticket e brilhos (o selo mora na 1ª linha) */}
+      {/* cantos da cena A (kit MYT): ticket e brilhos (o selo mora na 1ª linha) */}
       <div className="ma-deco" aria-hidden="true">
-        <div className="ma-d ma-tape" style={{ backgroundImage: `url(${tapeImg})` }} />
         <img className="ma-d ma-ticket" src={ticketImg} alt="" />
         <img className="ma-d ma-spark ma-spark--a" src={sparkImg} alt="" />
         <img className="ma-d ma-spark ma-spark--b" src={spark2Img} alt="" />
@@ -209,6 +207,17 @@ function Act2({ act }) {
             </span>
           ))}
         </p>
+      </div>
+      {/* separador: a faixa ondulada (utils/manifestoRibbon.js), só no desktop */}
+      <canvas className="ma-ribbon" aria-hidden="true" />
+      {/* seção 5: entra pela direita, colada na faixa; entre as frases, a linha da régua */}
+      <div className="ma-scene ma-b">
+        <h2 className="sr-only">{b.sentence}</h2>
+        <div className="ma-b-text" aria-hidden="true">
+          <p className="ma-b-p">{b.before.map((l) => <span key={l}>{l}</span>)}</p>
+          <div className="ma-b-ruler" />
+          <p className="ma-b-p">{b.after.map((l) => <span key={l}>{l}</span>)}</p>
+        </div>
       </div>
     </section>
   )

@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- LAB: a faixa (kit/faixa-tile.svg) como separador ondulado entre a cena A
+     e a seção 5 do Manifesto, com o scroll lateral simulado — só em dev:
+     /lab/faixa/. Não entra no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Faixa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #141414; color: #f4f3ef; }
+    /* altura = quanto de scroll vertical vira trilha lateral */
+    body { height: 400vh; }
+    .stage { position: fixed; inset: 0; overflow: hidden; }
+    .track { position: absolute; left: 0; top: 0; height: 100vh; width: 300vw; will-change: transform; }
+    .scene { position: absolute; top: 0; height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4vh; }
+    .scene--a { left: 0; }
+    .scene--b { left: 140vw; }
+    .txt {
+      margin: 0; text-align: center; font-family: 'Archivo', sans-serif; font-weight: 500; font-stretch: 88%;
+      font-size: clamp(40px, 6.6vw, 124px); line-height: .9; letter-spacing: -.05em; text-transform: uppercase;
+    }
+    .txt--dim { color: #8a8a84; }
+    .ruler-slot { width: min(52vw, 760px); height: 34px; border: 1px dashed #4a4a46; display: grid; place-items: center;
+      font: 400 10px/1 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: #6a6a64; }
+    /* mesma sombra da faixa da cena A (.ma-tape) */
+    canvas.ribbon { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; filter: drop-shadow(0 10px 30px rgba(0,0,0,.35)); }
+    .hint { position: fixed; left: 3vw; bottom: 3vh; font: 400 10px/1.4 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: #6a6a64; }
+    .panel {
+      position: fixed; right: 12px; top: 12px; width: 250px; padding: 12px; z-index: 10;
+      background: rgba(20,20,20,.92); border: 1px solid #333; border-radius: 6px;
+      font: 400 11px/1.3 'JetBrains Mono', monospace; color: #cfcfc8;
+    }
+    .panel h1 { margin: 0 0 8px; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #FF4438; }
+    .panel label { display: grid; grid-template-columns: 1fr 44px; gap: 2px 8px; align-items: center; margin: 6px 0; }
+    .panel label input[type=range], .panel label select { grid-column: 1 / -1; width: 100%; }
+    .panel output { text-align: right; color: #8a8a84; }
+    .panel .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+    .panel button { font: inherit; color: inherit; background: #222; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+    .panel button:focus-visible, .panel input:focus-visible, .panel select:focus-visible { outline: 2px solid #FF4438; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="track">
+      <section class="scene scene--a">
+        <p class="txt txt--dim">Por isso, em vez de<br />promessas,<br />preferimos mostrar.</p>
+      </section>
+      <section class="scene scene--b">
+        <p class="txt">Repare no ritmo<br />desta página.</p>
+        <div class="ruler-slot">régua encaixa aqui</div>
+        <p class="txt txt--dim">Nada surge<br />antes da hora.</p>
+      </section>
+    </div>
+  </div>
+  <canvas class="ribbon" aria-hidden="true"></canvas>
+  <p class="hint">role para baixo → a trilha anda para a esquerda</p>
+  <form class="panel" id="panel" onsubmit="return false"></form>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

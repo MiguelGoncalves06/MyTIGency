@@ -86,15 +86,16 @@ export const strings = {
         sentence: 'Nós conversamos e resolvemos tudo. Sem gerente de conta, sem terceirizar, sem intermediários.',
         cue: 'continue rolando',
         chat: {
-          head: 'conversa direta',
+          head: 'MYT',
+          placeholder: 'mensagem',
           now: 'agora',
           seen: 'visto',
           // [quem, texto]: in = cliente, out = nós
           messages: [
-            ['in', 'oi! preciso de um site novo.'],
-            ['out', 'perfeito! em menos de 24h sua proposta tá na mão, alinhada com o que você deseja.'],
+            ['in', 'não sei bem o que eu quero ainda'],
+            ['out', 'normal! me conta do seu negócio que a gente descobre junto.'],
             ['in', 'sério? simples assim?'],
-            ['out', 'simples assim! aqui na MYT. não buscamos complicar sua vida, eu diria que trabalhamos exatamente pelo contrário!'],
+            ['out', 'é a parte que a gente mais gosta.'],
           ],
         },
       },
@@ -107,7 +108,7 @@ export const strings = {
         kickB: 'e quem',
         wordB: 'Programa',
         tag: 'nós dois',
-        note: 'Sem gerente de conta, sem terceirizar, sem intermediários.',
+        note: 'quem conversa com você é quem desenha e quem programa.',
         title: 'Quem conversa com você é quem desenha e quem programa.',
         // régua do trajeto do cursor (pin lateral): saída da busca, onde pega o traço, chegada
         ruler: ['busca', 'traço', 'quem'],
@@ -126,6 +127,12 @@ export const strings = {
             [['promessas', 'strike'], [','], ['', 'eye']],
             [['preferimos'], ['mostrar', 'show'], ['.'], ['', 'arrow']],
           ],
+        },
+        // seção 5 (depois da faixa): duas frases; entre elas, a linha da régua
+        b: {
+          sentence: 'Repare no ritmo desta página. Nada surge antes da hora.',
+          before: ['Repare no ritmo', 'desta página.'],
+          after: ['Nada surge', 'antes da hora.'],
         },
       },
       lines: [
@@ -305,14 +312,15 @@ export const strings = {
         sentence: 'We talk it through and solve it. No account manager, no outsourcing, no middlemen.',
         cue: 'keep scrolling',
         chat: {
-          head: 'direct chat',
+          head: 'MYT',
+          placeholder: 'message',
           now: 'now',
           seen: 'seen',
           messages: [
-            ['in', 'hi! I need a new website.'],
-            ['out', "perfect! in less than 24h your proposal is in your hands, aligned with what you want."],
+            ['in', "i'm not sure what i want yet"],
+            ['out', "that's normal! tell me about your business and we'll figure it out together."],
             ['in', 'really? that simple?'],
-            ['out', "that simple! here at MYT. we don't try to complicate your life, I'd say we work for exactly the opposite!"],
+            ['out', "it's our favorite part."],
           ],
         },
       },
@@ -323,7 +331,7 @@ export const strings = {
         kickB: 'and who',
         wordB: 'Codes',
         tag: 'the two of us',
-        note: 'No account manager, no outsourcing, no middlemen.',
+        note: 'the one who talks to you is the one who designs and who codes.',
         title: 'The one who talks to you is the one who designs and who codes.',
         ruler: ['search', 'line', 'who'],
       },
@@ -336,6 +344,11 @@ export const strings = {
             [['promises', 'strike'], [','], ['', 'eye']],
             [["we'd rather"], ['show', 'show'], ['you.'], ['', 'arrow']],
           ],
+        },
+        b: {
+          sentence: 'Notice the pace of this page. Nothing appears before its time.',
+          before: ['Notice the pace', 'of this page.'],
+          after: ['Nothing appears', 'before its time.'],
         },
       },
       lines: [

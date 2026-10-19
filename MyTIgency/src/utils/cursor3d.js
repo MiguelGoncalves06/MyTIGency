@@ -152,6 +152,7 @@ export async function mountCursor3D(canvas, { size = 200, before } = {}) {
     /** giro (rad) em que o eixo corpo→ponta aponta para `dir`; e o giro da pose de interface */
     aimFor: (dir) => dir - AXIS,
     flatZ: FLAT.z,
+    restZ: REST.z,
     /** centro do corpo relativo à ponta, em px (para centralizar o cursor). */
     body(sz = goal.size) { return [((center.x - TIP.x) * sz) / modelH, (-(center.y - TIP.y) * sz) / modelH] },
     dispose() {

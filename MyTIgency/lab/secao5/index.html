@@ -1,0 +1,197 @@
+<!doctype html>
+<!-- LAB: seção 5 do Manifesto ("Repare no ritmo desta página. Nada surge
+     antes da hora."), v2. Composição de cartaz (fios, pílulas, mistura de
+     famílias); a faixa converte o cursor 3D numa mão de link em pixel, que
+     clica no meio da régua e se desfaz em pixels; a régua sobe para a linha
+     entre as frases e vira o compasso; os pixels do cursor montam "SURGE".
+     Só em dev: /lab/secao5/. Não entra no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Seção 5</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --paper: #f4f3ef; --ink: #141414; --dim: #8a8a84; --hair: rgba(244,243,239,.24); --accent: #FF4438;
+      --fs: clamp(36px, 5.4vw, 104px); /* corpo da frase (a cena A usa 6.6vw) */
+    }
+    html, body { margin: 0; background: var(--ink); color: var(--paper); }
+    .stage { position: fixed; inset: 0; overflow: hidden; }
+    .track { position: absolute; left: 0; top: 0; height: 100vh; width: 300vw; will-change: transform; }
+    .scene { position: absolute; top: 0; height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; }
+    .scene--a { left: 0; flex-direction: column; }
+    .a-txt {
+      margin: 0; display: flex; flex-direction: column; align-items: center; white-space: nowrap; color: #6a6a64;
+      font: 500 clamp(40px, 6.6vw, 124px)/.9 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.05em; text-transform: uppercase;
+    }
+    .mono { font: 400 10px/1.25 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+
+    /* ---------- seção 5: cartaz ---------- */
+    .poster { position: relative; width: min(56vw, 920px); display: flex; flex-direction: column; }
+    /* fio de cartaz com pílula pousada nele (ref. "RECRUIT") */
+    .rule { position: relative; height: 1px; background: var(--hair); display: flex; align-items: center; justify-content: space-between; }
+    .rule > * { transform: translateY(-50%); background: var(--ink); }
+    /* textos de apoio: pequenos e apagados, nunca disputam com a frase */
+    .rule .mono { padding: 0 0 0 10px; opacity: .55; }
+    .pill {
+      display: inline-flex; align-items: center; gap: .6em; height: 20px; padding: 0 10px; border: 1px solid var(--hair); border-radius: 999px;
+      font: 400 9px/1 'JetBrains Mono', monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); white-space: nowrap;
+    }
+    .line {
+      display: flex; align-items: baseline; gap: .2em; white-space: nowrap;
+      font: 500 var(--fs)/.92 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.045em; text-transform: uppercase;
+    }
+    .line + .line { margin-top: .04em; }
+    .in1 { padding-left: 1.15em; } /* recuos em degrau, como no cartaz */
+    .in2 { padding-left: .55em; }
+    .x-wide { font-stretch: 125%; font-weight: 300; letter-spacing: -.03em; }
+    .x-cond { font-stretch: 62%; font-weight: 800; letter-spacing: -.03em; }
+    .x-heavy { font-weight: 900; font-stretch: 70%; }
+    .serif { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; text-transform: none; letter-spacing: -.02em; font-stretch: 100%; font-size: 1.12em; }
+    /* RITMO numa pauta: cinco linhas finas atrás e as letras em alturas
+       diferentes, como notas; uma colcheia dupla fecha o compasso */
+    .staff { position: relative; display: inline-flex; align-items: baseline; gap: .05em; padding: 0 .1em; font-weight: 200; font-stretch: 100%; font-style: italic; letter-spacing: 0; }
+    .staff::before {
+      content: ''; position: absolute; left: -.08em; right: -.9em; top: .04em; height: .68em; z-index: -1;
+      background: repeating-linear-gradient(to bottom, var(--hair) 0 1px, transparent 1px 25%); border-bottom: 1px solid var(--hair);
+    }
+    .staff span { display: inline-block; }
+    .staff span:nth-child(1) { transform: translateY(.02em); }
+    .staff span:nth-child(2) { transform: translateY(-.1em); }
+    .staff span:nth-child(3) { transform: translateY(.06em); }
+    .staff span:nth-child(4) { transform: translateY(-.15em); }
+    .staff span:nth-child(5) { transform: translateY(-.04em); }
+    .staff svg { width: .5em; height: .55em; margin-left: .12em; align-self: center; transform: translateY(-.12em); fill: var(--dim); stroke: var(--dim); }
+    .block-a { padding: 3.2vh 0 2.6vh; }
+    .block-b { padding: 2.2vh 0 5vh; }
+
+    /* linha da régua: a régua do rodapé encaixa aqui */
+    .slot-row { position: relative; height: 34px; }
+    .slot { position: absolute; left: 0; right: 0; top: 0; height: 34px; }
+
+    /* 2ª frase: cada palavra emerge de baixo da régua quando a cabeça passa (--in) */
+    .w { --in: 0; display: inline-block; clip-path: inset(0 0 calc((1 - var(--in)) * 100%) 0); transform: translateY(calc((1 - var(--in)) * -.28em)); }
+    /* SURGE: lugar reservado; os pixels do cursor montam a palavra num canvas */
+    .px-word { display: inline-block; }
+    /* HORA: o O é um relógio; no fim o marca-texto vermelho passa por trás */
+    .hora { position: relative; display: inline-flex; align-items: baseline; isolation: isolate; padding: .02em .1em .06em; margin: 0 -.1em; }
+    .hora::before {
+      content: ''; position: absolute; inset: 0; z-index: -1;
+      background: var(--accent); transform-origin: left center; transform: scaleX(var(--mark, 0));
+    }
+    .clock { width: .74em; height: .74em; margin: 0 .03em; align-self: center; transform: translateY(-.02em); overflow: visible; }
+    .clock circle { fill: none; stroke: currentColor; stroke-width: 9; }
+    .clock line { stroke: currentColor; stroke-width: 9; stroke-linecap: square; }
+    .clock .m { stroke-width: 6; }
+
+    /* camadas: texto < régua < cursor 3D e pixels < faixa (o cursor passa POR BAIXO dela) */
+    .cursor-cv, .px-cv { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 3; pointer-events: none; }
+    .px-cv { image-rendering: pixelated; }
+    canvas.ribbon { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 4; pointer-events: none; filter: drop-shadow(0 10px 30px rgba(0,0,0,.35)); }
+
+    /* régua: cópia da .ms-ruler do site (App.css), no tema escuro */
+    .ruler {
+      --rl-ink: var(--paper); --rl-bg: var(--ink); --rl-dim: var(--dim);
+      position: fixed; left: 0; top: 0; width: 100px; height: 34px; z-index: 2; pointer-events: none;
+      font: 400 10px/1 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--rl-dim);
+    }
+    .ruler-scale {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 10px;
+      border-bottom: 1px solid color-mix(in srgb, var(--rl-ink) 40%, transparent);
+      background:
+        repeating-linear-gradient(to right, color-mix(in srgb, var(--rl-ink) 45%, transparent) 0 1px, transparent 1px 10%) bottom / 100% 10px no-repeat,
+        repeating-linear-gradient(to right, color-mix(in srgb, var(--rl-ink) 22%, transparent) 0 1px, transparent 1px 1%) bottom / 100% 5px no-repeat;
+    }
+    .ruler-path { position: absolute; bottom: -1px; height: 2px; left: 0; width: 100%; background: rgba(255,68,56,.18); }
+    .ruler-path i { position: absolute; inset: 0; background: var(--accent); transform: scaleX(0); transform-origin: left center; }
+    .stop { position: absolute; bottom: 15px; transform: translateX(-50%); white-space: nowrap; transition: color .3s; }
+    .stop::after { content: ''; position: absolute; left: 50%; top: calc(100% + 3px); width: 1px; height: 14px; background: currentColor; }
+    .stop b { font-weight: 500; color: var(--rl-ink); }
+    .stop.on { color: var(--accent); }
+    .head { position: absolute; left: 0; bottom: -4px; display: flex; flex-direction: column; align-items: flex-start; will-change: transform; }
+    .head span { margin: 0 0 18px 9px; color: var(--rl-ink); font-weight: 500; font-variant-numeric: tabular-nums; transition: color .4s; }
+    .head svg { width: 11px; height: 13px; margin-left: -1px; fill: var(--rl-ink); stroke: var(--rl-bg); stroke-width: 1; }
+    .head.end span { transform: translateX(calc(-100% - 16px)); }
+    .ruler.done .head span { color: var(--accent); }
+
+    /* marca do clique: a mesma do esbarrão no PC (.ms-impact) */
+    .impact { position: fixed; width: 54px; height: 54px; margin: -27px 0 0 -27px; z-index: 3; pointer-events: none; opacity: 0; }
+    .impact svg { width: 100%; height: 100%; overflow: visible; }
+    .impact line { stroke: var(--accent); stroke-width: 6; stroke-linecap: round; }
+    .impact.on { animation: impact .55s cubic-bezier(.2,.8,.3,1) both; }
+    @keyframes impact { 0% { opacity: 1; transform: scale(.35) rotate(-8deg); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3) rotate(4deg); } }
+
+    .panel {
+      position: fixed; left: 12px; top: 12px; width: 200px; padding: 10px 12px; z-index: 10;
+      background: rgba(20,20,20,.92); border: 1px solid #333; border-radius: 6px;
+      font: 400 11px/1.35 'JetBrains Mono', monospace; color: #cfcfc8;
+    }
+    .panel h1 { margin: 0 0 6px; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+    .panel button { font: inherit; color: inherit; background: #222; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; cursor: pointer; margin-top: 6px; }
+    .panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .panel .phase { margin: 6px 0 0; color: var(--dim); }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="track">
+      <section class="scene scene--a" aria-hidden="true">
+        <p class="a-txt"><span>Por isso, em vez de</span><span>promessas,</span><span>preferimos mostrar.</span></p>
+      </section>
+      <section class="scene scene--b">
+        <h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">Repare no ritmo desta página. Nada surge antes da hora.</h2>
+        <div class="poster" aria-hidden="true">
+          <div class="rule"><span class="pill">( 05 )</span><span class="mono">manifesto · ato ii</span></div>
+
+          <div class="block-a">
+            <p class="line" style="margin:0">
+              <span>Repare</span><span class="serif">no</span>
+              <span class="staff"><span>R</span><span>I</span><span>T</span><span>M</span><span>O</span><svg viewBox="0 0 50 56"><path d="M14 8 46 2v8L14 16Z" stroke="none"/><path d="M15 9v36M45 3v36" fill="none" stroke-width="4"/><ellipse cx="8" cy="46" rx="8" ry="6" transform="rotate(-20 8 46)" stroke="none"/><ellipse cx="38" cy="40" rx="8" ry="6" transform="rotate(-20 38 40)" stroke="none"/></svg></span>
+            </p>
+            <p class="line in1" style="margin:0"><span class="x-wide">desta página.</span></p>
+          </div>
+
+          <div class="slot-row"><div class="slot"></div></div>
+
+          <div class="block-b">
+            <p class="line" style="margin:0">
+              <span class="w x-heavy" data-cue="nada">Nada</span>
+              <span class="px-word" data-cue="surge"></span>
+            </p>
+            <p class="line in2" style="margin:0">
+              <span class="w serif" data-cue="antes">antes</span>
+              <span class="w x-wide" data-cue="da">da</span>
+              <span class="w hora" data-cue="hora">H<svg class="clock" viewBox="-50 -50 100 100"><circle r="44"/><line class="h" x1="0" y1="0" x2="0" y2="-22"/><line class="m" x1="0" y1="0" x2="0" y2="-34"/></svg>RA.</span>
+            </p>
+          </div>
+
+          <div class="rule">
+            <span class="pill">busca → traço → quem → mostrar</span>
+            <span class="mono">mytigency</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="ruler" aria-hidden="true">
+    <div class="ruler-scale"></div>
+    <div class="ruler-path"><i></i></div>
+    <div class="stops"></div>
+    <div class="head"><span>000%</span><svg viewBox="0 0 12 14"><path d="M1 1v11l3-3 2.4 4.4 1.8-1-2.4-4.3H10Z"/></svg></div>
+  </div>
+  <canvas class="cursor-cv" aria-hidden="true"></canvas>
+  <canvas class="px-cv" aria-hidden="true"></canvas>
+  <canvas class="ribbon" aria-hidden="true"></canvas>
+  <div class="impact" aria-hidden="true"><svg viewBox="-50 -50 100 100"></svg></div>
+  <form class="panel" onsubmit="return false">
+    <h1>LAB — Seção 5 · v2</h1>
+    <button type="button" id="restart">↺ topo</button>
+    <p class="phase" id="phase">—</p>
+  </form>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
