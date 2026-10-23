@@ -210,14 +210,12 @@ function Act2({ act }) {
       </div>
       {/* separador: a faixa ondulada (utils/manifestoRibbon.js), só no desktop */}
       <canvas className="ma-ribbon" aria-hidden="true" />
-      {/* seção 5: entra pela direita, colada na faixa; entre as frases, a linha da régua */}
+      {/* seção 5: entra pela direita, colada na faixa — frase 1 | régua | frase 2.
+          O DOM é montado por utils/manifestoS5.js (como a seção 3), a partir
+          destes dados; o hook remonta quando o idioma muda. */}
       <div className="ma-scene ma-b">
         <h2 className="sr-only">{b.sentence}</h2>
-        <div className="ma-b-text" aria-hidden="true">
-          <p className="ma-b-p">{b.before.map((l) => <span key={l}>{l}</span>)}</p>
-          <div className="ma-b-ruler" />
-          <p className="ma-b-p">{b.after.map((l) => <span key={l}>{l}</span>)}</p>
-        </div>
+        <div className="s5" aria-hidden="true" data-s5={JSON.stringify(b)} />
       </div>
     </section>
   )

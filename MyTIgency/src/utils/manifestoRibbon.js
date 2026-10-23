@@ -107,5 +107,8 @@ export function mountRibbon(canvas) {
   /** quanto a faixa ocupa para cada lado do centro (onda + meia espessura), px */
   const reach = () => P.amp * W + P.thick / 2
 
-  return { resize, draw, reach, dispose() { img.onload = null } }
+  /** centro da faixa na altura y, para o mesmo (cx, s) de draw() */
+  const at = (y, cx, s) => centerX(y, cx, (P.undulate * Math.PI * 2 * s) / (3 * H))
+
+  return { resize, draw, reach, at, thick: P.thick, dispose() { img.onload = null } }
 }

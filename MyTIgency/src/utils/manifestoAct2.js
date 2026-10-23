@@ -52,8 +52,8 @@ const RIBBON_GAP = 0.025
 // da cortina, deslizando da direita durante RIBBON_IN da cena A.
 const RIBBON_REST = 0.97
 const RIBBON_IN = [0.1, 0.45]
-// Fim do deslocamento: a seção 5 para B_END da largura à direita do centro.
-const B_END = 0.14
+// Fim do deslocamento: o começo da seção 5 (frase 1) para em B_LEFT da largura.
+const B_LEFT = 0.38
 
 /**
  * @param root  .ms-act2
@@ -259,13 +259,17 @@ export function mountAct2(root, { behind, ribbon = false } = {}) {
   const deco = q('.ma-deco')
   const sceneB = q('.ma-b')
   const aText = q('.ma-a-text')
-  const bText = q('.ma-b-text')
+  const bText = q('.s5-row') // a linha da seção 5 (frase 1 | régua | frase 2)
   const rib = ribbon && sceneA && sceneB && aText && bText ? mountRibbon(q('.ma-ribbon')) : null
   let rx0 = 0 // centro da faixa na cena A, antes do deslocamento (px da camada)
   let bx0 = 0 // translate inicial da seção 5 (colada na faixa)
   let dist = 0 // quanto a cena desliza
   let rw = 0 // largura da camada
   let lastShift = ''
+  let curX = 0 // deslocamento atual (o da faixa + a câmera da seção 5)
+  let curEnter = 0
+  // esquerda de um elemento dentro da cena B, pela cadeia de offset* (sem transforms)
+  const leftIn = (el) => { let x = 0; for (let n = el; n && n !== sceneB; n = n.offsetParent) x += n.offsetLeft; return x }
   // mede pela cadeia de offset* (sem os transforms do deslocamento)
   function measureShift() {
     if (!rib) return 0
@@ -273,16 +277,20 @@ export function mountAct2(root, { behind, ribbon = false } = {}) {
     rib.resize(rw, root.clientHeight)
     const clear = rib.reach() + rw * RIBBON_GAP
     rx0 = Math.max(sceneA.offsetLeft + aText.offsetLeft + aText.offsetWidth + clear, rw * RIBBON_REST)
-    bx0 = rx0 + clear - (sceneB.offsetLeft + bText.offsetLeft)
-    dist = Math.max(0, bx0 - rw * B_END)
+    const bLeft = sceneB.offsetLeft + leftIn(bText)
+    bx0 = rx0 + clear - bLeft
+    dist = Math.max(0, bx0 - (rw * B_LEFT - bLeft))
     lastShift = ''
     return dist
   }
-  function shift(b, a) {
+  // b = px de scroll no deslocamento; cam = câmera extra da seção 5 (o arrasto da régua)
+  function shift(b, a, cam = 0) {
     if (!rib || !bx0) return // sem medida ainda: a seção 5 fica no CSS (fora da tela)
-    const x = Math.min(b, dist)
+    const x = Math.min(b, dist) + cam
     // entrada: da direita (fora da tela) até rx0; o texto da faixa corre junto
     const enter = (1 - easeOut(ramp(a, ...RIBBON_IN))) * (rw + rib.reach() * 2 - rx0)
+    curX = x
+    curEnter = enter
     const key = `${x}|${enter}`
     if (key === lastShift) return
     lastShift = key
@@ -291,7 +299,7 @@ export function mountAct2(root, { behind, ribbon = false } = {}) {
     rib.draw(rx0 - x + enter, x - enter)
   }
 
-  function update({ curtain, a, b = 0 }) {
+  function update({ curtain, a, b = 0, cam = 0 }) {
     const c = clamp01(curtain)
     curC = c
     root.style.visibility = c > 0 ? 'visible' : 'hidden'
@@ -344,7 +352,7 @@ export function mountAct2(root, { behind, ribbon = false } = {}) {
     // a seta se desenha por último: aponta para a próxima cena
     arrowRing?.(easeInOut(ramp(a, 0.6, 0.72)))
     arrowDraw?.(easeInOut(ramp(a, 0.66, A_DONE)))
-    shift(b, a)
+    shift(b, a, cam)
   }
 
   measure()
@@ -354,6 +362,13 @@ export function mountAct2(root, { behind, ribbon = false } = {}) {
     lit: () => lit,
     /** remede e devolve o deslocamento até a seção 5 (px); 0 sem a faixa */
     shiftLength: measureShift,
+    /** translate atual da cena B e o do fim do deslocamento (sem a câmera) */
+    sceneX: () => bx0 - curX,
+    sceneEndX: () => bx0 - dist,
+    /** a faixa agora: centro na altura y, alcance e meia espessura (px da camada) */
+    ribbonAt: (y) => (rib ? rib.at(y, rx0 - curX + curEnter, curX - curEnter) : -1e9),
+    ribbonReach: () => rib?.reach() ?? 0,
+    ribbonHalf: () => (rib?.thick ?? 0) / 2,
     dispose() {
       eyeFx?.dispose()
       rib?.dispose()

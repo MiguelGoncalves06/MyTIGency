@@ -1,0 +1,256 @@
+<!doctype html>
+<!-- LAB: seção 5 do Manifesto, v4 (3º retorno do usuário; a v2 segue em
+     /lab/secao5/ e a v3 em /lab/secao5/v3/).
+     Globais do site que continuam valendo aqui (réplica estática, só para
+     compor): a faixa de frases e o header no topo, a régua do trajeto no
+     rodapé e o grão (.ms-grain) do segundo ato. O cursor começa onde o site o
+     deixa no fim da cena A: ao lado do olho, apontando para a direita. O selo
+     "feito pela MyT", o ticket e os brilhos já moram na cena A — não repetir.
+     - cartaz: fio de cima = cabeçalho de partitura (nº, título, autoria, 4/4);
+       fio de baixo = player (tocando/pausa, equalizador e BPM do scroll);
+     - fontes: Archivo (variável: normal, larga e leve, condensada e pesada) +
+       Instrument Serif itálica (palavras e um glifo trocado) + o pixel do SURGE;
+     - frase 1 entra letra a letra (sobe de uma máscara, gira e assenta);
+       RITMO e as cordas, como estavam;
+     - o cursor nunca para: um único trajeto do olho até a régua, preso ao
+       scroll; a faixa troca 3D por mão (no mesmo dither) sem girar nada;
+     - o clique na régua com a marca de impacto da v2; o punho arrasta a régua
+       e ela vem um pouco atrás, com peso;
+     - HORA: relógio gira à vista e assenta; marca-texto da v2; no fim, o
+       "PERFEITO!" de jogo de ritmo (as palavras entraram no tempo).
+     Só em dev: /lab/secao5/v4/. Não entra no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Seção 5 · v4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --paper: #f4f3ef; --ink: #141414; --dim: #8a8a84; --hair: rgba(244,243,239,.24); --accent: #FF4438;
+      --fs: clamp(30px, 4vw, 84px); /* corpo das duas frases: a linha inteira cabe numa tela */
+    }
+    html, body { margin: 0; background: var(--ink); color: var(--paper); }
+    .stage { position: fixed; inset: 0; overflow: hidden; }
+    .track { position: absolute; left: 0; top: 0; height: 100vh; width: 400vw; will-change: transform; }
+    .scene { position: absolute; top: 0; height: 100vh; display: flex; align-items: center; }
+    .scene--a { left: 0; width: 100vw; justify-content: center; }
+    .a-txt {
+      margin: 0; display: flex; flex-direction: column; align-items: center; white-space: nowrap; color: #6a6a64;
+      font: 500 clamp(40px, 6.6vw, 124px)/.9 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.05em; text-transform: uppercase;
+    }
+    .mono { font: 400 10px/1.25 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+
+    /* ---------- globais do site (réplica estática) ---------- */
+    .g-ticker { position: fixed; left: 0; right: 0; top: 0; height: 26px; z-index: 50; overflow: hidden; border-bottom: 1px solid rgba(244,243,239,.12); background: var(--ink); }
+    .g-ticker-in { display: inline-flex; gap: 48px; white-space: nowrap; padding-left: 16px; line-height: 26px; animation: gTicker 60s linear infinite; color: #cfcfc8; }
+    .g-ticker-in b { color: var(--dim); font-weight: 400; margin-right: 8px; }
+    @keyframes gTicker { to { transform: translateX(-50%); } }
+    .g-header { position: fixed; left: 3vw; right: 3vw; top: 42px; z-index: 50; display: flex; align-items: center; gap: 22px; }
+    .g-header img { height: 22px; filter: invert(1); margin-right: auto; }
+    .ms-grain { position: fixed; inset: 0; z-index: 55; pointer-events: none; opacity: .085; animation: msGrain .5s steps(1) infinite;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -.66'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 180px; }
+    @keyframes msGrain {
+      0% { background-position: 0 0; } 17% { background-position: -63px 41px; } 33% { background-position: 97px -88px; }
+      50% { background-position: -121px -37px; } 67% { background-position: 44px 112px; } 83% { background-position: -90px 70px; }
+    }
+
+    /* ---------- seção 5: cartaz ---------- */
+    .poster { position: relative; display: flex; flex-direction: column; gap: 7vh; }
+    /* fio de cartaz: as peças ficam ENTRE trechos de fio (o fio nunca passa por trás do texto) */
+    .rule { display: flex; align-items: center; gap: 12px; }
+    .rule > i { flex: 1; height: 1px; background: var(--hair); }
+    .rule .sig { width: 22px; flex: none; }
+    .pill {
+      display: inline-flex; align-items: center; gap: .7em; height: 22px; padding: 0 11px; border: 1px solid var(--hair); border-radius: 999px;
+      font: 400 9px/1 'JetBrains Mono', monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); white-space: nowrap;
+    }
+    .rule .mono b { color: var(--paper); font-weight: 500; }
+    /* fórmula de compasso 4/4, empilhada como na partitura */
+    .meter { display: inline-flex; flex-direction: column; align-items: center; font: 500 11px/.9 'JetBrains Mono', monospace; color: var(--paper); }
+    /* player: tocando/pausa conforme o scroll; equalizador e BPM vêm da velocidade */
+    .player { color: #cfcfc8; }
+    .player svg { width: 8px; height: 9px; fill: currentColor; }
+    .player .ic-pause { display: none; }
+    .player:not(.is-playing) .ic-play { display: none; }
+    .player:not(.is-playing) .ic-pause { display: block; }
+    .player .pl-state { color: var(--paper); }
+    .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; }
+    .eq i { width: 2px; height: 100%; background: var(--accent); transform-origin: 50% 100%; transform: scaleY(.15); }
+    .bpm { color: var(--paper); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+    .row { display: flex; align-items: center; gap: 2.6vw; white-space: nowrap; }
+    .block { position: relative; }
+    .line { margin: 0; font: 500 var(--fs)/.98 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.045em; text-transform: uppercase; }
+    .line + .line { margin-top: .04em; }
+    /* tipografia editorial: Archivo em três vozes + Instrument Serif itálica */
+    .serif { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; text-transform: none; letter-spacing: -.02em; font-stretch: 100%; font-size: 1.12em; }
+    .wide { font-stretch: 125%; font-weight: 300; letter-spacing: -.03em; }
+    .heavy { font-weight: 900; font-stretch: 62%; letter-spacing: -.02em; }
+    /* os dois A de PÁGINA no itálico da própria Archivo (a inclinação "rima" com o RITMO itálico) */
+    .ital { font-style: italic; margin-right: .03em; }
+    /* frase 1: letra a letra, cada uma sobe de uma máscara na palavra */
+    .pw { display: inline-block; }
+    .pw:not(.staff) { clip-path: inset(-.4em -.25em -.35em -.25em); }
+    .ch { display: inline-block; transform-origin: 0 100%; will-change: transform; }
+    /* RITMO numa pauta (v2): letras em alturas diferentes, como notas, e a colcheia */
+    .staff { position: relative; display: inline-flex; align-items: baseline; gap: .05em; padding: 0 .1em; margin-right: .3em; isolation: isolate; font-weight: 200; font-stretch: 100%; font-style: italic; letter-spacing: 0; }
+    .staff span { display: inline-block; }
+    .staff span:nth-child(2) { transform: translateY(.02em); }
+    .staff span:nth-child(3) { transform: translateY(-.1em); }
+    .staff span:nth-child(4) { transform: translateY(.06em); }
+    .staff span:nth-child(5) { transform: translateY(-.15em); }
+    .staff span:nth-child(6) { transform: translateY(-.04em); }
+    .staff .note { width: .5em; height: .55em; margin-left: .12em; align-self: center; transform: translateY(-.12em); fill: var(--dim); stroke: var(--dim); }
+    /* as cinco linhas da pauta são cordas (SVG; o JS as faz ondular). SVG não estica com left/right: largura explícita */
+    .strings { position: absolute; left: -.08em; width: calc(100% + .4em); top: .04em; height: .68em; z-index: -1; overflow: visible; }
+    .strings path { fill: none; stroke: var(--paper); stroke-opacity: .24; stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+    /* lugar da régua: a escala fica na altura do meio das frases */
+    .slot { position: relative; top: -17px; flex: none; height: 34px; }
+
+    /* frase 2: cada palavra emerge quando a cabeça passa (o NADA da v2) */
+    .w { --in: 0; display: inline-block; clip-path: inset(-.2em -.3em calc((1 - var(--in)) * 100%) -.3em); transform: translateY(calc((1 - var(--in)) * -.28em)); }
+    .px-word { display: inline-block; }
+    /* HORA: o O é um relógio; no fim o marca-texto vermelho passa por trás (v2) */
+    .hora { position: relative; display: inline-flex; align-items: baseline; isolation: isolate; padding: .02em .1em .06em; margin: 0 -.1em; }
+    .hora::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--accent); transform-origin: left center; transform: scaleX(var(--mark, 0)); }
+    .clock { width: .76em; height: .76em; margin: 0 .02em; align-self: center; transform: translateY(-.01em); overflow: visible; }
+    .clock .ring { fill: none; stroke: currentColor; stroke-width: 10; }
+    .clock .tick { stroke: currentColor; stroke-width: 3.5; stroke-linecap: round; opacity: .45; }
+    .clock .tick.q { stroke-width: 5; }
+    .clock .hand { stroke: currentColor; stroke-linecap: round; }
+    .clock .h { stroke-width: 8; }
+    .clock .m { stroke-width: 5.5; }
+    .clock .s { stroke-width: 2.4; opacity: 0; }
+    .clock .pin { fill: currentColor; }
+    /* "PERFEITO!" de jogo de ritmo, em pixel, sobre a frase 2 */
+    /* cabe no vão entre o fio de cima e a frase (7vh) sem encostar no fio */
+    /* fermata (𝄐) sobre o ponto final — a "barra de compasso" da frase: segure,
+       pausa entre seções. A caneta vermelha das seções 1–4 desenha o arco e o
+       ponto cai no fim. --fx = centro do ponto final */
+    .w.hora { clip-path: inset(-1.1em -.6em calc((1 - var(--in)) * 100%) -.3em); }
+    .fermata { position: absolute; left: var(--fx, 50%); bottom: calc(100% - .02em); width: .7em; height: .42em; transform: translateX(-50%); overflow: visible; pointer-events: none; }
+    .fermata .arc { fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: var(--draw, 1); }
+    .fermata .dot { fill: var(--accent); transform-box: fill-box; transform-origin: center; transform: scale(var(--dot, 0)); }
+
+    /* camadas: texto < régua < cursor 3D e pixels < faixa (o cursor passa POR BAIXO dela) */
+    .cursor-cv, .px-cv { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 3; pointer-events: none; }
+    .px-cv { image-rendering: pixelated; }
+    canvas.ribbon { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 4; pointer-events: none; filter: drop-shadow(0 10px 30px rgba(0,0,0,.35)); }
+
+    /* régua: cópia da .ms-ruler do site (App.css), no tema escuro — igual, só menor */
+    .ruler {
+      --rl-ink: var(--paper); --rl-bg: var(--ink); --rl-dim: var(--dim);
+      position: fixed; left: 0; top: 0; width: 100px; height: 34px; z-index: 2; pointer-events: none; transform-origin: 50% 100%;
+      font: 400 10px/1 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--rl-dim);
+    }
+    .ruler-scale {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 10px;
+      border-bottom: 1px solid color-mix(in srgb, var(--rl-ink) 40%, transparent);
+      background:
+        repeating-linear-gradient(to right, color-mix(in srgb, var(--rl-ink) 45%, transparent) 0 1px, transparent 1px 10%) bottom / 100% 10px no-repeat,
+        repeating-linear-gradient(to right, color-mix(in srgb, var(--rl-ink) 22%, transparent) 0 1px, transparent 1px 1%) bottom / 100% 5px no-repeat;
+    }
+    .ruler-scale { transform-origin: 50% 100%; } /* achata com a velocidade ao fechar */
+    /* pontas de metal da fita: só aparecem enquanto ela fecha, e chicoteiam no estalo */
+    .cap { position: absolute; bottom: -3px; width: 3px; height: 16px; background: var(--rl-ink); opacity: 0; transform-origin: 50% 100%; }
+    .cap-l { left: -2px; }
+    .cap-r { right: -2px; }
+    /* rótulos dobram sobre a linha da escala (pivô no fio) */
+    .stop { transform-origin: 50% calc(100% + 15px); }
+    .ruler-path { position: absolute; bottom: -1px; height: 2px; left: 0; width: 100%; background: rgba(255,68,56,.18); }
+    .ruler-path i { position: absolute; inset: 0; background: var(--accent); transform: scaleX(0); transform-origin: left center; }
+    .stop { position: absolute; bottom: 15px; transform: translateX(-50%); white-space: nowrap; transition: color .3s; }
+    .stop::after { content: ''; position: absolute; left: 50%; top: calc(100% + 3px); width: 1px; height: 14px; background: currentColor; }
+    .stop b { font-weight: 500; color: var(--rl-ink); }
+    .stop.on { color: var(--accent); }
+    .head { position: absolute; left: 0; bottom: -4px; display: flex; flex-direction: column; align-items: flex-start; will-change: transform; }
+    .head span { margin: 0 0 18px 9px; color: var(--rl-ink); font-weight: 500; font-variant-numeric: tabular-nums; transition: color .4s; }
+    .head svg { width: 11px; height: 13px; margin-left: -1px; fill: var(--rl-ink); stroke: var(--rl-bg); stroke-width: 1; }
+    .head.end span { transform: translateX(calc(-100% - 16px)); }
+    .ruler.done .head span { color: var(--accent); }
+
+    /* marca do clique (v2): a mesma do esbarrão no PC (.ms-impact) */
+    .impact { position: fixed; width: 54px; height: 54px; margin: -27px 0 0 -27px; z-index: 3; pointer-events: none; opacity: 0; }
+    .impact svg { width: 100%; height: 100%; overflow: visible; }
+    .impact line { stroke: var(--accent); stroke-width: 6; stroke-linecap: round; }
+    .impact.on { animation: impact .55s cubic-bezier(.2,.8,.3,1) both; }
+    @keyframes impact { 0% { opacity: 1; transform: scale(.35) rotate(-8deg); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3) rotate(4deg); } }
+
+    .panel {
+      position: fixed; left: 12px; bottom: 60px; width: 200px; padding: 10px 12px; z-index: 60;
+      background: rgba(20,20,20,.92); border: 1px solid #333; border-radius: 6px;
+      font: 400 11px/1.35 'JetBrains Mono', monospace; color: #cfcfc8;
+    }
+    .panel h1 { margin: 0 0 6px; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+    .panel button { font: inherit; color: inherit; background: #222; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; cursor: pointer; margin-top: 6px; }
+    .panel a { display: block; margin-top: 6px; color: inherit; }
+    .panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .panel .phase { margin: 6px 0 0; color: var(--dim); }
+  </style>
+</head>
+<body>
+  <!-- globais do site (réplica estática, só para compor) -->
+  <div class="g-ticker mono" aria-hidden="true"><div class="g-ticker-in"></div></div>
+  <div class="g-header mono" aria-hidden="true"><img alt="" /><span>Lang</span><span>Menu</span></div>
+  <div class="ms-grain" aria-hidden="true"></div>
+
+  <div class="stage">
+    <div class="track">
+      <section class="scene scene--a" aria-hidden="true">
+        <p class="a-txt"><span>Por isso, em vez de</span><span>promessas,</span><span>preferimos mostrar.</span></p>
+      </section>
+      <section class="scene scene--b">
+        <h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">Repare no ritmo desta página. Nada surge antes da hora.</h2>
+        <div class="poster" aria-hidden="true">
+          <!-- cabeçalho de partitura: número, título, autoria (os dois fundadores) e compasso -->
+          <div class="rule">
+            <span class="pill">( 05 )</span><i class="sig"></i>
+            <span class="mono">partitura nº 05 · <b>ritmo desta página</b></span><i></i>
+            <span class="mono">música e letra: miguel &amp; thiago</span><i class="sig"></i>
+            <span class="meter"><span>4</span><span>4</span></span>
+          </div>
+          <div class="row">
+            <div class="block block-a">
+              <p class="line"><span class="pw">Repare</span> <span class="pw serif">no</span> <span class="pw staff"><svg class="strings" viewBox="0 0 100 40" preserveAspectRatio="none"></svg><span>R</span><span>I</span><span>T</span><span>M</span><span>O</span><svg class="note" viewBox="0 0 50 56"><path d="M14 8 46 2v8L14 16Z" stroke="none"/><path d="M15 9v36M45 3v36" fill="none" stroke-width="4"/><ellipse cx="8" cy="46" rx="8" ry="6" transform="rotate(-20 8 46)" stroke="none"/><ellipse cx="38" cy="40" rx="8" ry="6" transform="rotate(-20 38 40)" stroke="none"/></svg></span></p>
+              <p class="line"><span class="pw wide">desta</span> <span class="pw">p<span class="ital">á</span>gin<span class="ital">a</span>.</span></p>
+            </div>
+            <div class="slot"></div>
+            <div class="block block-b">
+              <p class="line"><span class="w heavy" data-cue="nada">Nada</span> <span class="px-word" data-cue="surge"></span></p>
+              <p class="line"><span class="w serif" data-cue="antes">antes</span> <span class="w wide" data-cue="da">da</span> <span class="w hora" data-cue="hora"><svg class="fermata" viewBox="0 0 100 60" aria-hidden="true"><path class="arc" pathLength="1" d="M7 54C9 14 91 14 93 54"/><circle class="dot" cx="50" cy="45" r="8"/></svg>H<svg class="clock" viewBox="-50 -50 100 100"><circle class="ring" r="43"/><g class="ticks"></g><line class="hand h" x1="0" y1="0" x2="0" y2="-19"/><line class="hand m" x1="0" y1="0" x2="0" y2="-29"/><line class="hand s" x1="0" y1="6" x2="0" y2="-33"/><circle class="pin" r="5"/></svg>RA.</span></p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="pill player"><svg class="ic-play" viewBox="0 0 8 9"><path d="M0 0 8 4.5 0 9Z"/></svg><svg class="ic-pause" viewBox="0 0 8 9"><path d="M0 0h3v9H0zM5 0h3v9H5z"/></svg><span class="pl-state">pausa</span> · faixa 05 <span class="eq"><i></i><i></i><i></i><i></i><i></i></span><span><b class="bpm">000</b> bpm</span></span><i></i>
+            <span class="mono hint">role para tocar ↓</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="ruler" aria-hidden="true">
+    <div class="ruler-scale"></div>
+    <div class="ruler-path"><i></i></div>
+    <i class="cap cap-l"></i><i class="cap cap-r"></i>
+    <div class="stops"></div>
+    <div class="head"><span>100%</span><svg viewBox="0 0 12 14"><path d="M1 1v11l3-3 2.4 4.4 1.8-1-2.4-4.3H10Z"/></svg></div>
+  </div>
+  <canvas class="cursor-cv" aria-hidden="true"></canvas>
+  <canvas class="px-cv" aria-hidden="true"></canvas>
+  <canvas class="ribbon" aria-hidden="true"></canvas>
+  <div class="impact" aria-hidden="true"><svg viewBox="-50 -50 100 100"></svg></div>
+  <form class="panel" onsubmit="return false">
+    <h1>LAB — Seção 5 · v4</h1>
+    <button type="button" id="restart">↺ topo</button>
+    <p class="phase" id="phase">—</p>
+    <a href="../">v2 (antes)</a>
+    <a href="../v3/">v3</a>
+  </form>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

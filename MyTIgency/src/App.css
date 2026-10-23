@@ -1420,17 +1420,92 @@
   }
   .ma-line{ display:flex; align-items:center; justify-content:center; gap:.2em; white-space:nowrap; opacity:0; }
   .ma-w{ position:relative; display:inline-block; }
-  /* Seção 5 (depois da faixa): a mesma tipografia da cena A, duas frases
-     e, entre elas, a linha reservada para a régua. Começa fora da tela; o
-     deslocamento lateral é do manifestoAct2 (translate). */
-  .ma-b{ transform:translateX(100vw); }
-  .ma-b-text{ display:flex; flex-direction:column; align-items:center; gap:3.4vh; }
-  .ma-b-p{
-    margin:0; display:flex; flex-direction:column; align-items:center; white-space:nowrap;
-    font-family:'Archivo',sans-serif; font-weight:500; font-stretch:88%;
-    font-size:clamp(40px, 6.6vw, 124px); line-height:.9; letter-spacing:-.05em; text-transform:uppercase;
+  /* ---------- Seção 5 (utils/manifestoS5.js) ----------
+     Cartaz: fio de cima = cabeçalho de partitura, fio de baixo = player.
+     Frase 1 | lugar da régua | frase 2, numa linha só. Archivo em três vozes
+     (normal, larga e leve, condensada e pesada) + Instrument Serif itálica
+     + o pixel do SURGE. Começa fora da tela; o deslocamento lateral é do
+     manifestoAct2 (translate), alinhado à esquerda. */
+  .ma-b{ transform:translateX(100vw); justify-content:flex-start; padding:0; }
+  .s5{ --fs:clamp(30px, 4vw, 84px); }
+  .s5-poster{ position:relative; display:flex; flex-direction:column; gap:7vh; }
+  .s5-mono{ font:400 10px/1.25 'JetBrains Mono', monospace; letter-spacing:.06em; text-transform:uppercase; color:#8a8a84; white-space:nowrap; }
+  .s5-mono b{ color:#F4F3EF; font-weight:500; }
+  /* as peças ficam ENTRE trechos de fio: o fio nunca passa por trás do texto */
+  .s5-rule{ display:flex; align-items:center; gap:12px; }
+  .s5-rule > i{ flex:1; height:1px; background:rgba(244,243,239,.24); }
+  .s5-rule > i.s5-sig{ flex:none; width:22px; }
+  .s5-pill{
+    display:inline-flex; align-items:center; gap:.7em; height:22px; padding:0 11px; border:1px solid rgba(244,243,239,.24); border-radius:999px;
+    font:400 9px/1 'JetBrains Mono', monospace; letter-spacing:.08em; text-transform:uppercase; color:#8a8a84; white-space:nowrap;
   }
-  .ma-b-ruler{ width:min(52vw, 760px); height:34px; }
+  .s5-meter{ display:inline-flex; flex-direction:column; align-items:center; font:500 11px/.9 'JetBrains Mono', monospace; color:#F4F3EF; }
+  /* player: tocando/pausa/fermata conforme o scroll; equalizador e BPM da velocidade */
+  .s5-player{ color:#cfcfc8; }
+  .s5-player svg{ width:8px; height:9px; fill:currentColor; }
+  .s5-player .s5-ic-pause{ display:none; }
+  .s5-player:not(.is-playing) .s5-ic-play{ display:none; }
+  .s5-player:not(.is-playing) .s5-ic-pause{ display:block; }
+  .s5-state, .s5-bpm{ color:#F4F3EF; }
+  .s5-bpm{ font-weight:500; font-variant-numeric:tabular-nums; }
+  .s5-eq{ display:inline-flex; align-items:flex-end; gap:2px; height:10px; }
+  .s5-eq i{ width:2px; height:100%; background:var(--accent); transform-origin:50% 100%; transform:scaleY(.15); }
+
+  .s5-row{ display:flex; align-items:center; gap:2.6vw; white-space:nowrap; }
+  .s5-block{ position:relative; }
+  .s5-line{ margin:0; font:500 var(--fs)/.98 'Archivo', sans-serif; font-stretch:88%; letter-spacing:-.045em; text-transform:uppercase; }
+  .s5-line + .s5-line{ margin-top:.04em; }
+  .s5-serif{ font-family:'Instrument Serif', serif; font-style:italic; font-weight:400; text-transform:none; letter-spacing:-.02em; font-stretch:100%; font-size:1.12em; }
+  .s5-wide{ font-stretch:125%; font-weight:300; letter-spacing:-.03em; }
+  .s5-heavy{ font-weight:900; font-stretch:62%; letter-spacing:-.02em; }
+  .s5-ital{ font-style:italic; margin-right:.03em; }
+  /* frase 1: letra a letra, cada uma sobe de uma máscara na palavra */
+  .s5-pw{ display:inline-block; }
+  .s5-pw:not(.s5-staff){ clip-path:inset(-.4em -.25em -.35em -.25em); }
+  .s5-ch{ display:inline-block; transform-origin:0 100%; }
+  /* a palavra na pauta: letras em alturas de nota (--b), que andam nas cordas */
+  .s5-staff{ position:relative; display:inline-flex; align-items:baseline; gap:.05em; padding:0 .1em; margin-right:.3em; isolation:isolate; font-weight:200; font-stretch:100%; font-style:italic; letter-spacing:0; }
+  .s5-note-l{ display:inline-block; transform:translateY(var(--b, 0)); }
+  .s5-staff .s5-note{ width:.5em; height:.55em; margin-left:.12em; align-self:center; transform:translateY(-.12em); fill:#8a8a84; stroke:#8a8a84; }
+  /* as linhas da pauta são cordas (SVG não estica com left/right: largura explícita) */
+  .s5-strings{ position:absolute; left:-.08em; width:calc(100% + .4em); top:.04em; height:.68em; z-index:-1; overflow:visible; }
+  .s5-strings path{ fill:none; stroke:#F4F3EF; stroke-opacity:.24; stroke-width:1; vector-effect:non-scaling-stroke; }
+  /* lugar da régua: a escala fica na altura do meio das frases */
+  .s5-slot{ position:relative; top:-17px; flex:none; height:34px; }
+  /* frase 2: cada palavra emerge quando a cabeça da régua passa */
+  .s5-w{ --in:0; display:inline-block; clip-path:inset(-.2em -.3em calc((1 - var(--in)) * 100%) -.3em); transform:translateY(calc((1 - var(--in)) * -.28em)); }
+  .s5-px{ display:inline-block; margin-left:.12em; } /* o espaço sozinho some ao lado da condensada pesada */
+  /* HORA: relógio no lugar de uma letra; marca-texto vermelho por trás; fermata
+     (a caneta) sobre o fim da palavra — a "barra de compasso": segure. */
+  .s5-w.s5-hora{ clip-path:inset(-1.1em -.6em calc((1 - var(--in)) * 100%) -.3em); }
+  .s5-hora{ position:relative; display:inline-flex; align-items:baseline; isolation:isolate; padding:.02em .1em .06em; margin:0 -.1em; }
+  .s5-hora::before{ content:''; position:absolute; inset:0; z-index:-1; background:var(--accent); transform-origin:left center; transform:scaleX(var(--mark, 0)); }
+  .s5-clock{ width:.76em; height:.76em; margin:0 .02em; align-self:center; transform:translateY(-.01em); overflow:visible; }
+  .s5-clock .ring{ fill:none; stroke:currentColor; stroke-width:10; }
+  .s5-clock .tick{ stroke:currentColor; stroke-width:3.5; stroke-linecap:round; opacity:.45; }
+  .s5-clock .tick.q{ stroke-width:5; }
+  .s5-clock .hand{ stroke:currentColor; stroke-linecap:round; }
+  .s5-clock .h{ stroke-width:8; }
+  .s5-clock .m{ stroke-width:5.5; }
+  .s5-clock .s{ stroke-width:2.4; opacity:0; }
+  .s5-clock .pin{ fill:currentColor; }
+  .s5-fermata{ position:absolute; left:var(--fx, 50%); bottom:calc(100% - .02em); width:.7em; height:.42em; transform:translateX(-50%); overflow:visible; pointer-events:none; }
+  .s5-fermata .arc{ fill:none; stroke:var(--accent); stroke-width:9; stroke-linecap:round; stroke-dasharray:1; stroke-dashoffset:var(--draw, 1); }
+  .s5-fermata .dot{ fill:var(--accent); transform-box:fill-box; transform-origin:center; transform:scale(var(--dot, 0)); }
+  /* canvas da mão/punho, dos pixels e das notas: fixo, acima da régua e do cursor 3D, abaixo do header */
+  .s5-cv{ position:fixed; inset:0; width:100vw; height:100vh; z-index:42; pointer-events:none; image-rendering:pixelated; }
+  .s5-impact{ position:fixed; z-index:42; }
+  /* a régua do rodapé nas mãos da seção 5: posição/escala pelo JS, sem a
+     transição de transform (ela acompanha o punho quadro a quadro) */
+  .ms-ruler.is-s5{ left:0; top:0; right:auto; bottom:auto; transition:opacity .45s cubic-bezier(.22,1,.36,1), --rl-ink .6s ease, --rl-bg .6s ease, --rl-dim .6s ease; }
+  .ms-ruler.is-s5 .ms-ruler-scale{ transform-origin:50% 100%; }
+  .ms-ruler.is-s5 .ms-ruler-stop{ transform-origin:50% calc(100% + 15px); }
+  /* no fim da varredura a leitura (%) passa para dentro da régua, longe da frase 2 */
+  .ms-ruler.is-s5 .ms-ruler-head.end span{ transform:translateX(calc(-100% - 16px)); }
+  /* pontas de metal da fita: só aparecem enquanto a régua se fecha */
+  .ms-ruler-cap{ position:absolute; bottom:-3px; width:3px; height:16px; background:var(--rl-ink); opacity:0; transform-origin:50% 100%; }
+  .ms-ruler-cap--l{ left:-2px; }
+  .ms-ruler-cap--r{ right:-2px; }
   /* faixa ondulada (utils/manifestoRibbon.js): por cima da cena A e dos
      cantos, com a sombra que a faixa reta tinha */
   .ma-ribbon{ position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; filter:drop-shadow(0 10px 30px rgba(0,0,0,.35)); }
@@ -1466,9 +1541,13 @@
     .ma-scene{ position:relative; min-height:100svh; padding:96px 16px; }
     .ma-a-text{ font-size:clamp(30px, 9.6vw, 56px); }
     .ma-line{ flex-wrap:wrap; white-space:normal; }
-    .ma-ribbon, .ma-b-ruler{ display:none; }
-    .ma-b{ transform:none; }
-    .ma-b-p{ font-size:clamp(30px, 9.6vw, 56px); white-space:normal; text-align:center; }
+    .ma-ribbon{ display:none; }
+    /* seção 5 empilhada e parada no estado final: frase 1, frase 2, sem régua */
+    .ma-b{ transform:none; justify-content:center; padding:96px 16px; }
+    .s5{ --fs:clamp(28px, 8.4vw, 52px); }
+    .s5-poster{ gap:5vh; }
+    .s5-row{ flex-direction:column; align-items:flex-start; gap:4vh; white-space:normal; }
+    .s5-slot, .s5-rule .s5-mono:not(.s5-keep), .s5-rule > i.s5-sig{ display:none; }
   }
   .manifesto.has-cursor3d .s2-search-cursor{ visibility:hidden; }
   /* Marca do esbarrão do cursor no PC (useManifestoHorizontal): riscos

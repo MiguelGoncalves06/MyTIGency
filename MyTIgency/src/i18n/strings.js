@@ -128,11 +128,21 @@ export const strings = {
             [['preferimos'], ['mostrar', 'show'], ['.'], ['', 'arrow']],
           ],
         },
-        // seção 5 (depois da faixa): duas frases; entre elas, a linha da régua
+        // Seção 5 (depois da faixa; utils/manifestoS5.js): frase 1 | régua | frase 2.
+        // Cada linha é uma lista de palavras [texto, papel?]. Papéis: 'serif'
+        // (Instrument Serif itálica), 'wide' (Archivo larga e leve), 'heavy'
+        // (condensada e pesada), 'staff' (a palavra na pauta, letras = notas),
+        // 'pixel' (os pixels do punho montam a palavra), 'clock' (o relógio
+        // entra no lugar do que está entre parênteses). Letras entre colchetes
+        // ficam em itálico. sentence = a frase inteira (leitores de tela).
         b: {
           sentence: 'Repare no ritmo desta página. Nada surge antes da hora.',
-          before: ['Repare no ritmo', 'desta página.'],
-          after: ['Nada surge', 'antes da hora.'],
+          before: [[['Repare'], ['no', 'serif'], ['ritmo', 'staff']], [['desta', 'wide'], ['p[á]gin[a].']]],
+          after: [[['Nada', 'heavy'], ['surge', 'pixel']], [['antes', 'serif'], ['da', 'wide'], ['h(o)ra.', 'clock']]],
+          // fio de cima = cabeçalho de partitura; fio de baixo = player
+          score: ['partitura nº 05 ·', 'ritmo desta página', 'música e letra: miguel & thiago'],
+          player: { playing: 'tocando', paused: 'pausa', held: 'fermata', track: 'faixa 05' },
+          hint: ['role para tocar ↓', 'a tempo ↓'],
         },
       },
       lines: [
@@ -347,8 +357,12 @@ export const strings = {
         },
         b: {
           sentence: 'Notice the pace of this page. Nothing appears before its time.',
-          before: ['Notice the pace', 'of this page.'],
-          after: ['Nothing appears', 'before its time.'],
+          before: [[['Notice'], ['the', 'serif'], ['pace', 'staff']], [['of this', 'wide'], ['p[a]ge.']]],
+          // "time" não tem O: o relógio entra no lugar do ponto final
+          after: [[['Nothing', 'heavy'], ['appears', 'pixel']], [['before', 'serif'], ['its', 'wide'], ['time(.)', 'clock']]],
+          score: ['score no. 05 ·', 'the pace of this page', 'music & lyrics: miguel & thiago'],
+          player: { playing: 'playing', paused: 'paused', held: 'fermata', track: 'track 05' },
+          hint: ['scroll to play ↓', 'a tempo ↓'],
         },
       },
       lines: [

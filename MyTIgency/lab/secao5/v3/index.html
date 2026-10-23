@@ -1,0 +1,157 @@
+<!doctype html>
+<!-- LAB: seção 5 do Manifesto, v3 ("depois"; a v2 — "antes" — continua em
+     /lab/secao5/). Mudanças da análise:
+     - composição lateral: frase 1 | régua | frase 2, numa linha só; a câmera
+       segue a régua, então a frase 2 só entra quando a cabeça chega lá;
+     - uma família (Archivo, uma largura) + mono de apoio; exceção única: HORA;
+     - o cursor 3D não vira mão: ele clica o "play" da régua, se desfaz nos
+       próprios pixels, que viram a cabeça da régua e depois montam SURGE;
+     - paradas da régua = os capítulos reais da página; a cabeça mostra o tempo
+       real que a pessoa está na página;
+     - ritmo batida/pausa (a cabeça anda e para em cada capítulo; as palavras
+       entram secas, uma por batida); ~3,8 telas em vez de 7,3;
+     - vermelho só no HORA, com o mesmo pincel que riscou "promessas".
+     Só em dev: /lab/secao5/v3/. Não entra no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Seção 5 · v3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --paper: #f4f3ef; --ink: #141414; --dim: #8a8a84; --accent: #FF4438;
+      --fs: clamp(32px, 4.4vw, 92px); /* corpo das duas frases */
+    }
+    html, body { margin: 0; background: var(--ink); color: var(--paper); }
+    .stage { position: fixed; inset: 0; overflow: hidden; }
+    .track { position: absolute; left: 0; top: 0; height: 100vh; width: 400vw; will-change: transform; }
+    .scene { position: absolute; top: 0; height: 100vh; display: flex; align-items: center; }
+    .scene--a { left: 0; width: 100vw; justify-content: center; }
+    .a-txt {
+      margin: 0; display: flex; flex-direction: column; align-items: center; white-space: nowrap; color: #6a6a64;
+      font: 500 clamp(40px, 6.6vw, 124px)/.9 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.05em; text-transform: uppercase;
+    }
+
+    /* ---------- seção 5: frase 1 | régua | frase 2 ---------- */
+    .row { display: flex; align-items: center; gap: 2.6vw; white-space: nowrap; }
+    .line {
+      margin: 0; font: 500 var(--fs)/.94 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.045em; text-transform: uppercase;
+    }
+    /* lugar da régua: a linha da escala fica na altura do meio das frases */
+    /* largura: frase 1 + régua + frase 2 cabem numa tela no quadro final */
+    .slot { position: relative; top: -17px; flex: none; width: 20vw; height: 34px; }
+
+    /* frase 2: cada palavra entra seca na sua batida (--in) */
+    .w { --in: 0; display: inline-block; clip-path: inset(-.2em -.3em calc((1 - var(--in)) * 100%) -.3em); /* folga dos lados: o pincel do HORA passa da palavra */ transform: translateY(calc((1 - var(--in)) * .3em)); }
+    /* SURGE: o texto real aparece quando os pixels terminam de montar */
+    .px-word { --crisp: 0; display: inline-block; opacity: var(--crisp); }
+    /* HORA: o pincel do marcador (s4-brush.svg) passa por trás da palavra
+       inteira — marca-texto, não risco (o risco é o gesto que nega "promessas") */
+    .hora { position: relative; display: inline-block; isolation: isolate; }
+    .hora svg {
+      position: absolute; left: -6%; top: 2%; width: 112%; height: 96%; z-index: -1; overflow: visible;
+      clip-path: inset(-60% calc((1 - var(--mark, 0)) * 100%) -60% 0);
+    }
+    .hora path { fill: var(--accent); }
+
+    /* camadas: texto < régua < cursor 3D e pixels < faixa */
+    .cursor-cv, .px-cv { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 3; pointer-events: none; }
+    .px-cv { image-rendering: pixelated; }
+    canvas.ribbon { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 4; pointer-events: none; filter: drop-shadow(0 10px 30px rgba(0,0,0,.35)); }
+
+    /* régua: a do rodapé (.ms-ruler do site) sobe e encaixa entre as frases */
+    .ruler {
+      position: fixed; left: 0; top: 0; width: 100px; height: 34px; z-index: 2; pointer-events: none;
+      font: 400 10px/1 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--dim);
+    }
+    .ruler-scale {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 10px;
+      border-bottom: 1px solid rgba(244,243,239,.4);
+      background:
+        repeating-linear-gradient(to right, rgba(244,243,239,.45) 0 1px, transparent 1px 10%) bottom / 100% 10px no-repeat,
+        repeating-linear-gradient(to right, rgba(244,243,239,.22) 0 1px, transparent 1px 1%) bottom / 100% 5px no-repeat;
+    }
+    .ruler-path { position: absolute; bottom: -1px; height: 2px; left: 0; width: 100%; background: rgba(244,243,239,.12); }
+    .ruler-path i { position: absolute; inset: 0; background: rgba(244,243,239,.75); transform: scaleX(0); transform-origin: left center; }
+    .stop { position: absolute; transform: translateX(-50%); white-space: nowrap; transition: color .3s; }
+    .stop b { font-weight: 500; }
+    /* paradas antigas (rodapé do site): acima da escala, como lá */
+    .stop.old { bottom: 15px; }
+    .stop.old::after { content: ''; position: absolute; left: 50%; top: calc(100% + 3px); width: 1px; height: 14px; background: currentColor; }
+    .stop.old b { color: var(--paper); }
+    /* capítulos: abaixo da escala; acendem (batida) quando a cabeça chega */
+    .stop.cue { top: calc(100% + 9px); }
+    .stop.cue::before { content: ''; position: absolute; left: 50%; bottom: calc(100% + 2px); width: 1px; height: 6px; background: currentColor; transition: height .3s, bottom .3s; }
+    .stop.cue.on { color: var(--paper); }
+    .stop.cue.on::before { height: 14px; bottom: calc(100% + 2px); }
+    /* cabeça: um fio + o tempo real na página (os pixels do cursor pousam em cima) */
+    .head { position: absolute; left: 0; bottom: 0; will-change: transform; }
+    .head i { position: absolute; left: 0; bottom: 0; width: 1px; height: 26px; background: var(--paper); }
+    .head span { position: absolute; left: 7px; bottom: 15px; color: var(--paper); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .head.end span { left: auto; right: 7px; }
+
+    /* marca do clique (a mesma do esbarrão), em papel: o vermelho é do HORA */
+    .impact { position: fixed; width: 54px; height: 54px; margin: -27px 0 0 -27px; z-index: 3; pointer-events: none; opacity: 0; }
+    .impact svg { width: 100%; height: 100%; overflow: visible; }
+    .impact line { stroke: var(--paper); stroke-width: 5; stroke-linecap: round; }
+    .impact.on { animation: impact .55s cubic-bezier(.2,.8,.3,1) both; }
+    @keyframes impact { 0% { opacity: 1; transform: scale(.35) rotate(-8deg); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3) rotate(4deg); } }
+
+    .panel {
+      position: fixed; left: 12px; top: 12px; width: 200px; padding: 10px 12px; z-index: 10;
+      background: rgba(20,20,20,.92); border: 1px solid #333; border-radius: 6px;
+      font: 400 11px/1.35 'JetBrains Mono', monospace; color: #cfcfc8;
+    }
+    .panel h1 { margin: 0 0 6px; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+    .panel button { font: inherit; color: inherit; background: #222; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; cursor: pointer; margin-top: 6px; }
+    .panel a { display: block; margin-top: 8px; color: inherit; }
+    .panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .panel .phase { margin: 6px 0 0; color: var(--dim); }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="track">
+      <section class="scene scene--a" aria-hidden="true">
+        <p class="a-txt"><span>Por isso, em vez de</span><span>promessas,</span><span>preferimos mostrar.</span></p>
+      </section>
+      <section class="scene scene--b">
+        <h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">Repare no ritmo desta página. Nada surge antes da hora.</h2>
+        <div class="row" aria-hidden="true">
+          <div class="block block-a">
+            <p class="line">Repare no ritmo</p>
+            <p class="line">desta página.</p>
+          </div>
+          <div class="slot"></div>
+          <div class="block block-b">
+            <p class="line"><span class="w" data-cue="nada">Nada</span> <span class="px-word" data-cue="surge">Surge</span></p>
+            <p class="line"><span class="w" data-cue="antes">antes</span> <span class="w" data-cue="da">da</span> <span class="w hora" data-cue="hora"><svg preserveAspectRatio="none"></svg>hora.</span></p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="ruler" aria-hidden="true">
+    <div class="ruler-scale"></div>
+    <div class="ruler-path"><i></i></div>
+    <div class="stops"></div>
+    <div class="head"><i></i><span>00:00</span></div>
+  </div>
+  <canvas class="cursor-cv" aria-hidden="true"></canvas>
+  <canvas class="px-cv" aria-hidden="true"></canvas>
+  <canvas class="ribbon" aria-hidden="true"></canvas>
+  <div class="impact" aria-hidden="true"><svg viewBox="-50 -50 100 100"></svg></div>
+  <form class="panel" onsubmit="return false">
+    <h1>LAB — Seção 5 · v3</h1>
+    <button type="button" id="restart">↺ topo</button>
+    <p class="phase" id="phase">—</p>
+    <a href="../">← antes (v2)</a>
+    <a href="../v4/">v4 →</a>
+  </form>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
