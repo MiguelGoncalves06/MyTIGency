@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- LAB: seção 6 do Manifesto, v2 — "A pauta" (coda). "Linha" é linha de
+     texto e linha da pauta: a seção 5 deixou uma pauta (RITMO) e uma fermata;
+     aqui a partitura termina.
+       sistema 1 — "Cada linha foi escrita e posicionada exatamente assim."
+                   pousa NA pauta, palavra a palavra, cada uma numa altura de
+                   nota; embaixo, como letra da música, "Você não está lendo
+                   sobre o nosso trabalho." ("lendo" riscado pelo pincel).
+       sistema 2 — a coda: "você está" como indicação de andamento, e
+                   VIVENCIANDO com as letras em alturas de nota, como o RITMO.
+       por fim a cabeça de leitura TOCA a partitura (cada nota soa, a letra
+       acende), a barra dupla fecha e entra o "fine".
+     As linhas são cordas: com mouse, passar o cursor por elas também as toca.
+     A v1 (wrapped da visita) fica em /lab/secao6/.
+     Só em dev: /lab/secao6/v2/. Não entra no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Seção 6 · v2 A pauta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    .p6 { gap: 3.5vh; }
+    /* um sistema = uma pauta; tudo posicionado em px pelo JS (measure) */
+    .sys { position: relative; width: 100%; }
+    .staff { position: absolute; left: 0; top: 0; overflow: visible; }
+    .staff .str { fill: none; stroke: var(--paper); stroke-opacity: .3; stroke-width: 1; }
+    .staff .str.hot { stroke: var(--accent); stroke-opacity: .9; }
+    .staff .bar { stroke: var(--paper); stroke-opacity: .45; stroke-width: 1; }
+    .staff .bar-end { stroke: var(--paper); stroke-width: 5; }
+    .staff .head { stroke: var(--accent); stroke-width: 2; }
+
+    .meter-big { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+      font: 900 1px/1 'Archivo', sans-serif; font-stretch: 62%; color: var(--paper); }
+    /* notas = palavras: a linha de base pousa na altura da nota */
+    .nw, .nl { position: absolute; left: 0; top: 0; white-space: nowrap; line-height: 1;
+      font-family: 'Archivo', sans-serif; font-weight: 500; font-stretch: 88%; letter-spacing: -.03em; text-transform: uppercase; color: var(--paper);
+      transition: color .5s; }
+    .nw.ring, .nl.ring { color: var(--accent); transition: none; }
+    .nl { font-weight: 900; font-stretch: 62%; letter-spacing: 0; }
+    .nl.dot { color: var(--accent); }
+    /* letra da música: embaixo da pauta, apagada até a cabeça de leitura passar */
+    .ly { position: absolute; left: 0; top: 0; white-space: nowrap; line-height: 1;
+      font-family: 'Instrument Serif', serif; font-style: italic; color: #6a6a64; transition: color .6s; }
+    .ly.lit { color: var(--paper); }
+    .ly.strike-w { position: absolute; }
+    .ly.strike-w.is-hollow { color: transparent; }
+    .tempo { position: absolute; left: 0; top: 0; white-space: nowrap; line-height: 1; font-family: 'Instrument Serif', serif; font-style: italic; color: var(--paper); }
+    .fine { position: absolute; left: 0; top: 0; color: var(--accent); }
+    .in { --in: 0; clip-path: inset(-.4em -.3em calc((1 - var(--in)) * 120%) -.3em); }
+  </style>
+</head>
+<body>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

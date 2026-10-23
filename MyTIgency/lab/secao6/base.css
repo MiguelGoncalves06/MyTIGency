@@ -1,0 +1,54 @@
+/* LAB seção 6 — base comum às versões (fermata da seção 5, trilha lateral,
+   globais do site em réplica, painel). Vem DEPOIS do App.css do site, que
+   traz as classes .s5-* (a seção 5 real, montada por utils/manifestoS5.js). */
+* { box-sizing: border-box; }
+:root { --paper: #f4f3ef; --ink: #141414; --dim: #8a8a84; --hair: rgba(244,243,239,.24); --accent: #FF4438; }
+html, body { margin: 0; background: var(--ink); color: var(--paper); }
+.mono { font: 400 10px/1.25 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+.mono b { color: var(--paper); font-weight: 500; }
+
+/* ---------- globais do site (réplica estática, só para compor) ---------- */
+.g-ticker { position: fixed; left: 0; right: 0; top: 0; height: 26px; z-index: 50; overflow: hidden; border-bottom: 1px solid rgba(244,243,239,.12); background: var(--ink); }
+.g-ticker-in { display: inline-flex; gap: 48px; white-space: nowrap; padding-left: 16px; line-height: 26px; animation: gTicker 60s linear infinite; color: #cfcfc8; }
+.g-ticker-in b { color: var(--dim); font-weight: 400; margin-right: 8px; }
+@keyframes gTicker { to { transform: translateX(-50%); } }
+.g-header { position: fixed; left: 3vw; right: 3vw; top: 42px; z-index: 50; display: flex; align-items: center; gap: 22px; }
+.g-header img { height: 22px; filter: invert(1); margin-right: auto; }
+.ms-grain { position: fixed; inset: 0; z-index: 55; pointer-events: none; opacity: .085; animation: msGrain .5s steps(1) infinite;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -.66'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 180px; }
+@keyframes msGrain {
+  0% { background-position: 0 0; } 17% { background-position: -63px 41px; } 33% { background-position: 97px -88px; }
+  50% { background-position: -121px -37px; } 67% { background-position: 44px 112px; } 83% { background-position: -90px 70px; }
+}
+@media (prefers-reduced-motion: reduce) { .g-ticker-in, .ms-grain { animation: none; } }
+
+/* ---------- trilha: seção 5 (na fermata) | seção 6 ---------- */
+.stage { position: fixed; inset: 0; overflow: hidden; }
+.track { position: absolute; left: 0; top: 0; height: 100vh; width: 200vw; will-change: transform; }
+.scene { position: absolute; top: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; padding: 96px 4vw 56px; }
+.scene--5 { left: 0; }
+.scene--6 { left: 100vw; }
+
+/* fios de cartaz da seção 6: as mesmas peças da 5 (.s5-rule/.s5-pill/.s5-meter) */
+.s6-poster { position: relative; width: min(92vw, 1500px); display: flex; flex-direction: column; gap: 5vh; }
+
+/* pincel do marcador (s4-brush.svg), o mesmo que riscou "promessas" na cena A */
+.strike-w { position: relative; display: inline-block; transition: color .3s; }
+.strike-w.is-hollow { color: transparent; -webkit-text-stroke: 1px #6a6a64; }
+.strike { position: absolute; left: -6%; top: 42%; width: 112%; height: .26em; overflow: visible; pointer-events: none;
+  clip-path: inset(-50% calc((1 - var(--draw, 0)) * 100%) -50% 0); }
+.strike path { fill: var(--accent); }
+
+/* ---------- painel do LAB ---------- */
+/* faixa fina no rodapé, abaixo do cartaz (não cobre a cena) */
+.panel {
+  position: fixed; left: 12px; bottom: 10px; z-index: 60; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  max-width: calc(100vw - 24px); padding: 5px 10px; background: rgba(20,20,20,.92); border: 1px solid #333; border-radius: 6px;
+  font: 400 11px/1.35 'JetBrains Mono', monospace; color: #cfcfc8;
+}
+.panel h1 { margin: 0; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.panel button { font: inherit; color: inherit; background: #222; border: 1px solid #444; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+.panel a { color: inherit; }
+.panel a[aria-current] { color: var(--accent); }
+.panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel .phase { margin: 0; min-width: 22ch; color: var(--dim); }

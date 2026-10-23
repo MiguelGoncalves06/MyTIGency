@@ -1,0 +1,130 @@
+<!doctype html>
+<!-- LAB: seção 6 do Manifesto, v4 — "O editor", no escuro (retorno do
+     usuário sobre a v3, que segue em /lab/secao6/v3/):
+       · fundo preto (#141414, o do segundo ato) e imagens ENTRE as palavras,
+         como num cartaz tipográfico (por ora, peças do kit da MyT que já
+         estão no projeto; as definitivas entram nos mesmos lugares);
+       · lente em anel: cada letra fica num cilindro visto por dentro — as
+         pontas da esquerda e da direita vêm para perto da tela; com o scroll
+         rápido o anel se curva mais e ondula;
+       · efeitos de texto (ref. "Graphic Text Experiment"): as letras entram
+         esticadas, em contorno e borradas, e assentam; o scroll rápido separa
+         o vermelho (RGB) e arrasta um rastro (blur de movimento); com mouse,
+         uma lupa redonda passa por cima e incha as letras;
+       · câmera e cursor com inércia (seguem o alvo, não o scroll cru).
+     Só em dev: /lab/secao6/v4/. Não entra no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Seção 6 · v4 O editor (escuro)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    .scene--6 { padding: 0; background: var(--ink); }
+    .ed { --ui: 1; position: absolute; inset: 0; overflow: hidden; color: var(--paper); }
+    .ed-grid { position: absolute; inset: 0; opacity: calc(var(--ui) * .7); pointer-events: none;
+      background: linear-gradient(rgba(244,243,239,.05) 1px, transparent 1px) 0 0 / 32px 32px,
+                  linear-gradient(90deg, rgba(244,243,239,.05) 1px, transparent 1px) 0 0 / 32px 32px; }
+
+    /* ---------- a composição ---------- */
+    .art-clip { position: absolute; inset: 0; clip-path: inset(calc(var(--ui) * 118px) 0 0 0); }
+    .art { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+    .ln { position: relative; margin: 0; white-space: nowrap;
+      font: 800 var(--fs)/.95 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.045em; }
+    .ed.is-center .ln { text-align: center; }
+    .ed.is-upper .ln { text-transform: uppercase; font-size: calc(var(--fs) * .86); }
+    .ln--grow { font-size: calc(var(--fs) * var(--gs, 1)); }
+    .ed.is-upper .ln--grow { font-size: calc(var(--fs) * .86 * var(--gs, 1)); }
+    /* .t projeta as letras (a lente): a perspectiva mora nele, com a origem no eixo do anel */
+    .t { position: relative; display: inline-block; perspective: 900px; }
+    .lt { display: inline-block; transform-origin: 50% 100%; will-change: transform; white-space: pre; }
+    .lt.ol { color: transparent; -webkit-text-stroke: 1.2px currentColor; }
+    .lt.ol { -webkit-text-stroke-color: var(--paper); }
+    .it .lt { font-style: italic; font-weight: 900; }
+
+    /* imagens entre as palavras: altura de uma caixa-alta, a largura vem da peça */
+    .im { vertical-align: -.04em; }
+    .im img { display: block; height: .74em; width: auto; }
+    .im--inv img { filter: invert(1); }
+    .im--hand { margin-left: .12em; }
+    .im--hand img { width: 1.8em; height: .82em; object-fit: cover; object-position: 52% 50%; transform: scale(1.25); }
+    .im--ticket img { height: .62em; }
+
+    /* "foi escrita": o cursor de texto */
+    .caret { position: absolute; top: .06em; width: .06em; height: .86em; background: var(--accent); opacity: 0; }
+    .caret.on { opacity: 1; animation: caret 1s steps(1) infinite; }
+    @keyframes caret { 50% { opacity: 0; } }
+
+    /* caixa de seleção com alças */
+    .box { position: absolute; left: -.12em; right: -.12em; top: -.02em; bottom: -.08em; border: 1.5px solid var(--paper); opacity: 0; pointer-events: none; }
+    .box i { position: absolute; width: 9px; height: 9px; margin: -5px 0 0 -5px; background: var(--ink); border: 1.5px solid var(--paper); }
+    .box i:nth-child(1) { left: 0; top: 0; } .box i:nth-child(2) { left: 50%; top: 0; } .box i:nth-child(3) { left: 100%; top: 0; }
+    .box i:nth-child(4) { left: 0; top: 100%; } .box i:nth-child(5) { left: 50%; top: 100%; } .box i:nth-child(6) { left: 100%; top: 100%; }
+    .box--red, .box--red i { border-color: var(--accent); }
+
+    /* "exatamente assim.": bloco de papel; as letras cobertas viram tinta */
+    .mark { isolation: isolate; }
+    /* mais largo que o texto: a lente empurra as letras das pontas para fora */
+    .mark::before { content: ''; position: absolute; left: -.42em; right: -.3em; top: .02em; bottom: -.06em; background: var(--paper); transform-origin: left center; transform: scaleX(var(--hl, 0)); z-index: -1; }
+    .mark .lt.inv { color: var(--ink); }
+
+    /* "lendo" */
+    .lasso { position: absolute; left: -.14em; top: -.04em; height: calc(100% + .1em); width: calc((100% + .28em) * var(--mq, 0)); border: 1.5px dashed var(--paper); opacity: 0; pointer-events: none; }
+    .sel { isolation: isolate; }
+    .sel::after { content: ''; position: absolute; left: 0; top: .04em; bottom: -.04em; width: calc(100% * var(--sel, 0)); background: rgba(255,68,56,.5); z-index: -1; }
+    .ed .strike { top: 40%; z-index: 1; }
+    .strike-w.is-hollow .lt { color: transparent; -webkit-text-stroke: 1px #8a8a84; }
+
+    .tag { position: absolute; padding: 5px 10px; border-radius: 6px; background: var(--accent); color: var(--paper); white-space: nowrap;
+      font: 500 11px/1 'JetBrains Mono', monospace; letter-spacing: .04em; opacity: 0; transform: rotate(-4deg) scale(.9); transform-origin: left center; }
+    .tag.on { opacity: var(--ui); transform: rotate(-4deg) scale(1); transition: opacity .2s, transform .35s cubic-bezier(.2,1.4,.4,1); }
+    .snap { position: absolute; color: var(--accent); opacity: 0; font: 500 10px/1 'JetBrains Mono', monospace; }
+
+    /* ---------- interface do editor (some no "apresentar") ---------- */
+    .chrome { opacity: var(--ui); }
+    .guide { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,68,56,.55); pointer-events: none; }
+    .guide.flash { background: var(--accent); box-shadow: 0 0 0 1px rgba(255,68,56,.35); }
+    .bar { position: absolute; left: 3vw; right: 3vw; top: 84px; display: flex; align-items: center; gap: 22px;
+      font: 500 11px/1 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--paper); }
+    .bar .sp { flex: 1; }
+    .bar .doc { color: var(--dim); }
+    .present { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 6px; background: var(--paper); color: var(--ink); transition: transform .12s, background .12s; }
+    .present svg { width: 8px; height: 9px; fill: currentColor; }
+    .present.press { transform: scale(.94); background: var(--accent); color: var(--paper); }
+    .panels { position: absolute; right: 3vw; top: 130px; width: clamp(180px, 15vw, 240px); display: flex; flex-direction: column; gap: 10px; }
+    .pn { background: #1c1c1c; border: 1px solid rgba(244,243,239,.14); border-radius: 6px; font: 400 10px/1.3 'JetBrains Mono', monospace; color: var(--paper); }
+    .pn h3 { margin: 0; padding: 7px 10px; border-bottom: 1px solid rgba(244,243,239,.1); font: 500 10px/1 'JetBrains Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .pn dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; margin: 0; padding: 8px 10px; }
+    .pn dt { color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+    .pn dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+    .pn ol { list-style: none; margin: 0; padding: 4px 0; }
+    .pn li { display: flex; gap: 8px; padding: 3px 10px; opacity: .25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pn li.made { opacity: 1; }
+    .pn li.on { background: var(--accent); }
+    .pn li b { font-weight: 500; }
+    @media (max-width: 1100px) { .panels { display: none; } }
+
+    /* lupa (só com mouse): o anel que passa por cima e incha as letras */
+    .loupe { position: absolute; left: 0; top: 0; border: 2px solid var(--paper); border-radius: 50%; pointer-events: none; opacity: 0; z-index: 4;
+      transition: opacity .35s; mix-blend-mode: difference; }
+
+    /* cursor do editor */
+    .cur { position: absolute; left: 0; top: 0; width: 26px; height: 26px; pointer-events: none; z-index: 5; will-change: transform; }
+    .cur svg { position: absolute; left: 0; top: 0; display: none; overflow: visible; }
+    .cur[data-m="arrow"] .c-arrow, .cur[data-m="move"] .c-arrow, .cur[data-m="move"] .c-move, .cur[data-m="text"] .c-text, .cur[data-m="resize"] .c-resize { display: block; }
+    .cur .c-arrow, .cur .c-resize { width: 16px; height: 22px; }
+    .cur .c-move { left: 16px; top: 16px; width: 14px; height: 14px; }
+    .cur .c-text { width: 10px; height: 22px; left: -5px; top: -11px; }
+    .cur path { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; }
+    .cur .c-text path, .cur .c-move path { fill: none; stroke: var(--paper); stroke-width: 1.6; }
+
+    .panel .seg { display: inline-flex; }
+    .panel .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  </style>
+</head>
+<body>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

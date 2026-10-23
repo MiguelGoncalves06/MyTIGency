@@ -1,0 +1,146 @@
+<!doctype html>
+<!-- LAB: seção 6 do Manifesto, v5 — "O editor", refinamentos da v4
+     (que segue em /lab/secao6/v4/):
+       1. grade do fundo entra suave na troca 5 → 6 (a seção 5 não tem grade)
+          e fica desfocada no canto esquerdo (duas camadas: nítida e borrada,
+          com máscaras opostas);
+       2. o cursor do editor ficou menor; o cursor DE QUEM VISITA vira uma bola
+          branca que inverte a cor (como o do título do footer) — no site, a
+          seção recebe data-cursor="hidden" e o mesmo ponto do footer;
+       3. o texto passa a ser desenhado em WebGL (v5/gl.js): cada linha nasce
+          curvada para trás nas pontas (como puxada), esticada, com onda,
+          rastro de luz, desfocada e com RGB separado, e assenta nítida e reta
+          — motion de motion graphics, com inércia; "lendo" vira halftone
+          escorrendo; a bola do cursor incha o texto por baixo.
+     O DOM continua medindo o layout (o texto dele fica transparente) e a
+     interface do editor (caixas, cursor de texto, risco, etiquetas) vem por
+     cima, numa camada própria. Sem WebGL, o DOM volta a mostrar o texto.
+     Só em dev: /lab/secao6/v5/. Não entra no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Seção 6 · v5 O editor (WebGL)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    .scene--6 { padding: 0; background: var(--ink); }
+    .ed { --ui: 1; --grid: 0; position: absolute; inset: 0; overflow: hidden; color: var(--paper); }
+    .ed.has-ball { cursor: none; }
+
+    /* grade em WebGL (v5/gl.js): entra em pixels e se mistura em pontilhado no canto esquerdo */
+    .grid-gl { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .ed.grid-on .ed-grid { display: none; }
+    /* sem WebGL: nítida à direita, borrada no canto esquerdo; entra com a troca de seção */
+    .ed-grid { position: absolute; inset: 0; pointer-events: none; opacity: calc(var(--ui) * var(--grid)); }
+    .g-sharp {
+      background: linear-gradient(rgba(244,243,239,.06) 1px, transparent 1px) 0 0 / 32px 32px,
+                  linear-gradient(90deg, rgba(244,243,239,.06) 1px, transparent 1px) 0 0 / 32px 32px;
+      -webkit-mask-image: radial-gradient(140% 120% at 0% 55%, transparent 18%, #000 58%);
+              mask-image: radial-gradient(140% 120% at 0% 55%, transparent 18%, #000 58%);
+    }
+    .g-soft {
+      background: linear-gradient(rgba(244,243,239,.09) 2px, transparent 2px) 0 0 / 32px 32px,
+                  linear-gradient(90deg, rgba(244,243,239,.09) 2px, transparent 2px) 0 0 / 32px 32px;
+      filter: blur(3px);
+      -webkit-mask-image: radial-gradient(140% 120% at 0% 55%, #000 20%, transparent 60%);
+              mask-image: radial-gradient(140% 120% at 0% 55%, #000 20%, transparent 60%);
+    }
+
+    /* ---------- a composição ---------- */
+    .art-clip { position: absolute; inset: 0; clip-path: inset(calc(var(--ui) * 118px) 0 0 0); }
+    .art { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+    .gl { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .ln { position: relative; margin: 0; white-space: nowrap;
+      font: 800 var(--fs)/.95 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.045em; }
+    .ed.is-center .ln { text-align: center; }
+    .ed.is-upper .ln { text-transform: uppercase; font-size: calc(var(--fs) * .86); }
+    .ln--grow { font-size: calc(var(--fs) * var(--gs, 1)); }
+    .ed.is-upper .ln--grow { font-size: calc(var(--fs) * .86 * var(--gs, 1)); }
+    .t { position: relative; display: inline-block; }
+    .lt { display: inline-block; white-space: pre; }
+    .it .lt { font-style: italic; font-weight: 900; }
+    /* com WebGL, o texto do DOM só mede (e as imagens seguem no DOM) */
+    .ed.gl-on .lt:not(.im) { color: transparent; }
+
+    .im { vertical-align: -.04em; will-change: transform, opacity, filter; }
+    .im img { display: block; height: .74em; width: auto; }
+    .im--inv img { filter: invert(1); }
+    .im--hand { margin-left: .12em; }
+    .im--hand img { width: 1.8em; height: .82em; object-fit: cover; object-position: 52% 50%; transform: scale(1.25); }
+    .im--ticket img { height: .62em; }
+
+    /* fundos que ficam ATRÁS do texto (no DOM, sob o WebGL) */
+    .mark { isolation: isolate; }
+    .mark::before { content: ''; position: absolute; left: -.1em; right: -.1em; top: .02em; bottom: -.06em; background: var(--paper); transform-origin: left center; transform: scaleX(var(--hl, 0)); z-index: -1; }
+    .ed:not(.gl-on) .mark .lt.inv { color: var(--ink); }
+    .sel { isolation: isolate; }
+    .sel::after { content: ''; position: absolute; left: 0; top: .04em; bottom: -.04em; width: calc(100% * var(--sel, 0)); background: rgba(255,68,56,.5); z-index: -1; }
+
+    /* camada da frente: a interface que fica SOBRE o texto, uma caixa por linha */
+    .fg { pointer-events: none; }
+    .fgl { position: absolute; left: 0; top: 0; line-height: .95; }
+    .caret { position: absolute; top: .06em; width: .06em; height: .86em; background: var(--accent); opacity: 0; }
+    .caret.on { opacity: 1; animation: caret 1s steps(1) infinite; }
+    @keyframes caret { 50% { opacity: 0; } }
+    .box { position: absolute; left: -.12em; right: -.12em; top: -.02em; bottom: -.08em; border: 1.5px solid var(--paper); opacity: 0; }
+    .box i { position: absolute; width: 9px; height: 9px; margin: -5px 0 0 -5px; background: var(--ink); border: 1.5px solid var(--paper); }
+    .box i:nth-child(1) { left: 0; top: 0; } .box i:nth-child(2) { left: 50%; top: 0; } .box i:nth-child(3) { left: 100%; top: 0; }
+    .box i:nth-child(4) { left: 0; top: 100%; } .box i:nth-child(5) { left: 50%; top: 100%; } .box i:nth-child(6) { left: 100%; top: 100%; }
+    .box--red, .box--red i { border-color: var(--accent); }
+    .lasso { position: absolute; left: -.14em; top: -.04em; height: calc(100% + .1em); width: calc((100% + .28em) * var(--mq, 0)); border: 1.5px dashed var(--paper); opacity: 0; }
+    .ed .strike { top: 40%; }
+    .tag { position: absolute; padding: 5px 10px; border-radius: 6px; background: var(--accent); color: var(--paper); white-space: nowrap;
+      font: 500 11px/1 'JetBrains Mono', monospace; letter-spacing: .04em; opacity: 0; transform: rotate(-4deg) scale(.9); transform-origin: left center; }
+    .tag.on { opacity: var(--ui); transform: rotate(-4deg) scale(1); transition: opacity .2s, transform .35s cubic-bezier(.2,1.4,.4,1); }
+    .snap { position: absolute; color: var(--accent); opacity: 0; font: 500 10px/1 'JetBrains Mono', monospace; white-space: nowrap; }
+
+    /* ---------- interface do editor ---------- */
+    .chrome { opacity: var(--ui); }
+    .guide { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,68,56,.55); pointer-events: none; }
+    .guide.flash { background: var(--accent); box-shadow: 0 0 0 1px rgba(255,68,56,.35); }
+    .bar { position: absolute; left: 3vw; right: 3vw; top: 84px; display: flex; align-items: center; gap: 22px;
+      font: 500 11px/1 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--paper); }
+    .bar .sp { flex: 1; }
+    .bar .doc { color: var(--dim); }
+    .present { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 6px; background: var(--paper); color: var(--ink); transition: transform .12s, background .12s; }
+    .present svg { width: 8px; height: 9px; fill: currentColor; }
+    .present.press { transform: scale(.94); background: var(--accent); color: var(--paper); }
+    .panels { position: absolute; right: 3vw; top: 130px; width: clamp(180px, 15vw, 240px); display: flex; flex-direction: column; gap: 10px; }
+    .pn { background: #1c1c1c; border: 1px solid rgba(244,243,239,.14); border-radius: 6px; font: 400 10px/1.3 'JetBrains Mono', monospace; color: var(--paper); }
+    .pn h3 { margin: 0; padding: 7px 10px; border-bottom: 1px solid rgba(244,243,239,.1); font: 500 10px/1 'JetBrains Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .pn dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; margin: 0; padding: 8px 10px; }
+    .pn dt { color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+    .pn dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+    .pn ol { list-style: none; margin: 0; padding: 4px 0; }
+    .pn li { display: flex; gap: 8px; padding: 3px 10px; opacity: .25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pn li.made { opacity: 1; }
+    .pn li.on { background: var(--accent); }
+    .pn li b { font-weight: 500; }
+    @media (max-width: 1100px) { .panels { display: none; } }
+
+    /* cursor do editor (o roteirizado): menor que na v4 */
+    .cur { position: absolute; left: 0; top: 0; width: 18px; height: 18px; pointer-events: none; z-index: 5; will-change: transform; }
+    .cur svg { position: absolute; left: 0; top: 0; display: none; overflow: visible; }
+    .cur[data-m="arrow"] .c-arrow, .cur[data-m="move"] .c-arrow, .cur[data-m="move"] .c-move, .cur[data-m="text"] .c-text, .cur[data-m="resize"] .c-resize { display: block; }
+    .cur .c-arrow, .cur .c-resize { width: 11px; height: 15px; }
+    .cur .c-move { left: 11px; top: 11px; width: 10px; height: 10px; }
+    .cur .c-text { width: 7px; height: 15px; left: -3.5px; top: -7.5px; }
+    .cur path { fill: var(--paper); stroke: var(--ink); stroke-width: 1.4; }
+    .cur .c-text path, .cur .c-move path { fill: none; stroke: var(--paper); stroke-width: 1.8; }
+
+    /* cursor de quem visita: a bola que inverte a cor (= .talk-cursor-dot do footer) */
+    .ball { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; mix-blend-mode: difference; will-change: transform; }
+    .ball::before { content: ''; display: block; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff;
+      opacity: 0; transform: scale(0); transition: opacity .2s ease, transform .3s cubic-bezier(.14,1,.34,1); }
+    .ball.is-visible::before { opacity: 1; transform: scale(1); }
+
+    .panel .seg { display: inline-flex; }
+    .panel .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  </style>
+</head>
+<body>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
