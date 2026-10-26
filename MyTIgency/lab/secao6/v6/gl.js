@@ -216,12 +216,10 @@ void main() {
   float vis = step(t2, edge);
   float fresh = vis * (1.0 - step(t2, edge - 0.45));
   a *= vis;
-  // células que acabaram de entrar acendem (papel e, poucas, vermelho), e apagam
+  // células que acabaram de entrar acendem em papel, de leve, e apagam (sem vermelho)
   float lit = fresh * step(0.82, hash(cell + boil)) * (1.0 - uReveal * 0.5);
-  float red = lit * step(0.6, hash(cell * 1.3 + 7.0));
-  vec3 col = vec3(0.957, 0.953, 0.937) * (a + lit * 0.10 * (1.0 - red)) + vec3(1.0, 0.267, 0.22) * red * 0.35;
-  float alpha = a + lit * 0.10 * (1.0 - red) + red * 0.35;
-  gl_FragColor = vec4(col, alpha) * uUi;
+  float alpha = a + lit * 0.10;
+  gl_FragColor = vec4(vec3(0.957, 0.953, 0.937) * alpha, alpha) * uUi;
 }`
 
 export function mountTextGL(canvas) {
@@ -281,8 +279,12 @@ export function mountTextGL(canvas) {
       u,
       /** desenha a linha: glyphs [{ch, x, top, h}] em px do .t; pad em px; res = px de textura por px css */
       draw({ width, height, font, glyphs, pad, res }) {
-        cv.width = Math.ceil((width + pad.x * 2) * res)
-        cv.height = Math.ceil((height + pad.y * 2) * res)
+        const tw = Math.ceil((width + pad.x * 2) * res)
+        const th = Math.ceil((height + pad.y * 2) * res)
+        // o three reserva o espaço da textura uma vez só: mudou o tamanho, precisa recriar
+        if (tw !== cv.width || th !== cv.height) tex.dispose()
+        cv.width = tw
+        cv.height = th
         ctx.setTransform(res, 0, 0, res, 0, 0)
         ctx.clearRect(0, 0, cv.width, cv.height)
         ctx.font = font

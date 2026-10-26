@@ -236,8 +236,12 @@ export function mountTextGL(canvas) {
       u,
       /** desenha a linha: glyphs [{ch, x, top, h}] em px do .t; pad em px; res = px de textura por px css */
       draw({ width, height, font, glyphs, pad, res }) {
-        cv.width = Math.ceil((width + pad.x * 2) * res)
-        cv.height = Math.ceil((height + pad.y * 2) * res)
+        const tw = Math.ceil((width + pad.x * 2) * res)
+        const th = Math.ceil((height + pad.y * 2) * res)
+        // o three reserva o espaço da textura uma vez só: mudou o tamanho, precisa recriar
+        if (tw !== cv.width || th !== cv.height) tex.dispose()
+        cv.width = tw
+        cv.height = th
         ctx.setTransform(res, 0, 0, res, 0, 0)
         ctx.clearRect(0, 0, cv.width, cv.height)
         ctx.font = font

@@ -110,7 +110,7 @@ const TOOLS = [
 
 mountLab({
   title: 'LAB — Seção 6 · v6 elementos',
-  links: [['../v5/', 'v5 · webgl'], ['./', 'v6 · elementos', true]],
+  links: [['../v5/', 'v5 · webgl'], ['./', 'v6 · elementos', true], ['../v7/', 'v7 · revisão']],
   controls: '<span class="seg"><button type="button" data-al="left" aria-pressed="true">esquerda</button><button type="button" data-al="center" aria-pressed="false">centro</button></span>'
     + '<span class="seg"><button type="button" data-case="normal" aria-pressed="true">Aa</button><button type="button" data-case="upper" aria-pressed="false">AA</button></span>'
     + '<span class="seg"><button type="button" data-fx="on" aria-pressed="true">efeitos</button><button type="button" data-fx="off" aria-pressed="false">sem</button></span>'
