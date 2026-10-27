@@ -1493,7 +1493,7 @@
   .s5-fermata .arc{ fill:none; stroke:var(--accent); stroke-width:9; stroke-linecap:round; stroke-dasharray:1; stroke-dashoffset:var(--draw, 1); }
   .s5-fermata .dot{ fill:var(--accent); transform-box:fill-box; transform-origin:center; transform:scale(var(--dot, 0)); }
   /* canvas da mão/punho, dos pixels e das notas: fixo, acima da régua e do cursor 3D, abaixo do header */
-  .s5-cv{ position:fixed; inset:0; width:100vw; height:100vh; z-index:42; pointer-events:none; image-rendering:pixelated; }
+  .s5-cv, .s6-cv{ position:fixed; inset:0; width:100vw; height:100vh; z-index:42; pointer-events:none; image-rendering:pixelated; }
   .s5-impact{ position:fixed; z-index:42; }
   /* a régua do rodapé nas mãos da seção 5: posição/escala pelo JS, sem a
      transição de transform (ela acompanha o punho quadro a quadro) */
@@ -1502,6 +1502,34 @@
   .ms-ruler.is-s5 .ms-ruler-stop{ transform-origin:50% calc(100% + 15px); }
   /* no fim da varredura a leitura (%) passa para dentro da régua, longe da frase 2 */
   .ms-ruler.is-s5 .ms-ruler-head.end span{ transform:translateX(calc(-100% - 16px)); }
+  /* cadeado: pendurado na ponta esquerda da régua, a alça passando pela linha
+     da escala; branco com o brilho do cursor em dither. Entra trancado quando a
+     régua encaixa e destrava (--open) antes da pegada (manifestoS5.js) */
+  .ms-ruler-lock{ position:absolute; left:8px; top:calc(100% - 7px); width:15px; height:18px; opacity:0;
+    transform-origin:50% 0; filter:drop-shadow(0 0 6px rgba(244,243,239,.45)); --open:0; }
+  .ms-ruler-lock svg{ display:block; width:100%; height:100%; overflow:visible; }
+  .ms-ruler-lock .shackle{ fill:none; stroke:#f4f3ef; stroke-width:2.8; stroke-linecap:round;
+    transform-box:fill-box; transform-origin:100% 100%; transform:translateY(calc(var(--open) * -3.5px)) rotate(calc(var(--open) * 28deg)); }
+  .ms-ruler-lock .body{ fill:#f4f3ef; }
+  .ms-ruler-lock .hole{ fill:none; stroke:#141414; stroke-width:2.4; stroke-linecap:round; }
+  /* luz que percorre a régua quando ela destrava (--glint 0→1): acende só os
+     traços da escala e a linha de base (máscara com o mesmo desenho dela) e
+     deixa um halo baixo e difuso passando por baixo */
+  .ms-ruler-scale::before, .ms-ruler-scale::after{ content:''; position:absolute; pointer-events:none; opacity:var(--glint-a, 0); }
+  .ms-ruler-scale::after{ inset:0 0 -1px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.5) 35%, #fff 50%, rgba(255,255,255,.5) 65%, transparent) no-repeat;
+    background-size:12% 100%; background-position:calc(var(--glint, 0) * 124% - 12%) 0;
+    -webkit-mask:
+      repeating-linear-gradient(to right, #000 0 1px, transparent 1px 10%) bottom / 100% 10px no-repeat,
+      repeating-linear-gradient(to right, #000 0 1px, transparent 1px 1%) bottom / 100% 5px no-repeat,
+      linear-gradient(#000, #000) bottom / 100% 1px no-repeat;
+    mask:
+      repeating-linear-gradient(to right, #000 0 1px, transparent 1px 10%) bottom / 100% 10px no-repeat,
+      repeating-linear-gradient(to right, #000 0 1px, transparent 1px 1%) bottom / 100% 5px no-repeat,
+      linear-gradient(#000, #000) bottom / 100% 1px no-repeat; }
+  .ms-ruler-scale::before{ left:0; right:0; bottom:-9px; height:18px; border-radius:50%;
+    background:radial-gradient(closest-side, rgba(244,243,239,.35), transparent) no-repeat;
+    background-size:16% 100%; background-position:calc(var(--glint, 0) * 119% - 9.5%) 0; filter:blur(4px); }
   /* pontas de metal da fita: só aparecem enquanto a régua se fecha */
   .ms-ruler-cap{ position:absolute; bottom:-3px; width:3px; height:16px; background:var(--rl-ink); opacity:0; transform-origin:50% 100%; }
   .ms-ruler-cap--l{ left:-2px; }
@@ -1532,6 +1560,127 @@
   .ma-ring{ position:absolute; left:-8%; top:-22%; width:116%; height:144%; overflow:visible; }
   .ma-ring-art{ fill:var(--accent); }
   .ma-ring-pen{ fill:none; stroke:#fff; stroke-width:16; stroke-linecap:round; stroke-linejoin:round; }
+
+  /* ---------- Manifesto · seção 6 (o editor; utils/manifestoS6.js) ----------
+     Uma tela à direita da seção 5; o deslocamento lateral é do hook
+     (translate). Texto em WebGL (o DOM mede e fica transparente), a
+     interface do editor por cima, a grade de pontos atrás. Portado do
+     /lab/secao6/v11 (classes com prefixo s6-). */
+  .ma-c{ transform:translateX(100vw); padding:0; }
+  .s6{ position:absolute; inset:0; --paper:#f4f3ef; --ink:#141414; --dim:#8a8a84; }
+  .s6-ed{ --ui:1; --grid:0; position:absolute; inset:0; overflow:hidden; color:var(--paper); }
+  .s6-ed.has-ball{ cursor:none; }
+  /* grade em WebGL: entra em pixels e se mistura em pontilhado no canto esquerdo */
+  .s6-grid-gl{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .s6-ed.grid-on .s6-grid{ display:none; }
+  /* sem WebGL: os pontos em CSS, parados; entram com a troca de seção */
+  .s6-grid{ position:absolute; inset:0; pointer-events:none; opacity:calc(var(--ui) * var(--grid));
+    background:radial-gradient(circle, rgba(244,243,239,.2) 1px, transparent 1.6px) 16px 16px / 32px 32px; }
+
+  /* a composição (centrada, caixa alta) */
+  .s6-clip{ position:absolute; inset:0; clip-path:inset(calc(var(--ui) * 118px) 0 0 0); }
+  .s6-art{ position:absolute; left:0; top:0; transform-origin:0 0; will-change:transform; }
+  .s6-gl{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .s6-ln{ position:relative; margin:0; white-space:nowrap; text-align:center; text-transform:uppercase;
+    font:800 calc(var(--fs) * .86)/1.06 'Archivo', sans-serif; font-stretch:88%; letter-spacing:-.045em; } /* acentos das maiúsculas precisam de ar */
+  .s6-ln--grow{ font-size:calc(var(--fs) * .86 * var(--gs, 1)); }
+  .s6-t{ position:relative; display:inline-block; }
+  /* tipo largo para contraste */
+  .s6-ln--wide{ font-stretch:125%; letter-spacing:-.035em; font-size:calc(var(--fs) * .8); }
+  .s6-lt{ display:inline-block; white-space:pre; }
+  .s6-it .s6-lt{ font-style:italic; font-weight:900; }
+  /* com WebGL, o texto do DOM só mede (e as imagens seguem no DOM) */
+  .s6-ed.gl-on .s6-lt:not(.s6-im){ color:transparent; }
+  /* imagens: retângulos na altura das maiúsculas, na linha de base (o WebGL desenha a foto: dither → cor) */
+  .s6-im{ width:1.9em; height:.72em; margin:0 .04em; border-radius:.03em; vertical-align:0; }
+  .s6-ed:not(.gl-on) .s6-im{ background:#3a3a3a; }
+  /* o "+" de "+ E POSICIONADA": a foto recortada em quadrado, na altura das letras */
+  .s6-im--sq{ width:.74em; height:.74em; margin-right:.12em; }
+  /* o vão de CADA – LINHA: a régua (a do rodapé, trazida pelo punho) vira a
+     "linha", com a escala no meio da altura das letras; a largura vem do JS */
+  .s6-slot{ height:.72em; margin:0 .16em; vertical-align:0; }
+  /* sem a régua de verdade (mobile, reduced motion): uma régua parada no lugar */
+  .s6-ed.is-still .s6-slot{
+    background:
+      linear-gradient(rgba(244,243,239,.4), rgba(244,243,239,.4)) 0 calc(50% + 5px) / 100% 1px no-repeat,
+      linear-gradient(var(--accent), var(--accent)) 0 calc(50% + 6px) / 100% 2px no-repeat,
+      repeating-linear-gradient(to right, rgba(244,243,239,.45) 0 1px, transparent 1px 10%) 0 50% / 100% 10px no-repeat,
+      repeating-linear-gradient(to right, rgba(244,243,239,.22) 0 1px, transparent 1px 2%) 0 calc(50% + 2.5px) / 100% 5px no-repeat; }
+  /* fundos que ficam ATRÁS do texto (no DOM, sob o WebGL) */
+  .s6-mark{ isolation:isolate; }
+  .s6-mark::before{ content:''; position:absolute; left:-.1em; right:-.1em; top:.02em; bottom:.04em; background:var(--paper);
+    transform-origin:left center; transform:scaleX(var(--hl, 0)); z-index:-1; } /* não cobrir os acentos da linha de baixo */
+  /* "lendo" oca sem WebGL (com WebGL, o contorno é do shader) */
+  .s6-ed:not(.gl-on) .s6-hollow.is-hollow .s6-lt{ color:transparent; -webkit-text-stroke:1.5px rgba(244,243,239,.6); }
+
+  /* camada da frente: a interface que fica SOBRE o texto, uma caixa por linha */
+  .s6-fg{ pointer-events:none; }
+  .s6-fgl{ position:absolute; left:0; top:0; line-height:.95; }
+  .s6-caret{ position:absolute; top:.06em; width:.06em; height:.86em; background:var(--accent); opacity:0; }
+  .s6-caret.on{ opacity:1; animation:s6Caret 1s steps(1) infinite; }
+  .s6-caret.on.typing{ animation:none; } /* digitando: fixo; parado: pisca */
+  @keyframes s6Caret{ 50%{ opacity:0; } }
+  .s6-box{ position:absolute; left:-.12em; right:-.12em; top:-.02em; bottom:-.08em; border:1.5px solid var(--accent); opacity:0; }
+  .s6-box i{ position:absolute; width:9px; height:9px; margin:-5px 0 0 -5px; background:var(--ink); border:1.5px solid var(--accent); }
+  .s6-box i:nth-child(1){ left:0; top:0; } .s6-box i:nth-child(2){ left:50%; top:0; } .s6-box i:nth-child(3){ left:100%; top:0; }
+  .s6-box i:nth-child(4){ left:0; top:100%; } .s6-box i:nth-child(5){ left:50%; top:100%; } .s6-box i:nth-child(6){ left:100%; top:100%; }
+  .s6-tag{ position:absolute; padding:5px 10px; border-radius:6px; background:var(--accent); color:var(--paper); white-space:nowrap;
+    font:500 11px/1 'JetBrains Mono', monospace; letter-spacing:.04em; opacity:0; transform:rotate(-4deg) scale(.9); transform-origin:left center; }
+  .s6-tag.on{ opacity:var(--ui); transform:rotate(-4deg) scale(1); transition:opacity .2s, transform .35s cubic-bezier(.2,1.4,.4,1); }
+  .s6-tag--paper{ background:var(--paper); color:var(--ink); }
+  .s6-snap{ position:absolute; color:var(--accent); opacity:0; font:500 10px/1 'JetBrains Mono', monospace; white-space:nowrap; transition:opacity .3s; }
+  /* "← 0 px" e "x · y" ficam no cartaz final (as outras etiquetas saem com a interface) */
+  .s6-tag-xy.on{ opacity:1; }
+  /* stop-motion de 2 poses: rotate/translate soltos (fora da transição do transform),
+     então a troca de pose é seca, em degrau */
+  .s6-tag[data-pose="1"]{ rotate:2deg; translate:1px -1px; }
+  .s6-box[data-pose="1"]{ rotate:-.25deg; }
+  .s6-box[data-pose="1"] i{ translate:1px -1px; }
+  .s6-scr[data-pose="0"] .p1, .s6-scr[data-pose="1"] .p0{ display:none; }
+  /* rabiscos à mão: passadas finas de caneta, desenhadas no scroll (dashoffset por passada) */
+  .s6-scr{ position:absolute; overflow:visible; pointer-events:none; }
+  .s6-scr path{ fill:none; stroke:var(--accent); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1 1; stroke-dashoffset:1; }
+  .s6-scr--strike{ left:-8%; top:28%; width:116%; height:.42em; }
+  .s6-scr--circle{ top:-.3em; height:1.46em; }
+  .s6-scr--under{ left:-3%; width:106%; top:calc(100% + .02em); height:.16em; }
+  .s6-scr--arrow{ right:13%; top:calc(100% + .2em); width:.6em; height:.38em; opacity:var(--ui); }
+  /* a etiqueta tem corpo próprio (11 px): a posição usa o corpo da linha (--lfs) */
+  .s6-tag-hand{ left:calc(87% - var(--lfs) * .04); top:calc(100% + var(--lfs) * .6); }
+  /* tecla ENTER (render do Blender): uma "letra" do texto, 3 poses empilhadas, uma visível por vez */
+  .s6-kc{ position:relative; height:.98em; aspect-ratio:440 / 312; margin-left:-.06em; vertical-align:-.2em; opacity:0; transform-origin:50% 85%; }
+  .s6-kc.on{ opacity:1; }
+  .s6-kc img{ position:absolute; inset:0; width:100%; height:100%; display:none; }
+  .s6-kc[data-s="idle"] .k-idle, .s6-kc[data-s="pose2"] .k-pose2, .s6-kc[data-s="pressed"] .k-pressed{ display:block; }
+  /* marca de impacto do clique (= .ms-impact da seção 2) */
+  .s6-impact{ position:absolute; left:0; top:0; width:64px; height:64px; margin:-32px 0 0 -32px; z-index:4; pointer-events:none; opacity:0; }
+  .s6-impact svg{ width:100%; height:100%; overflow:visible; }
+  .s6-impact line{ stroke:var(--accent); stroke-width:6; stroke-linecap:round; }
+  .s6-impact.on{ animation:msImpact .55s cubic-bezier(.2,.8,.3,1) both; }
+
+  /* interface do editor */
+  .s6-chrome{ opacity:var(--ui); }
+  .s6-guide{ position:absolute; top:0; bottom:0; width:1px; background:rgba(255,68,56,.55); pointer-events:none; }
+  .s6-guide.flash{ background:var(--accent); box-shadow:0 0 0 1px rgba(255,68,56,.35); }
+  /* abaixo do header (o MENU fica no canto de cima), na altura do painel de ferramentas */
+  .s6-bar{ position:absolute; left:3vw; right:3vw; top:140px; display:flex; align-items:center; gap:22px;
+    font:500 11px/1 'JetBrains Mono', monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--paper); }
+  .s6-sp{ flex:1; }
+  .s6-present{ display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:6px; background:var(--paper); color:var(--ink); transition:background .12s; } /* o tranco do clique vem do JS */
+  .s6-present svg{ width:8px; height:9px; fill:currentColor; }
+  .s6-present.press{ background:var(--accent); color:var(--paper); }
+  /* painel de ferramentas: acende a ferramenta em uso */
+  .s6-tools{ position:absolute; left:1.6vw; top:130px; display:flex; flex-direction:column; gap:2px; padding:4px;
+    background:#1c1c1c; border:1px solid rgba(244,243,239,.14); border-radius:6px; }
+  .s6-tools i{ display:grid; place-items:center; width:26px; height:26px; border-radius:4px; color:var(--dim); transition:background .2s, color .2s; }
+  .s6-tools i.on{ background:var(--accent); color:var(--paper); }
+  .s6-tools svg{ width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.4; stroke-linecap:round; stroke-linejoin:round; }
+  .s6-tools svg .fill{ fill:currentColor; stroke:none; }
+  @media(max-width:1100px){ .s6-tools{ display:none; } }
+  /* cursor de quem visita: a bola que inverte a cor (= .talk-cursor-dot do footer) */
+  .s6-ball{ position:absolute; left:0; top:0; z-index:6; pointer-events:none; mix-blend-mode:difference; will-change:transform; }
+  .s6-ball::before{ content:''; display:block; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; background:#fff;
+    opacity:0; transform:scale(0); transition:opacity .2s ease, transform .3s cubic-bezier(.14,1,.34,1); }
+  .s6-ball.is-visible::before{ opacity:1; transform:scale(1); }
   @media(max-width:700px){
     /* empilhado: seção escura no fluxo, sem cortina (o scroll é vertical) */
     .ms-act2{ position:relative; top:auto; height:auto; visibility:visible; background:#141414; --grain:1; }
@@ -1544,6 +1693,8 @@
     .ma-ribbon{ display:none; }
     /* seção 5 empilhada e parada no estado final: frase 1, frase 2, sem régua */
     .ma-b{ transform:none; justify-content:center; padding:96px 16px; }
+    /* seção 6 empilhada: só o cartaz final, parado (sem a interface do editor) */
+    .ma-c{ transform:none; padding:0; }
     .s5{ --fs:clamp(28px, 8.4vw, 52px); }
     .s5-poster{ gap:5vh; }
     .s5-row{ flex-direction:column; align-items:flex-start; gap:4vh; white-space:normal; }
@@ -1581,6 +1732,9 @@
   }
   html.ms-dark .ms-ruler{ --rl-ink:#f4f3ef; --rl-bg:#141414; --rl-dim:#8a8a84; }
   .ms-ruler.on{ opacity:calc(1 - var(--act2-dip, 0)); transform:none; } /* mergulha durante a cortina do segundo ato e volta */
+  /* na seção 6 a régua é a "linha" de CADA LINHA (manifestoS6.js): presa ao
+     texto quadro a quadro, fica até o cartaz final, mesmo depois do pin */
+  .ms-ruler.is-s6{ left:0; top:0; right:auto; bottom:auto; opacity:1; transition:none; transform-origin:0 0; }
   .ms-ruler-scale{
     position:absolute; left:0; right:0; bottom:0; height:10px;
     border-bottom:1px solid color-mix(in srgb, var(--rl-ink) 40%, transparent);

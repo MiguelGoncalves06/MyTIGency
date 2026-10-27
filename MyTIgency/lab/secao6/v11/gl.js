@@ -206,7 +206,9 @@ void main() {
   vec2 d = abs(fract(p / 32.0 + 0.5) - 0.5) * 32.0;
   float w = mix(0.8, 3.4, left);
   float pt = 1.0 - smoothstep(0.0, w * 0.6 + 0.9, length(d));
-  float a = pt * mix(0.22, 0.16, left) * kept;
+  // e cada ponto acende aos poucos (opacidade), com o próprio atraso, junto da formação
+  float lag = hash(floor(p / 32.0 + 0.5)) * 0.5;
+  float a = pt * mix(0.22, 0.16, left) * kept * smoothstep(lag, lag + 0.5, form);
   // o pisca: um limiar Bayer em células de 3 px que ferve a 12,5 quadros/s;
   // a densidade cresce com a formação, e no canto esquerdo fica rala para sempre
   float boil = floor(uTime * 12.5);

@@ -20,9 +20,20 @@
 //           emerge quando a cabeça passa.
 //   end   — o relógio gira e assenta; o marca-texto passa por trás; a caneta
 //           desenha a fermata (segure). O player fica em fermata e a dica vira
-//           "a tempo".
+//           "a tempo". Desde que a régua encaixa no lugar (fim do arrasto),
+//           um cadeado branco fica pendurado nela, trancado.
+//   take  — o cadeado destrava (a alça abre com mola, ele balança) e a régua
+//           sobe um pouco, com um brilho correndo a escala; os pixels de cima do
+//           SURGE se soltam (a palavra fica danificada, o resto intacto) e
+//           viram o punho em dither direto na régua, que aperta; só o
+//           cadeado some (a régua vai inteira).
+//   carry — (no deslocamento para a seção 6, do hook) o punho leva a régua,
+//           encolhendo um pouco, até logo acima do vão entre CADA e LINHA,
+//           inclinada; dali em diante a régua e o cursor são da seção 6
+//           (manifestoS6.js), que a assenta.
 // Tudo o que é posição é função pura do scroll; o que é RESPOSTA (cordas,
 // notas, faíscas, player) e o ponteiro dos segundos andam no tempo real.
+import { HAND, HAND_TIP, FIST, FIST_C, GRAB_AT, GRIP_Y, EDITOR_CELL, RULER_SEAT, PAL, RIM, DCELL, shadeOf, drawSprite } from './ditherSprite'
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
 const ramp = (p, a, b) => clamp01((p - a) / (b - a))
@@ -38,7 +49,14 @@ const bez = (p0, p1, p2, p3, u) => {
 }
 
 // Fases depois do deslocamento, em alturas de tela de scroll
-const VH = { reach: 0.6, grab: 0.3, drag: 1.2, sweep: 2.4, end: 1.0 }
+const VH = { reach: 0.6, grab: 0.3, drag: 1.2, sweep: 2.4, end: 1.0, take: 0.9 }
+// dentro de take (frações): o cadeado destrava, a régua sobe com o brilho, os
+// pixels voam do SURGE e o punho se forma onde eles chegam e aperta; o
+// cadeado some
+const TAKE = { unlock: [0, 0.3], rise: [0.04, 0.64], fly: [0.1, 0.66], form: [0.26, 0.68], press: [0.66, 0.94], fade: [0.6, 0.96] }
+const LOCK_AT = [0.62, 0.8] // o cadeado entra (fração do arrasto) depois que a régua encaixa (SHUT[1])
+const RISE_PX = 5 // quanto a régua sobe ao destravar
+const CARRY_LIFT = 0.08 // quanto o punho ergue a régua no meio do caminho (alturas de tela)
 const REDUCED_VH = 0.3 // reduced motion: só o bastante para a seção ficar na tela
 // sem etapas: o punho começa a se desfazer BURST_LEAD antes de a régua assentar
 // e a cabeça parte HEAD_LEAD antes do fim do arrasto, junto com os pixels
@@ -50,8 +68,6 @@ const ROW_FIT = 0.92 // a linha inteira (frase 1 + régua + frase 2) cabe nisso
 const APEX_LIFT = 0.2 // quanto acima da pauta fica o alto do arco (alturas de tela)
 const VIRADA = 0.08 // meia-duração da virada em torno do alto (alturas de tela de scroll)
 const AWAY_DIR = 0.22 // direção do cursor ao lado do olho (useManifestoHorizontal)
-const GRAB_AT = 0.68 // onde o punho segura a régua (entre "traço" e "quem")
-const GRIP_Y = 30 // px do topo da régua até onde o punho a segura
 const HAND_SCALE = 0.55 // altura da mão/punho em relação ao cursor 3D ao lado do olho
 const DRAG_LEAD = 0.3 // o arrasto começa nesta fração final do aperto (sem pausa)
 // régua se fechando como fita métrica: as pontas recolhem acelerando entre
@@ -74,59 +90,6 @@ const PLUCK_GLOW = 420
 const PLUCK_SPEED = 1.3
 const PLUCK_AMP = 7
 
-// dither do cursor 3D (cursor3d.js): 4 cinzas, Bayer 8×8, células de 3 px na tela, borda vermelha
-const PAL = ['#141414', '#5f5f5f', '#b9b9b9', '#ffffff']
-const RIM = '#ff4438'
-const DCELL = 3
-const fr = (v) => v - Math.floor(v)
-const b2 = (x, y) => { x = Math.floor(x); y = Math.floor(y); return fr(x * 0.5 + y * y * 0.75) }
-const b8 = (x, y) => b2(x * 0.25, y * 0.25) * 0.0625 + b2(x * 0.5, y * 0.5) * 0.25 + b2(x, y)
-
-// Mão de link (k contorno, w miolo), apontando para cima; girada para a direita
-// (como o cursor ao lado do olho). Ponta do dedo: coluna 20, linha 7 da girada.
-const HAND_UP = [
-  '......kk.........',
-  '.....kwwk........',
-  '.....kwwk........',
-  '.....kwwk........',
-  '.....kwwk........',
-  '.....kwwkkk......',
-  '.....kwwkwwkkk...',
-  '.....kwwkwwkwwkk.',
-  '.kk..kwwkwwkwwkwk',
-  'kwwk.kwwwwwwwwkwk',
-  'kwwwkkwwwwwwwwwwk',
-  '.kwwwkwwwwwwwwwwk',
-  '..kwwwwwwwwwwwwwk',
-  '..kwwwwwwwwwwwwwk',
-  '...kwwwwwwwwwwwwk',
-  '...kwwwwwwwwwwwk.',
-  '....kwwwwwwwwwwk.',
-  '....kwwwwwwwwwk..',
-  '.....kwwwwwwwwk..',
-  '.....kwwwwwwwwk..',
-  '.....kkkkkkkkkk..',
-]
-const HAND = [...HAND_UP[0]].map((_, c) => HAND_UP.map((row) => row[c]).reverse().join(''))
-const HAND_TIP = [HAND_UP.length - 1, 7]
-// Punho de "arrastando". Centro: coluna 8, linha 7.
-const FIST = [
-  '.....kk.kk.kk....',
-  '....kwwkwwkwwkk..',
-  '..kkkwwkwwkwwkwk.',
-  '.kwwkwwkwwkwwkwk.',
-  '.kwwkwwwwwwwwkwk.',
-  '.kwwwwwwwwwwwwwk.',
-  'kwwwwwwwwwwwwwwk.',
-  'kwwwwwwwwwwwwwwk.',
-  '.kwwwwwwwwwwwwwk.',
-  '..kwwwwwwwwwwwk..',
-  '..kwwwwwwwwwwwk..',
-  '...kwwwwwwwwwk...',
-  '...kwwwwwwwwwk...',
-  '....kkkkkkkkk....',
-]
-const FIST_C = [8, 7]
 // notas em pixel (as que saem das cordas tocadas)
 const NOTES = [
   ['...#..', '...##.', '...#.#', '...#..', '...#..', '.###..', '####..', '.##...'],
@@ -152,23 +115,6 @@ function rng(seed) {
   }
 }
 
-// desenho em pixel → grade de luminância para o dither (luz de cima/esquerda;
-// o contorno do lado de trás pega a luz vermelha, como no cursor 3D)
-function shadeOf(art) {
-  const rows = art.length
-  const cols = art[0].length
-  const grid = art.map((row, r) => [...row].map((ch, c) => {
-    if (ch === '.') return null
-    const k = ch === 'k'
-    const shade = !k && (row[c + 1] === 'k' || art[r + 1]?.[c] === 'k')
-    const light = 1.08 - 0.5 * (r / rows) - 0.18 * (c / cols)
-    const rim = k && (row[c - 1] === '.' || row[c - 1] === undefined) && r > rows * 0.15
-    return { l: (k ? 0.22 : shade ? 0.62 : 0.95) * light, rim }
-  }))
-  const cells = []
-  grid.forEach((row, r) => row.forEach((g, c) => { if (g) cells.push({ c, r, ...g }) }))
-  return { grid, rows, cols, cells }
-}
 
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 // [x] = letra em itálico
@@ -295,8 +241,13 @@ export function mountS5(host, { ruler = null } = {}) {
     impact.innerHTML = '<svg viewBox="-50 -50 100 100">'
       + [0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<line x1="0" y1="-16" x2="0" y2="-34" transform="rotate(${a})"/>`).join('') + '</svg>'
     document.body.append(impact)
-    ruler.insertAdjacentHTML('beforeend', '<i class="ms-ruler-cap ms-ruler-cap--l"></i><i class="ms-ruler-cap ms-ruler-cap--r"></i>')
+    ruler.insertAdjacentHTML('beforeend', '<i class="ms-ruler-cap ms-ruler-cap--l"></i><i class="ms-ruler-cap ms-ruler-cap--r"></i>'
+      // cadeado (sticker): trava a régua em 100% e destrava antes da pegada
+      + '<span class="ms-ruler-lock"><svg viewBox="0 0 24 26"><path class="shackle" d="M7.5 12V8.5a4.5 4.5 0 0 1 9 0V12"/>'
+      + '<rect class="body" x="4" y="11" width="16" height="12" rx="2.5"/><path class="hole" d="M12 15.5v3.5"/></svg></span>')
   }
+  const lock = ruler?.querySelector('.ms-ruler-lock')
+  const rPath = ruler?.querySelector('.ms-ruler-path')
   const rScale = ruler?.querySelector('.ms-ruler-scale')
   const rFill = ruler?.querySelector('.ms-ruler-path i')
   const rHead = ruler?.querySelector('.ms-ruler-head')
@@ -355,6 +306,9 @@ export function mountS5(host, { ruler = null } = {}) {
         cloud: [(rand() - 0.5) * 160, (rand() - 0.5) * 90 - 20],
         rise: [(rand() - 0.5) * 80, -(90 + rand() * 220)],
         dl: rand() * 0.35,
+        // as duas fileiras de cima do SURGE se soltam de novo na pegada (take):
+        // onde cada uma chega na mão (frações do desenho) e quando sai (da esquerda)
+        take: t && t.r <= 1 ? { u: rand(), v: rand(), at: (t.c / PX_COLS) * 0.6 + rand() * 0.15 } : null,
       }
     })
   }
@@ -437,6 +391,7 @@ export function mountS5(host, { ruler = null } = {}) {
   const headT = (d5) => easeInOut(ramp(d5, HS0(), HS1()))
   const dAt = (y) => HS0() + easeInOutInv(y) * (HS1() - HS0()) // scroll em que a cabeça chega na fração y
   const endE = (d5) => ramp(d5, dAt(WORD_AT[WORD_AT.length - 1] - 0.02), P.end + VH.end * H)
+  const takeT = (d5) => ramp(d5, P.take, P.take + VH.take * H)
 
   // ----- régua: rodapé → à direita da frase 1, presa ao punho, fechando -----
   const gripAt = (g, G0, dg) => [lerp(G0[0], dg[0], easeInOut(ramp(g, 0.15, 1))), lerp(G0[1], dg[1], easeInOut(ramp(g, 0, 0.8)))]
@@ -451,6 +406,19 @@ export function mountS5(host, { ruler = null } = {}) {
     const prev = gripAt(Math.max(0, gD - 0.03), G0, dg)
     return { gD, dock, G0, grip, prev, rw, box: { x: grip[0] - rw * GRAB_AT, y: grip[1] - GRIP_Y, w: rw } }
   }
+  // no deslocamento para a seção 6 (carry.k 0→1): a régua sai da doca e vai, no
+  // punho, até o vão do texto de lá (carry.slot: a caixa dela lá, px de tela)
+  function carriedBox(R, carry) {
+    const k = carry?.slot ? clamp01(carry.k) : 0
+    if (k <= 0) return { ...R.box, k: 0, tilt: 0 }
+    const s = carry.slot
+    // x linear: as duas cenas andam juntas com o scroll, então na tela a régua vai
+    // reto da doca ao vão (sem escorregar com a seção 5 antes); y e largura com
+    // curva; chega RULER_SEAT acima do vão, inclinada (a seção 6 a assenta)
+    const e = easeInOut(k)
+    const y = lerp(R.box.y, s.y - RULER_SEAT.lift * H, e) - Math.sin(Math.PI * k) * CARRY_LIFT * H
+    return { x: lerp(R.box.x, s.x, k), y, w: lerp(R.box.w, s.w, e), k, tilt: RULER_SEAT.tilt * e - Math.sin(Math.PI * k) * 3 }
+  }
 
   let owning = false
   function releaseRuler() {
@@ -462,11 +430,14 @@ export function mountS5(host, { ruler = null } = {}) {
     caps.forEach((el) => { el.style.opacity = '' })
     rStops.forEach((el) => Object.assign(el.style, { transform: '', opacity: '' }))
     if (rHead) { rHead.style.opacity = rFill.style.opacity = ''; rHead.classList.remove('end') } // o resto (posição, %) o hook reescreve
+    if (lock) lock.style.opacity = lock.style.transform = ''
+    if (rPath) rPath.style.opacity = ''
   }
 
   /** o que é posição pelo scroll (DOM): frase 1, frase 2, relógio, fermata, régua.
-   *  sceneX = translate da cena B; layerTop = topo da camada do segundo ato na tela */
-  function update(d5raw, sceneX, layerTop = 0) {
+   *  sceneX = translate da cena B; layerTop = topo da camada do segundo ato na tela;
+   *  carry = { k, slot, handed } no deslocamento para a seção 6 (handed: a régua é dela) */
+  function update(d5raw, sceneX, layerTop = 0, carry = null) {
     if (!slotL) return
     const d5 = at5(d5raw)
     // frase 1: letra a letra enquanto entra; a palavra na pauta inteira (opacidade, desfoque)
@@ -521,15 +492,25 @@ export function mountS5(host, { ruler = null } = {}) {
     // régua (desktop): só nas mãos da seção 5 depois que a faixa começa
     if (!ruler || reduce) return
     if (d5raw <= 0) { releaseRuler(); return }
+    if (carry?.handed) return // a seção 6 já está com ela
     if (!owning) { owning = true; ruler.classList.add('is-s5') }
     const R = rulerState(d5, sceneX, layerTop)
-    const { gD, grip, prev, box } = R
+    const { gD, grip, prev } = R
+    const tk = takeT(d5)
+    const box = carriedBox(R, carry)
     const speed = clamp01((rwAt(gD - 0.012, R.dock.w) - R.rw) / (bottomBox.w * 0.035))
     const snapT = ramp(gD, SHUT[1] - 0.02, SHUT[1] + 0.26)
     const jolt = Math.sin(snapT * Math.PI * 3) * (1 - snapT)
-    const tilt = Math.max(-4, Math.min(4, (grip[0] - prev[0]) * 0.025 - (grip[1] - prev[1]) * 0.02)) + jolt * 1.2
+    // destravar: a régua sobe um pouco, solta, e um brilho corre a escala; no
+    // transporte inclina para o lado em que vai e chega inclinada sobre o vão
+    const ru = ramp(tk, ...TAKE.rise)
+    const rise = Math.sin(Math.PI * ru) * RISE_PX * (1 - box.k)
+    // a luz atravessa com curva (acelera e assenta) e acende/apaga nas pontas
+    ruler.style.setProperty('--glint', `${sineInOut(ru).toFixed(4)}`)
+    ruler.style.setProperty('--glint-a', `${(Math.sin(Math.PI * ru) ** 0.5).toFixed(3)}`)
+    const tilt = Math.max(-4, Math.min(4, (grip[0] - prev[0]) * 0.025 - (grip[1] - prev[1]) * 0.02)) + jolt * 1.2 + box.tilt
     Object.assign(ruler.style, {
-      transform: `translate(${box.x}px, ${box.y - jolt * 5}px) rotate(${tilt}deg)`,
+      transform: `translate(${box.x}px, ${box.y - jolt * 5 - rise}px) rotate(${tilt}deg)`,
       transformOrigin: `${GRAB_AT * 100}% ${GRIP_Y}px`,
       width: `${box.w}px`,
     })
@@ -553,10 +534,20 @@ export function mountS5(host, { ruler = null } = {}) {
     const headOn = d5 < B0() ? 1 - ramp(gD, 0.05, 0.3) : ramp(d5, B0(), HS0() + 0.08 * H)
     rHead.style.transform = `translateX(${hp * box.w}px)`
     rHead.classList.toggle('end', hp > 0.95)
+    // na pegada (take) só o cadeado some; a régua vai inteira para a seção 6
+    const fade = ramp(tk, ...TAKE.fade)
     rHead.style.opacity = rFill.style.opacity = `${headOn}`
     rVal.textContent = `${String(Math.round(hp * 100)).padStart(3, '0')}%`
     rFill.style.transform = `scaleX(${hp})`
     rStops.forEach((el, i) => el.classList.toggle('on', hp >= rFracs[i] - 0.001))
+    // cadeado: assim que a régua encaixa no lugar, entra de pé (como os rótulos),
+    // trancado; na pegada a alça abre com mola, ele balança e, solto, cai e some
+    const lockIn = ramp(gD, ...LOCK_AT)
+    const open = ramp(tk, ...TAKE.unlock)
+    const swing = Math.sin(open * Math.PI * 2.5) * (1 - open) * 14 + easeOut(open) * 8
+    lock.style.opacity = lockIn > 0 ? `${Math.min(1, lockIn * 3) * (1 - fade)}` : ''
+    lock.style.transform = lockIn > 0 ? `perspective(70px) rotateX(${((1 - easeOut(lockIn)) * 90).toFixed(1)}deg) translateY(${(fade * 10).toFixed(1)}px) rotate(${swing.toFixed(2)}deg)` : ''
+    lock.style.setProperty('--open', `${backOut(open)}`)
   }
   let held = false
 
@@ -669,47 +660,8 @@ export function mountS5(host, { ruler = null } = {}) {
   }
   if (desk && fine && !reduce) window.addEventListener('pointermove', onMove)
 
-  // desenho em pixel no dither do cursor 3D (grade presa à tela). rot: giro em
-  // torno da âncora; flip: escala vertical da tela (a virada: 1 → −1; de lado,
-  // um fio com a borda vermelha); show(t): troca de desenho por limiar de Bayer.
-  function drawDither(art, x, y, ax, ay, show = null, rot = 0, flip = 1) {
-    const c = Math.cos(rot)
-    const s = Math.sin(rot)
-    const toScreen = (lx, ly) => [x + lx * c - ly * s, y + (lx * s + ly * c) * flip]
-    const corners = [[-ax, -ay], [art.cols - ax, -ay], [-ax, art.rows - ay], [art.cols - ax, art.rows - ay]].map(([u, v]) => toScreen(u * HC, v * HC))
-    const gx0 = Math.floor(Math.min(...corners.map((p) => p[0])) / DCELL)
-    const gx1 = Math.floor(Math.max(...corners.map((p) => p[0])) / DCELL)
-    const gy0 = Math.floor(Math.min(...corners.map((p) => p[1])) / DCELL)
-    const gy1 = Math.floor(Math.max(...corners.map((p) => p[1])) / DCELL)
-    const edgeOn = Math.abs(flip) < 0.12
-    const shadeK = 0.55 + 0.45 * Math.min(1, Math.abs(flip))
-    for (let gy = gy0; gy <= gy1; gy++) {
-      for (let gx = gx0; gx <= gx1; gx++) {
-        const t = b8(gx, gy)
-        if (show && !show(t)) continue
-        const dx = gx * DCELL + DCELL / 2 - x
-        const dy = gy * DCELL + DCELL / 2 - y
-        if (edgeOn) {
-          if (Math.abs(dy) > DCELL) continue
-          hx.fillStyle = t < 0.7 ? RIM : PAL[2]
-          hx.fillRect(gx * DCELL, gy * DCELL, DCELL, DCELL)
-          continue
-        }
-        const ry = dy / flip
-        const g = art.grid[Math.floor((-dx * s + ry * c) / HC + ay)]?.[Math.floor((dx * c + ry * s) / HC + ax)]
-        if (!g) continue
-        let col
-        if (g.rim && t < 0.7) col = RIM
-        else {
-          const i = Math.max(0, Math.min(3, Math.floor(g.l * shadeK * 3 + t)))
-          if (i === 0) continue
-          col = PAL[i]
-        }
-        hx.fillStyle = col
-        hx.fillRect(gx * DCELL, gy * DCELL, DCELL, DCELL)
-      }
-    }
-  }
+  // desenho em pixel no dither do cursor 3D (utils/ditherSprite.js), na escala da mão
+  const drawDither = (art, x, y, ax, ay, show = null, rot = 0, flip = 1) => drawSprite(hx, art, x, y, ax, ay, HC, show, rot, flip)
 
   let lastD = null
   let lastNow = 0
@@ -717,6 +669,7 @@ export function mountS5(host, { ruler = null } = {}) {
   let spawnAcc = 0
   let lastTip = null
   let lastPressed
+  let lastTaken
   let clipped = false
   /** sai da seção (antes do fim da cena A): devolve o cursor e limpa o canvas */
   function idle(cursorCanvas) {
@@ -727,7 +680,8 @@ export function mountS5(host, { ruler = null } = {}) {
 
   /**
    * Um quadro (rAF do cursor 3D). ctx: { cur, cursorCanvas, start: [x, y] ponta
-   * ao lado do olho (tela), size, layerTop, sceneX, ribbon: { at(y), reach, half } }
+   * ao lado do olho (tela), size, layerTop, sceneX, ribbon: { at(y), reach, half },
+   * carry: { k, slot, handed } (o deslocamento para a seção 6) }
    */
   function frame(now, d5raw, ctx) {
     if (!slotL || !px) return
@@ -735,7 +689,7 @@ export function mountS5(host, { ruler = null } = {}) {
     const d5 = at5(d5raw)
     const dt = Math.min(0.1, (now - (lastNow || now)) / 1000)
     lastNow = now
-    const { cur, cursorCanvas, start, size, layerTop, sceneX, ribbon } = ctx
+    const { cur, cursorCanvas, start, size, layerTop, sceneX, ribbon, carry } = ctx
     const Y = (y) => y + layerTop
     px.setTransform(dpr, 0, 0, dpr, 0, 0)
     px.clearRect(0, 0, W, H)
@@ -850,6 +804,28 @@ export function mountS5(host, { ruler = null } = {}) {
       if (m < 1.34) drawDither(hand, at[0], y, HAND_TIP[0], HAND_TIP[1], (tb) => tb >= m, rot, flip)
       if (m > 0) drawDither(fist, at[0], y, FIST_C[0], FIST_C[1], (tb) => tb < Math.min(m, keep))
     }
+    // pegada: o punho se forma direto (dos pixels do SURGE) na régua e aperta;
+    // no deslocamento leva a régua, já encolhendo para o tamanho do editor
+    const tk = takeT(d5)
+    const takeBox = carriedBox(R, carry)
+    const takeG = [takeBox.x + takeBox.w * GRAB_AT, takeBox.y + GRIP_Y]
+    const taken = tk >= lerp(...TAKE.press, 0.5)
+    if (taken !== lastTaken) {
+      if (lastTaken !== undefined && taken) {
+        Object.assign(impact.style, { left: `${takeG[0]}px`, top: `${takeG[1]}px` })
+        impact.classList.remove('on')
+        void impact.offsetWidth
+        impact.classList.add('on')
+      }
+      lastTaken = taken
+    }
+    if (tk > 0 && !carry?.handed) {
+      const pk = ramp(tk, ...TAKE.press)
+      const y = takeG[1] - Math.sin(Math.PI * ramp(pk, 0, 0.35)) * HC * 1.4 + Math.sin(Math.PI * ramp(pk, 0.3, 0.8)) * HC * 1.8
+      const form = easeInOut(ramp(tk, ...TAKE.form)) * 1.01
+      const hc = lerp(HC, HC * EDITOR_CELL, takeBox.k)
+      drawSprite(hx, fist, takeG[0], y, FIST_C[0], FIST_C[1], hc, form < 1.01 ? (tb) => tb < form : null)
+    }
     // os pixels voam direto do punho para a palavra, cada um chegando na sua
     // coluna quando a cabeça da régua passa por ela
     if (d5 >= B0()) {
@@ -867,6 +843,23 @@ export function mountS5(host, { ruler = null } = {}) {
         }
         const tx = wordL.x + sceneX + p.word[0]
         const ty = Y(wordL.y) + p.word[1]
+        // pegada: as fileiras de cima do SURGE se soltam (da esquerda) e viram a mão;
+        // o resto da palavra fica (danificada)
+        if (p.take && tk > 0) {
+          const f0 = lerp(TAKE.fly[0], TAKE.fly[1] - 0.3, p.take.at)
+          const f = sineInOut(ramp(tk, f0, f0 + 0.3))
+          if (f >= 1 || carry?.handed) continue
+          if (f > 0) {
+            const hx0 = takeG[0] + (p.take.u - 0.5) * FIST[0].length * HC * 0.8
+            const hy0 = takeG[1] + (p.take.v - 0.5) * FIST.length * HC * 0.8
+            const [x, y] = bez([tx, ty], [tx + p.cloud[0] * 0.4, ty - 0.12 * H], [hx0, hy0 - 0.1 * H], [hx0, hy0], f)
+            const sz = lerp(PC, HC, f)
+            px.globalAlpha = 1
+            px.fillStyle = f < 0.2 ? '#f4f3ef' : p.color
+            px.fillRect(Math.round(x), Math.round(y), Math.ceil(sz), Math.ceil(sz))
+            continue
+          }
+        }
         const qq = sineInOut(ramp(d5, B0() + p.dl * 0.08 * H, dAt(p.frac)))
         const [x, y] = bez(o, [o[0] + p.burst[0] * 1.3, o[1] + p.burst[1] * 1.3], [tx + p.cloud[0], ty + p.cloud[1]], [tx, ty], qq)
         const sway = Math.sin(Math.PI * qq) * Math.sin(d5 * 0.012 + p.dl * 30) * 4
@@ -903,6 +896,10 @@ export function mountS5(host, { ruler = null } = {}) {
     measure,
     length,
     cam,
+    /** px por célula da mão/punho (a seção 6 recebe o punho nessa escala × EDITOR_CELL) */
+    handCell: () => HC,
+    /** largura da régua na doca (px), de onde a seção 6 tira o vão de CADA LINHA */
+    dockWidth: () => slotL?.w ?? 0,
     update,
     frame,
     idle,

@@ -162,7 +162,7 @@ function Graphic({ role }) {
 }
 
 function Act2({ act }) {
-  const { a, b } = act
+  const { a, b, c } = act
   return (
     <section className="ms-act2" aria-labelledby="ma-a-title">
       {/* cortina: a tinta (pixels, canvas) por baixo da caneta (SVG) */}
@@ -216,6 +216,12 @@ function Act2({ act }) {
       <div className="ma-scene ma-b">
         <h2 className="sr-only">{b.sentence}</h2>
         <div className="s5" aria-hidden="true" data-s5={JSON.stringify(b)} />
+      </div>
+      {/* seção 6: o editor, uma tela à direita da 5 (o scroll a traz de lado,
+          1 px = 1 px). DOM e WebGL: utils/manifestoS6.js, a partir destes dados. */}
+      <div className="ma-scene ma-c">
+        <h2 className="sr-only">{c.sentence}</h2>
+        <div className="s6" aria-hidden="true" data-s6={JSON.stringify(c)} />
       </div>
     </section>
   )

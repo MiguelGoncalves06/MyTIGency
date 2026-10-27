@@ -9,6 +9,8 @@ import { warpBrush } from '../utils/manifestoBrush'
 import { buildSplit } from '../utils/manifestoSplit'
 import { mountAct2, PEN_OUT } from '../utils/manifestoAct2'
 import { mountS5 } from '../utils/manifestoS5'
+import { mountS6 } from '../utils/manifestoS6'
+import { EDITOR_CELL } from '../utils/ditherSprite'
 
 gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
 
@@ -45,6 +47,9 @@ const TEXT_AT = 0.85
 // (1 px de scroll = 1 px lateral, como a trilha). Daí em diante a seção 5
 // (utils/manifestoS5.js) dita quanto scroll precisa; sem ela, SCENE_B_VH parado.
 const SCENE_B_VH = 0.6
+// Depois da seção 5, a seção 6 (utils/manifestoS6.js, o editor) entra de lado,
+// uma tela à direita (1 px de scroll = 1 px lateral, a seção 5 sai junto com a
+// régua e a faixa) e então dita quanto scroll precisa.
 // Quanto o cursor 3D e a régua apagam no meio da cortina (0 = nada, 1 = somem)
 const ACT2_DIP = 0.65
 // Cursor sai da frente da frase: começa quando a caneta da cortina evapora
@@ -233,6 +238,7 @@ export function useManifestoHorizontal(rootRef, lang) {
       let pinLen = 1 // pin inteiro: trilha + seção 3 + segundo ato
       let sceneAEnd = 0 // px no pin em que a cena A termina (e a faixa começa)
       let shiftLen = 0 // deslocamento lateral até a seção 5 (px)
+      let s6At = 0 // px no pin em que a seção 6 começa a entrar de lado
       let J = [0, 0] // onde o cursor pega o traço A
       let Jdir = [1, 0]
       let pickS = 0 // comprimento da extensão do traço A até J (unid. do SVG)
@@ -302,6 +308,17 @@ export function useManifestoHorizontal(rootRef, lang) {
       const s5El = act2El?.querySelector('.s5')
       const s5 = s5El ? mountS5(s5El, { ruler }) : null
       const act2 = act2El && mountAct2(act2El, { behind: s3, ribbon: true }) // a seção 3 recua sob a tinta
+      const s6Scene = act2El?.querySelector('.ma-c')
+      const s6El = s5 && s6Scene?.querySelector('.s6')
+      const s6 = s6El ? mountS6(s6El, { ruler }) : null
+      // o deslocamento 5 → 6 (d em px do pin): o punho da seção 5 leva a régua até o
+      // vão da 6 (slot, px de tela); handed = chegou, a régua e o cursor são da 6
+      const carryAt = (d, layerTop) => {
+        if (!s6) return null
+        const slide = Math.min(vw, Math.max(0, d - s6At))
+        const b = slide > 0 ? s6.slotIn() : null
+        return { k: slide / vw, handed: d >= s6At + vw, slot: b && { x: b.x + vw - slide, y: b.y + layerTop, w: b.w } }
+      }
       const maskEl = svg.querySelector('mask')
       const extPath = maskEl.firstChild
       const [, brushArt, motion, seg1] = svg.children
@@ -332,6 +349,8 @@ export function useManifestoHorizontal(rootRef, lang) {
         sceneAEnd = act2At + vh * (CURTAIN_VH + SCENE_A_VH)
         shiftLen = act2?.shiftLength() ?? 0
         pinLen = sceneAEnd + (shiftLen ? shiftLen + (s5 ? s5.length(vh) : vh * SCENE_B_VH) : 0)
+        s6At = pinLen
+        if (s6 && shiftLen) pinLen += vw + vh * s6.length()
         dAway0 = act2At + vh * CURTAIN_VH * PEN_OUT[0]
         dAway1 = act2At + vh * (CURTAIN_VH + SCENE_A_VH * AWAY_END)
         // olho da cena A, já no lugar final (offset* ignora a subida das linhas)
@@ -374,6 +393,7 @@ export function useManifestoHorizontal(rootRef, lang) {
         root.style.setProperty('--ms-travel', `${travelA}px`)
         buildPath()
         s5?.measure({ vw, vh, shift: shiftLen, sceneEndX: act2.sceneEndX(), size: away ? sAway : vh * 0.08, fracs: rFracs })
+        s6?.measure({ vw, vh, dockW: s5.dockWidth(), cell: s5.handCell() * EDITOR_CELL })
       }
 
       // caminho do cursor + traço novo (precisa da seção 3 montada para o vão)
@@ -522,7 +542,13 @@ export function useManifestoHorizontal(rootRef, lang) {
         // faixa → seção 5: deslocamento lateral preso ao scroll (também em reduced motion, como a trilha)
         const b = Math.min(shiftLen, Math.max(0, d - sceneAEnd))
         // seção 5: a câmera anda mais um pouco no arrasto da régua
-        const cam = s5 ? s5.cam(d - sceneAEnd) : 0
+        // seção 6: entra de lado (a cena B, a faixa e a régua saem junto, pela câmera)
+        const slide6 = s6 ? Math.min(vw, Math.max(0, d - s6At)) : 0
+        const cam = (s5 ? s5.cam(d - sceneAEnd) : 0) + slide6
+        if (s6) {
+          s6Scene.style.transform = `translateX(${vw - slide6}px)`
+          s6.scroll(d > s6At ? Math.max(0, d - s6At - vw) / vh : null, slide6 / vw)
+        }
         act2?.update(reduced ? { curtain: curtain > 0 ? 1 : 0, a: curtain > 0 ? 1 : 0, b, cam } : { curtain, a: sceneA, b, cam })
         // cursor 3D e régua seguem no segundo ato (a régua volta a ter papel
         // na seção 5): mergulham devagar durante a cortina e voltam inteiros
@@ -544,7 +570,8 @@ export function useManifestoHorizontal(rootRef, lang) {
         rFill.style.transform = `scaleX(${progress(d)})`
         rStops.forEach((el, i) => el.classList.toggle('on', p >= rFracs[i] - 0.001))
         // seção 5 (frases, relógio, fermata) e, depois da faixa, a régua nas mãos dela
-        s5?.update(d - sceneAEnd, act2.sceneX(), rootDoc - window.scrollY + gsap.getProperty(root, 'y') + s3Top)
+        const layerTop = rootDoc - window.scrollY + gsap.getProperty(root, 'y') + s3Top
+        s5?.update(d - sceneAEnd, act2.sceneX(), layerTop, carryAt(d, layerTop))
       }
 
       // Cursor a cada quadro, dentro do quadro do próprio cursor (antes de
@@ -609,6 +636,7 @@ export function useManifestoHorizontal(rootRef, lang) {
               layerTop: trTop + s3Top,
               sceneX: act2.sceneX(),
               ribbon: { at: act2.ribbonAt, reach: act2.ribbonReach(), half: act2.ribbonHalf() },
+              carry: carryAt(d, trTop + s3Top),
             })
             return
           }
@@ -750,6 +778,8 @@ export function useManifestoHorizontal(rootRef, lang) {
         bootTw?.kill()
         tvCanvas?.tv?.setBoot?.(null)
         s5?.dispose()
+        s6?.dispose()
+        if (s6Scene) s6Scene.style.transform = ''
         act2?.dispose()
         document.documentElement.classList.remove('ms-dark')
         cur?.dispose()
@@ -781,6 +811,9 @@ export function useManifestoHorizontal(rootRef, lang) {
       const s5El = act2El?.querySelector('.s5')
       const s5 = s5El ? mountS5(s5El) : null
       s5?.still()
+      // seção 6 empilhada: o cartaz final, parado (remede sozinha no resize)
+      const s6El = act2El?.querySelector('.s6')
+      const s6 = s6El ? mountS6(s6El, { still: true }) : null
       const act2 = act2El && mountAct2(act2El)
       const act2St = act2 && ScrollTrigger.create({
         trigger: act2El,
@@ -847,6 +880,7 @@ export function useManifestoHorizontal(rootRef, lang) {
         act2St?.kill()
         darkSt?.kill()
         s5?.dispose()
+        s6?.dispose()
         document.documentElement.classList.remove('ms-dark')
         act2?.dispose()
         stm?.kill()

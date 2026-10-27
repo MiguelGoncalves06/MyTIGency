@@ -144,6 +144,18 @@ export const strings = {
           player: { playing: 'tocando', paused: 'pausa', held: 'fermata', track: 'faixa 05' },
           hint: ['role para tocar ↓', 'a tempo ↓'],
         },
+        // Seção 6 (depois da seção 5, no mesmo pin; utils/manifestoS6.js): o
+        // editor. Uma linha por item, sempre 10 (o papel de cada uma é fixo
+        // pela posição: digitada, arrastada, marcada — o círculo abraça a 1ª
+        // palavra —, riscada, larga, a que cresce). '@ruler' = o vão onde a
+        // régua vira a "linha"; '@line' (quadrada, o "+" da linha) e '@ours' =
+        // fotos entre as palavras; '@key' = a tecla ENTER.
+        c: {
+          sentence: 'Cada linha foi escrita e posicionada exatamente assim. Você não está lendo sobre o nosso trabalho. Você está vivenciando.',
+          lines: [['Cada', '@ruler', 'linha'], ['foi escrita ', '@key'], ['@line', 'e posicionada'], ['exatamente assim.'], ['Você não está'],
+            ['lendo'], ['sobre o ', '@ours', ' nosso'], ['trabalho.'], ['Você está'], ['vivenciando.']],
+          tags: { ours: '2 pessoas + café', hand: 'feito à mão', scale: 'escala', present: 'apresentar' },
+        },
       },
       lines: [
         'Na MyTigency, acreditamos que um site não se apresenta. Ele conduz.',
@@ -363,6 +375,12 @@ export const strings = {
           score: ['score no. 05 ·', 'the pace of this page', 'music & lyrics: miguel & thiago'],
           player: { playing: 'playing', paused: 'paused', held: 'fermata', track: 'track 05' },
           hint: ['scroll to play ↓', 'a tempo ↓'],
+        },
+        c: {
+          sentence: "Every line was written and placed exactly like this. You're not reading about our work. You're living it.",
+          lines: [['Every', '@ruler', 'line'], ['was written ', '@key'], ['@line', 'and placed'], ['exactly like this.'], ["You're not"],
+            ['reading'], ['about ', '@ours', ' our'], ['work.'], ["You're"], ['living it.']],
+          tags: { ours: '2 people + coffee', hand: 'handmade', scale: 'scale', present: 'present' },
         },
       },
       lines: [
