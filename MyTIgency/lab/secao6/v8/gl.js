@@ -181,10 +181,13 @@ precision highp float;
 uniform vec2 uRes;
 uniform float uDpr, uReveal, uUi, uTime, uDots;
 uniform vec4 uShock;
+uniform vec3 uClear; // pontos: centro e raio já varridos pela onda (z < 0 = nada varrido)
 ${GLSL_UTIL}
 void main() {
   vec2 p = gl_FragCoord.xy / uDpr;
   p.y = uRes.y - p.y;
+  // pontos: atrás da frente da onda, somem de vez
+  float kept = uClear.z < 0.0 ? 1.0 : smoothstep(uClear.z - 60.0, uClear.z, length(p - uClear.xy));
   // a onda do "apresentar" também passa pela grade
   float shock = 0.0;
   if (uShock.w > 0.01) {
@@ -205,15 +208,16 @@ void main() {
   float l = max(1.0 - smoothstep(0.0, w, d.x), 1.0 - smoothstep(0.0, w, d.y));
   float a = l * mix(0.065, 0.075, left);
   // grade de pontos: só os cruzamentos
-  if (uDots > 0.5) a = (1.0 - smoothstep(0.0, w * 0.6 + 0.9, length(d))) * mix(0.22, 0.16, left);
+  float pt = 1.0 - smoothstep(0.0, w * 0.6 + 0.9, length(d));
+  if (uDots > 0.5) a = pt * mix(0.22, 0.16, left) * kept;
   // o tracejado: um limiar Bayer em células de 3 px ao longo da linha (fina, então vira traço,
   // não quadrado); a densidade cresce com a formação, e no canto esquerdo fica rala
   float boil = floor(uTime * 12.5);
   float th = b4(floor(p / 3.0) + vec2(boil * 1.7, boil * 3.1));
   float dens = form * (1.0 - left * 0.8);
   a *= step(th + 0.001, dens) * (1.0 + left * 0.5);
-  // na onda, as linhas acendem (a grade some junto com a interface, mas a onda ainda a pega)
-  float alpha = a * uUi + l * shock * 0.35 * clamp(uShock.w / 24.0, 0.0, 1.0);
+  // na onda, as linhas (ou os pontos) acendem (a grade some junto com a interface, mas a onda ainda a pega)
+  float alpha = a * uUi + mix(l, pt * 0.6, uDots) * shock * 0.35 * clamp(uShock.w / 24.0, 0.0, 1.0);
   gl_FragColor = vec4(vec3(0.957, 0.953, 0.937) * alpha, alpha);
 }`
 
@@ -383,7 +387,7 @@ export function mountGridGL(canvas) {
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
   const u = {
     uRes: { value: new THREE.Vector2(1, 1) }, uDpr: { value: 1 }, uReveal: { value: 0 }, uUi: { value: 1 },
-    uTime: { value: 0 }, uDots: { value: 0 }, uShock: { value: new THREE.Vector4() },
+    uTime: { value: 0 }, uDots: { value: 0 }, uShock: { value: new THREE.Vector4() }, uClear: { value: new THREE.Vector3(0, 0, -1) },
   }
   const mat = new THREE.ShaderMaterial({
     uniforms: u, fragmentShader: GRID_FRAG,
@@ -402,11 +406,13 @@ export function mountGridGL(canvas) {
       u.uDpr.value = dpr
       last = ''
     },
-    /** reveal 0..1 (entrada), ui 0..1 (some no "apresentar"), dots: grade de pontos, shock: [x, y, raio, força] */
-    render(time, reveal, ui, dots = false, shock = null) {
+    /** reveal 0..1 (entrada), ui 0..1 (some no "apresentar"), dots: grade de pontos, shock: [x, y, raio, força],
+     *  clear: [x, y, raio] já varrido pela onda (os pontos ali não voltam) */
+    render(time, reveal, ui, dots = false, shock = null, clear = null) {
       // o pontilhado "ferve" a 12,5 quadros/s: só redesenha quando algo muda
       const sk = shock ? shock.map((v) => v.toFixed(1)).join(',') : ''
-      const key = `${Math.floor(time * 12.5)}|${reveal.toFixed(4)}|${ui.toFixed(4)}|${dots}|${sk}`
+      const ck = clear ? clear.map((v) => v.toFixed(0)).join(',') : ''
+      const key = `${Math.floor(time * 12.5)}|${reveal.toFixed(4)}|${ui.toFixed(4)}|${dots}|${sk}|${ck}`
       if (key === last) return
       last = key
       u.uDots.value = dots ? 1 : 0
@@ -415,6 +421,8 @@ export function mountGridGL(canvas) {
       u.uUi.value = ui
       if (shock) u.uShock.value.set(...shock)
       else u.uShock.value.w = 0
+      if (clear) u.uClear.value.set(...clear)
+      else u.uClear.value.z = -1
       renderer.render(scene, camera)
     },
   }

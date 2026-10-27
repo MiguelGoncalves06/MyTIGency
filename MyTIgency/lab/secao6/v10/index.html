@@ -1,0 +1,152 @@
+<!doctype html>
+<!-- LAB: seção 6 do Manifesto, v10 — a v9 com o conceito ler (tela: tecla, cursor)
+     × vivenciar (mão: rabisco, foto, papel): fotos em retângulo que entram em dither
+     e assentam em cor, rabiscos à mão em SVG desenhados no scroll, stop-motion de
+     2 poses (etiquetas, caixas, rabiscos, tecla) e a tecla ENTER (render do Blender,
+     lab/secao6/keycap) afundando a cada letra de "foi escrita".
+     Só em dev: /lab/secao6/v10/. Não entra no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAB — Seção 6 · v10</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    .scene--6 { padding: 0; background: var(--ink); }
+    .ed { --ui: 1; --grid: 0; position: absolute; inset: 0; overflow: hidden; color: var(--paper); }
+    .ed.has-ball { cursor: none; }
+
+    /* grade em WebGL (v5/gl.js): entra em pixels e se mistura em pontilhado no canto esquerdo */
+    .grid-gl { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .ed.grid-on .ed-grid { display: none; }
+    /* sem WebGL: os pontos em CSS, parados; entram com a troca de seção */
+    .ed-grid { position: absolute; inset: 0; pointer-events: none; opacity: calc(var(--ui) * var(--grid));
+      background: radial-gradient(circle, rgba(244,243,239,.2) 1px, transparent 1.6px) 16px 16px / 32px 32px; }
+
+    /* ---------- a composição ---------- */
+    .art-clip { position: absolute; inset: 0; clip-path: inset(calc(var(--ui) * 118px) 0 0 0); }
+    .art { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+    .gl { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .ln { position: relative; margin: 0; white-space: nowrap;
+      font: 800 var(--fs)/.95 'Archivo', sans-serif; font-stretch: 88%; letter-spacing: -.045em; }
+    .ed.is-center .ln { text-align: center; }
+    .ed.is-upper .ln { text-transform: uppercase; font-size: calc(var(--fs) * .86); line-height: 1.06; } /* acentos das maiúsculas precisam de ar */
+    .ln--grow { font-size: calc(var(--fs) * var(--gs, 1)); }
+    .ed.is-upper .ln--grow { font-size: calc(var(--fs) * .86 * var(--gs, 1)); }
+    .t { position: relative; display: inline-block; }
+    /* tipo largo para contraste (ref. "Make some noise") */
+    .ln--wide { font-stretch: 125%; letter-spacing: -.035em; font-size: calc(var(--fs) * .92); }
+    .ed.is-upper .ln--wide { font-size: calc(var(--fs) * .8); }
+    .lt { display: inline-block; white-space: pre; }
+    .it .lt { font-style: italic; font-weight: 900; }
+    /* com WebGL, o texto do DOM só mede (e as imagens seguem no DOM) */
+    .ed.gl-on .lt:not(.im) { color: transparent; }
+
+    /* imagens: retângulos na altura das maiúsculas, na linha de base (o WebGL desenha a foto: dither → cor) */
+    .im { width: 1.9em; height: .72em; margin: 0 .04em; border-radius: .03em; vertical-align: 0; }
+    .ed:not(.gl-on) .im { background: #3a3a3a; }
+
+    /* fundos que ficam ATRÁS do texto (no DOM, sob o WebGL) */
+    .mark { isolation: isolate; }
+    .mark::before { content: ''; position: absolute; left: -.1em; right: -.1em; top: .02em; bottom: -.06em; background: var(--paper); transform-origin: left center; transform: scaleX(var(--hl, 0)); z-index: -1; }
+    .ed.is-upper .mark::before { bottom: .04em; } /* não cobrir os acentos da linha de baixo */
+    .ed:not(.gl-on) .mark .lt.inv { color: var(--ink); }
+    /* "lendo" oca sem WebGL (com WebGL, o contorno é do shader) */
+    .ed:not(.gl-on) .hollow-w.is-hollow .lt { color: transparent; -webkit-text-stroke: 1.5px rgba(244,243,239,.6); }
+
+    /* camada da frente: a interface que fica SOBRE o texto, uma caixa por linha */
+    .fg { pointer-events: none; }
+    .fgl { position: absolute; left: 0; top: 0; line-height: .95; }
+    .caret { position: absolute; top: .06em; width: .06em; height: .86em; background: var(--accent); opacity: 0; }
+    .caret.on.typing { animation: none; } /* digitando: fixo; parado: pisca */
+    .caret.on { opacity: 1; animation: caret 1s steps(1) infinite; }
+    @keyframes caret { 50% { opacity: 0; } }
+    .box { position: absolute; left: -.12em; right: -.12em; top: -.02em; bottom: -.08em; border: 1.5px solid var(--paper); opacity: 0; }
+    .box i { position: absolute; width: 9px; height: 9px; margin: -5px 0 0 -5px; background: var(--ink); border: 1.5px solid var(--paper); }
+    .box, .box i { border-color: var(--accent); }
+    .box i:nth-child(1) { left: 0; top: 0; } .box i:nth-child(2) { left: 50%; top: 0; } .box i:nth-child(3) { left: 100%; top: 0; }
+    .box i:nth-child(4) { left: 0; top: 100%; } .box i:nth-child(5) { left: 50%; top: 100%; } .box i:nth-child(6) { left: 100%; top: 100%; }
+    .tag { position: absolute; padding: 5px 10px; border-radius: 6px; background: var(--accent); color: var(--paper); white-space: nowrap;
+      font: 500 11px/1 'JetBrains Mono', monospace; letter-spacing: .04em; opacity: 0; transform: rotate(-4deg) scale(.9); transform-origin: left center; }
+    .tag.on { opacity: var(--ui); transform: rotate(-4deg) scale(1); transition: opacity .2s, transform .35s cubic-bezier(.2,1.4,.4,1); }
+    .tag--paper { background: var(--paper); color: var(--ink); }
+    .snap { position: absolute; color: var(--accent); opacity: 0; font: 500 10px/1 'JetBrains Mono', monospace; white-space: nowrap; }
+
+    /* stop-motion de 2 poses: rotate/translate soltos (fora da transição do transform),
+       então a troca de pose é seca, em degrau */
+    .tag[data-pose="1"] { rotate: 2deg; translate: 1px -1px; }
+    .box[data-pose="1"] { rotate: -.25deg; }
+    .box[data-pose="1"] i { translate: 1px -1px; }
+    .scr[data-pose="0"] .p1, .scr[data-pose="1"] .p0 { display: none; }
+
+    /* rabiscos à mão: passadas finas de caneta, desenhadas no scroll (dashoffset por passada) */
+    .scr { position: absolute; overflow: visible; pointer-events: none; }
+    .scr path { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+      stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+    .scr--strike { left: -8%; top: 28%; width: 116%; height: .42em; }
+    .scr--circle { top: -.3em; height: 1.46em; }
+    .scr--under { left: -3%; width: 106%; top: calc(100% + .02em); height: .16em; }
+    .scr--arrow { right: 13%; top: calc(100% + .2em); width: .6em; height: .38em; opacity: var(--ui); }
+    /* a etiqueta tem corpo próprio (11 px): a posição usa o corpo da linha (--lfs) */
+    .tag-hand { left: calc(87% - var(--lfs) * .04); top: calc(100% + var(--lfs) * .6); }
+
+    /* tecla ENTER (render do Blender): 3 poses empilhadas, uma visível por vez */
+    .key { position: absolute; left: calc(100% + .2em); top: -.16em; height: 1.16em; aspect-ratio: 440 / 312; opacity: 0; }
+    .key.on { opacity: 1; }
+    .key img { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+    .key[data-s="idle"] .k-idle, .key[data-s="pose2"] .k-pose2, .key[data-s="pressed"] .k-pressed { display: block; }
+    @media (max-width: 700px) { .key { left: calc(100% + .08em); top: .08em; height: .66em; } } /* no celular a linha quase enche a tela */
+
+    /* ---------- interface do editor ---------- */
+    .chrome { opacity: var(--ui); }
+    .guide { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,68,56,.55); pointer-events: none; }
+    .guide.flash { background: var(--accent); box-shadow: 0 0 0 1px rgba(255,68,56,.35); }
+    .bar { position: absolute; left: 3vw; right: 3vw; top: 84px; display: flex; align-items: center; gap: 22px;
+      font: 500 11px/1 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--paper); }
+    .bar .sp { flex: 1; }
+    .bar .doc { color: var(--dim); }
+    .present { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 6px; background: var(--paper); color: var(--ink); transition: transform .12s, background .12s; }
+    .present svg { width: 8px; height: 9px; fill: currentColor; }
+    .present.press { transform: scale(.94); background: var(--accent); color: var(--paper); }
+    /* painel de ferramentas: acende a ferramenta em uso */
+    .tools { position: absolute; left: 1.6vw; top: 130px; display: flex; flex-direction: column; gap: 2px; padding: 4px;
+      background: #1c1c1c; border: 1px solid rgba(244,243,239,.14); border-radius: 6px; }
+    .tools i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; color: var(--dim); transition: background .2s, color .2s; }
+    .tools i.on { background: var(--accent); color: var(--paper); }
+    .tools svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+    .tools svg .fill { fill: currentColor; stroke: none; }
+    @media (max-width: 1100px) { .tools { display: none; } }
+
+    /* moldura suíça do "apresentar": fios com metadados reais (as peças .s5-* são as da seção 5) */
+
+    /* cursor do editor (o roteirizado): menor que na v4 */
+    .cur { position: absolute; left: 0; top: 0; width: 18px; height: 18px; pointer-events: none; z-index: 5; will-change: transform; }
+    .cur svg { position: absolute; left: 0; top: 0; display: none; overflow: visible; }
+    .cur[data-m="arrow"] .c-arrow, .cur[data-m="move"] .c-arrow, .cur[data-m="move"] .c-move, .cur[data-m="text"] .c-text, .cur[data-m="resize"] .c-resize { display: block; }
+    .cur .c-arrow, .cur .c-resize { width: 11px; height: 15px; }
+    .cur .c-move { left: 11px; top: 11px; width: 10px; height: 10px; }
+    .cur .c-text { width: 7px; height: 15px; left: -3.5px; top: -7.5px; }
+    .cur path { fill: var(--paper); stroke: var(--ink); stroke-width: 1.4; }
+    .cur .c-text path, .cur .c-move path { fill: none; stroke: var(--paper); stroke-width: 1.8; }
+    /* lápis (os rabiscos à mão): um círculo pequeno com ponto */
+    .cur[data-m="brush"] .c-brush { display: block; }
+    .cur .c-brush { left: -8px; top: -8px; width: 16px; height: 16px; }
+    .cur .c-brush circle { fill: none; stroke: var(--paper); stroke-width: 1.5; }
+    .cur .c-brush .dot { fill: var(--accent); stroke: none; }
+
+    /* cursor de quem visita: a bola que inverte a cor (= .talk-cursor-dot do footer) */
+    .ball { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; mix-blend-mode: difference; will-change: transform; }
+    .ball::before { content: ''; display: block; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff;
+      opacity: 0; transform: scale(0); transition: opacity .2s ease, transform .3s cubic-bezier(.14,1,.34,1); }
+    .ball.is-visible::before { opacity: 1; transform: scale(1); }
+
+    .panel .seg { display: inline-flex; }
+    .panel .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  </style>
+</head>
+<body>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

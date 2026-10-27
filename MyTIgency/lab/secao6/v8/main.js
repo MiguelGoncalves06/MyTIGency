@@ -106,7 +106,7 @@ const TOOLS = [
 
 mountLab({
   title: 'LAB — Seção 6 · v8',
-  links: [['../v7/', 'v7'], ['./', 'v8', true]],
+  links: [['../v7/', 'v7'], ['./', 'v8', true], ['../v9/', 'v9']],
   controls: '<span class="seg"><button type="button" data-al="left" aria-pressed="true">esquerda</button><button type="button" data-al="center" aria-pressed="false">centro</button><button type="button" data-al="scatter" aria-pressed="false">disperso</button></span>'
     + '<span class="seg"><button type="button" data-case="normal" aria-pressed="true">Aa</button><button type="button" data-case="upper" aria-pressed="false">AA</button></span>'
     + '<span class="seg"><button type="button" data-fx="on" aria-pressed="true">efeitos</button><button type="button" data-fx="off" aria-pressed="false">sem</button></span>'
@@ -434,12 +434,12 @@ mountLab({
         if (p >= P.present.press[0] && shockT0 === null) shockT0 = now
         if (p < P.present.press[0] - 0.02) shockT0 = null
         let shock = null
+        let swept = null // pontos: o que a onda já varreu não volta
         if (live && shockT0 !== null) {
           const age = (now - shockT0) / 1000
-          if (age < SHOCK.life) {
-            const [cx, cy] = presentAt(0.5, 0.5)
-            shock = [cx, cy, age * SHOCK.speed, SHOCK.amp * (1 - age / SHOCK.life) ** 1.5]
-          }
+          const [cx, cy] = presentAt(0.5, 0.5)
+          swept = [cx, cy, age * SHOCK.speed]
+          if (age < SHOCK.life) shock = [cx, cy, age * SHOCK.speed, SHOCK.amp * (1 - age / SHOCK.life) ** 1.5]
         }
 
         // ---- câmera (alvo pelo scroll, posição com inércia) ----
@@ -549,7 +549,7 @@ mountLab({
         const as = appear(markU * 1.2)
         spark.style.opacity = as
         spark.style.transform = `translate(${gb.x + gb.w + DECO.spark.dx * fsOf(iGrow, gs)}px, ${gb.y + DECO.spark.dy * fsOf(iGrow, gs)}px) rotate(${(tt * 20).toFixed(1)}deg) scale(${as.toFixed(3)})`
-        grid?.render(now / 1000, REDUCE ? 1 : easeInOut(gridIn), ui, dots, shock)
+        grid?.render(now / 1000, REDUCE ? 1 : easeInOut(gridIn), ui, dots, shock, swept)
 
         // ---- cursor do editor (alvo pelo trajeto, posição com inércia) ----
         const seg = PATH.findLast((sg) => p >= sg[0]) ?? PATH[0]
