@@ -1734,8 +1734,7 @@
   .ms-ruler.on{ opacity:calc(1 - var(--act2-dip, 0)); transform:none; } /* mergulha durante a cortina do segundo ato e volta */
   /* na seção 6 a régua é a "linha" de CADA LINHA (manifestoS6.js): presa ao
      texto quadro a quadro, fica até o cartaz final, mesmo depois do pin */
-  .ms-ruler.is-s6{ left:0; top:0; right:auto; bottom:auto; opacity:1; transition:none; transform-origin:0 0; }
-  .ms-ruler-scale{
+  .ms-ruler.is-s6{ left:0; top:0; right:auto; bottom:auto; opacity:1; transition:none; transform-origin:0 0; }  .ms-ruler-scale{
     position:absolute; left:0; right:0; bottom:0; height:10px;
     border-bottom:1px solid color-mix(in srgb, var(--rl-ink) 40%, transparent);
     background:
@@ -1842,7 +1841,7 @@
     line-height:1.08;
   }
 
-  .services{border-bottom:1px solid var(--line);}
+  .services{margin-bottom:110px;}
   .service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);}
   @media(max-width:860px){ .service-grid{grid-template-columns:1fr;} }
   .service-card{background:var(--panel);padding:38px 30px;}
@@ -1851,10 +1850,17 @@
   .service-card p{font-size:13.5px;color:var(--ink-dim);line-height:1.7;}
 
   /* ---------- Work ---------- */
-  .work{border-bottom:1px solid var(--line);background:var(--bg-2);}
+  /* a folha branca onde o Manifesto termina (.ecm-sheet, manifestoPC): começa no mesmo branco */
+  .work{border-bottom:1px solid var(--line);background:var(--panel);}
   .work-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
   @media(max-width:900px){ .work-grid{grid-template-columns:1fr;} }
-  .work-card{background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;transition:border-color .25s ease;}
+  /* fotos coladas na folha: caem, giram um pouco (--r) e assentam (LAB v13, on-sheet) */
+  .work-card{background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;
+    box-shadow:0 16px 26px -18px rgba(0,0,0,.4);transition:border-color .25s ease;}
+  /* (.work-card.reveal: vence o .reveal genérico, que vem depois) */
+  .work-card.reveal{transition:border-color .25s ease, transform 1s cubic-bezier(.2,1.2,.3,1), opacity .45s ease;}
+  .work-card.reveal.in{transform:rotate(var(--r, 0deg));}
+  .work-card.reveal:not(.in){opacity:0;transform:translateY(-40px) scale(1.07) rotate(calc(var(--r, 0deg) + 6deg));}
   .work-card:hover{border-color:var(--ink);}
   .work-thumb{
     aspect-ratio:4/3;
@@ -1966,3 +1972,164 @@
     color:var(--accent);
     margin-left:1px;
   }
+
+  /* ---------- Manifesto · fim: o PC (utils/manifestoPC.js + manifestoPCDesk.js) ----------
+     Portado do /lab/secao6/v13 (opção E): o cartaz final da seção 6 encolhe para
+     dentro de um CRT, o zoom out mostra o PC numa mesa, a câmera inclina até a
+     folha branca — que é o começo de Trabalhos. Camada do tamanho da tela no
+     segundo ato, acima da 6 e da vinheta; só desktop (sem o pin lateral, não monta).
+     --pc-top = marquee + header (o que fica por cima no topo da tela). */
+  .ma-pc{ display:block; padding:0; z-index:4; overflow:hidden; visibility:hidden; background:var(--room, #141414); color:#F4F3EF;
+    --env-fg:color-mix(in srgb, #141414 calc(var(--lamp, 0) * 100%), #e7e5df);
+    --env-dim:color-mix(in srgb, #7a776f calc(var(--lamp, 0) * 100%), #8d8a83);
+    --env-hair:color-mix(in srgb, rgba(20,20,20,.2) calc(var(--lamp, 0) * 100%), rgba(244,243,239,.2)); }
+  .ma-pc.on{ visibility:visible; }
+  /* o bloco do Manifesto passa um pouco da camada do segundo ato: com o PC, o que
+     sobra embaixo já é a folha (o mesmo branco de Trabalhos), sem a grade */
+  .manifesto.has-pc{ border-bottom-color:transparent; }
+  .manifesto.pc-on .ms-track{ visibility:hidden; } /* coberta pelo PC (opaco): não pinta à toa */
+  .manifesto.has-pc::after{ content:''; position:absolute; left:0; right:0; top:calc(var(--s3-top, 0px) + 100vh); bottom:0; z-index:5; background:var(--panel); }
+  @media(max-width:700px){ .ma-pc{ display:none; } }
+
+  /* rig: a tela (crt) + o aparelho (dev), numa transform só */
+  .pc-rig{ position:absolute; left:0; top:0; transform-origin:0 0; will-change:transform; }
+  .pc-crt{ position:absolute; inset:0; overflow:hidden; border-radius:var(--rad, 0); background:#000; }
+  .pc-crt-in{ position:absolute; inset:0; background:#141414; }
+  .pc-crt-in.curved{ filter:url(#pc-crt); }
+  .pc-wall{ position:absolute; inset:0; width:100%; height:100%; }
+  .pc-poster{ position:absolute; left:0; top:0; transform-origin:0 0; }
+  .pc-poster .s6{ position:absolute; inset:0; }
+  /* efeitos do tubo */
+  .pc-fx{ position:absolute; inset:0; pointer-events:none; }
+  .pc-fx-scan{ opacity:calc(var(--crt) * var(--fine, 1) * .4); background:repeating-linear-gradient(180deg, rgba(0,0,0,.55) 0 1px, transparent 1px 3px); }
+  .pc-fx-mask{ opacity:calc(var(--crt) * var(--fine, 1) * .13); mix-blend-mode:multiply;
+    background:repeating-linear-gradient(90deg, #ff6b6b 0 1px, #6bff8e 1px 2px, #6b8bff 2px 3px); }
+  /* Texturas (manifestoPC → paint*): dentro do rig, que muda de escala a cada quadro,
+     gradiente/máscara em CSS é re-rasterizado a cada escala (os ladrilhos vazios do
+     scroll rápido); o desenho delas vem de canvas e o movimento, de transform */
+  /* a faixa: o mesmo gradiente num canvas de 4 alturas, que sobe 3 alturas (um
+     ladrilho) a cada 3,5 s — a velocidade de antes (6 alturas em 7 s); a fase de
+     −1,167 s é a mesma do background-position de antes no instante 0 */
+  .pc-fx-band{ opacity:calc(var(--crt) * .07); overflow:hidden; }
+  .pc-fx-band canvas{ position:absolute; left:0; top:0; width:100%; height:400%; will-change:transform;
+    animation:pcBand 3.5s linear -1.1667s infinite; }
+  @keyframes pcBand{ from{ transform:translateY(0); } to{ transform:translateY(-75%); } }
+  .pc-fx-flick{ background:#fff; opacity:0; animation:pcFlick .25s steps(1) infinite; }
+  @keyframes pcFlick{ 0%{ opacity:calc(var(--crt) * .025); } 33%{ opacity:0; } 66%{ opacity:calc(var(--crt) * .04); } }
+  .pc-fx-noise{ opacity:calc(var(--crt) * .16); animation:msGrain .5s steps(1) infinite;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -.66'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 180px; }
+  /* a vinheta do tubo (radial + sombra interna) desenhada no canvas (manifestoPC → paintVig) */
+  .pc-fx-vig{ opacity:var(--crt); }
+  .pc-fx-vig canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  /* o vidro: a faixa diagonal fixa (g-band) e o reflexo (g-hl), que corre com o balanço por transform */
+  .pc-fx-glass{ opacity:calc(var(--crt) * .9); overflow:hidden; }
+  .pc-fx-glass canvas{ position:absolute; left:0; width:100%; display:block; }
+  .pc-fx-glass .g-band{ top:0; height:100%; }
+  .pc-fx-glass .g-hl{ top:-100%; height:300%; will-change:transform; }
+  .pc-fx-dg{ opacity:var(--dg, 0); mix-blend-mode:screen; transform:scale(var(--dgs, 1));
+    background:repeating-radial-gradient(circle at 50% 56%, #ff2fa0 0, #ffb02e 5%, #2effa0 10%, #2e7dff 15%, #b02eff 20%, #ff2fa0 25%);
+    filter:hue-rotate(calc(var(--dgh, 0) * 1deg)) blur(14px); }
+
+  /* o corpo (tela + aparelho) gira pela base; a sombra fica no chão, fora dele */
+  .pc-body{ position:absolute; inset:0; will-change:transform; }
+  .pc-shadow{ position:absolute; pointer-events:none; opacity:0; border-radius:50%;
+    background:radial-gradient(closest-side, rgba(0,0,0,.42), rgba(0,0,0,.16) 60%, transparent); }
+  .pc-leds{ position:absolute; pointer-events:none; }
+  .pc-leds i{ position:absolute; width:1.1%; aspect-ratio:1; margin:-.55% 0 0 -.55%; border-radius:50%; opacity:0; }
+  .pc-led-pow{ background:#7dff8a; box-shadow:0 0 6px 2px rgba(110,255,130,.8), 0 0 18px 6px rgba(110,255,130,.35); }
+  .pc-led-hd{ background:#ffb43a; box-shadow:0 0 6px 2px rgba(255,170,50,.85), 0 0 16px 5px rgba(255,170,50,.35); }
+  .pc-dev{ position:absolute; pointer-events:none; filter:brightness(var(--lit, 1)); }
+  /* camada própria no <img>: imagem composta direto (a GPU só escala, sem re-rasterizar no zoom) */
+  .pc-dev img{ display:block; width:100%; height:100%; will-change:transform; }
+
+  /* a sala escura: a tela é a única luz (--glow), na cor do wallpaper (--gc) */
+  .pc-cam{ position:absolute; inset:0; will-change:transform; }
+  /* na parede: o gradiente num canvas 2× a viewport, levado até o aparelho por transform */
+  .pc-amb{ position:absolute; inset:0; overflow:hidden; pointer-events:none; opacity:var(--glow, 0);
+    animation:pcGflk .25s steps(1) infinite; }
+  .pc-amb canvas{ position:absolute; left:0; top:0; width:200%; height:200%; will-change:transform; }
+  .pc-spill{ position:absolute; pointer-events:none; border-radius:50%; opacity:var(--glow, 0); mix-blend-mode:screen;
+    background:radial-gradient(closest-side, rgba(var(--gc), .5), rgba(var(--gc), .16) 55%, transparent);
+    animation:pcGflkb .25s steps(1) infinite; }
+  /* no próprio PC: o gradiente já recortado pela imagem dele (canvas) */
+  .pc-dev-glow{ position:absolute; display:block; pointer-events:none; opacity:var(--glow, 0); mix-blend-mode:screen; }
+  @keyframes pcGflk{ 0%{ filter:brightness(1); } 33%{ filter:brightness(.86); } 66%{ filter:brightness(1.07); } }
+  @keyframes pcGflkb{ 0%{ filter:blur(10px) brightness(1); } 33%{ filter:blur(10px) brightness(.86); } 66%{ filter:blur(10px) brightness(1.07); } }
+
+  /* Windows antigo (98): janelas, ícones, barra — px de um desktop de 800 de largura */
+  .ma-pc .w98, .pc-desk{ font:11px/1.3 Tahoma, 'MS Sans Serif', 'Segoe UI', sans-serif; color:#000; -webkit-font-smoothing:none; }
+  .pc-desk{ position:absolute; left:0; top:0; width:800px; transform-origin:0 0; }
+  .pc-pop{ position:absolute; visibility:hidden; }
+  .pc-pop.on{ visibility:visible; animation:pcPop .14s steps(2) both; }
+  @keyframes pcPop{ from{ transform:scale(.92); } to{ transform:scale(1); } }
+  .ma-pc .w98{ position:relative; background:#c0c0c0; padding:3px;
+    box-shadow:inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff; }
+  .w98-t{ display:flex; align-items:center; gap:6px; padding:3px 3px 3px 5px; color:#fff; font-weight:700; background:linear-gradient(90deg, #000080, #1084d0); }
+  .w98-t span{ flex:1; white-space:nowrap; }
+  .w98-t i, .w98-k b, .pc-tb b{ box-shadow:inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf; background:#c0c0c0; }
+  .w98-t i{ width:16px; height:14px; color:#000; font:700 11px/13px Tahoma, sans-serif; font-style:normal; text-align:center; }
+  .w98-b{ display:flex; align-items:center; gap:14px; padding:16px 14px 12px; }
+  .w98-b img{ width:32px; height:auto; image-rendering:pixelated; }
+  .w98-b p{ margin:0; }
+  .w98-k{ display:flex; justify-content:center; gap:8px; padding:2px 10px 10px; }
+  .w98-k b{ min-width:76px; padding:5px 12px; font-weight:400; text-align:center; white-space:nowrap; }
+  .w98-k b:first-child{ outline:1px dotted #000; outline-offset:-5px; }
+  .w98-k b.down{ box-shadow:inset 1px 1px #0a0a0a, inset -1px -1px #fff, inset 2px 2px #808080, inset -2px -2px #dfdfdf; padding:6px 11px 4px 13px; }
+  .w98-bar{ height:16px; margin:4px 14px 14px; box-shadow:inset 1px 1px #808080, inset -1px -1px #fff; background:
+    repeating-linear-gradient(90deg, #000080 0 10px, transparent 10px 12px) 2px 2px / calc(var(--prog, 0) * 100% - 4px) 12px no-repeat; }
+  .pc-ico{ width:74px; text-align:center; color:#fff; }
+  .pc-ico img{ display:block; width:34px; height:34px; object-fit:contain; margin:0 auto 4px; image-rendering:pixelated; }
+  .pc-ico span{ padding:0 2px; text-shadow:1px 1px 0 #000; }
+  .pc-ico.sel img{ filter:brightness(.6) sepia(1) hue-rotate(190deg) saturate(4); }
+  .pc-ico.sel span{ background:#000080; outline:1px dotted #fff; text-shadow:none; }
+  .pc-tb{ left:0; right:0; bottom:0; height:28px; display:flex; align-items:center; gap:4px; padding:3px 3px 2px; background:#c0c0c0; box-shadow:inset 0 1px #dfdfdf, inset 0 2px #fff; }
+  .pc-tb b{ display:flex; align-items:center; gap:5px; height:22px; padding:0 8px; font-weight:700; }
+  .pc-tb b img{ height:12px; }
+  .pc-tb b.task{ font-weight:400; min-width:150px; box-shadow:inset 1px 1px #0a0a0a, inset -1px -1px #fff, inset 2px 2px #808080, inset -2px -2px #dfdfdf;
+    background:repeating-conic-gradient(#c0c0c0 0 25%, #fff 0 50%) 0 0 / 2px 2px; }
+  .pc-tb b.task.up{ background:#c0c0c0; box-shadow:inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf; }
+  .pc-tb b.t2{ display:none; }
+  .pc-tb b.t2.on{ display:flex; }
+  .pc-tb .clock{ margin-left:auto; height:22px; padding:0 10px; line-height:22px; box-shadow:inset 1px 1px #808080, inset -1px -1px #fff; }
+  .ma-pc .pct{ font-variant-numeric:tabular-nums; }
+  /* o cursor da seção 6, de volta; sobre o céu precisa do contorno escuro da seta do Windows */
+  /* o filtro é do JS (manifestoPC → curStyle): o brilho da seção 6 vira o contorno da seta do Windows */
+  .pc-cur{ position:absolute; left:0; top:0; width:800px; pointer-events:none; image-rendering:pixelated; }
+  /* a vinheta noir do segundo ato (.ms-act2::before) fica por baixo do PC: o cartaz
+     leva a própria, igual, e ela sai com o wallpaper chegando (--pv) */
+  .pc-poster .pc-pvig{ position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; opacity:var(--pv, 1); }
+  .pc-desk .s6-impact{ width:46px; height:46px; margin:-23px 0 0 -23px; }
+
+  /* o entorno: a palavra atrás, a mesa (WebGL) atrás do rig, o cartaz por cima */
+  .ma-pc .env-back, .ma-pc .env-front{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+  .ma-pc .env-desk{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .ma-pc .env-mono{ margin:0; font:500 11px/1.45 'JetBrains Mono', monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--env-dim); white-space:nowrap; }
+  .ma-pc .env-mono b{ font-weight:500; color:var(--accent); }
+  /* "TRABALHOS": contorno, e o vermelho a preenche com a barra de "Abrindo trabalhos…" */
+  /* camada própria: o parallax só move a palavra (antes, mover repintava o texto gigante) */
+  .ec-word{ position:absolute; left:50%; top:0; white-space:nowrap; text-transform:uppercase; will-change:transform;
+    font:900 100px/.8 'Archivo', sans-serif; font-stretch:62%; letter-spacing:-.01em; }
+  .ec-word > div{ display:flex; }
+  .ec-word > div + div{ position:absolute; inset:0; }
+  .ec-word span{ display:block; }
+  .ec-o span{ color:transparent; -webkit-text-stroke:1.5px var(--env-hair); }
+  .ec-f{ color:var(--accent); clip-path:inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0); }
+  /* moldura e legendas: abaixo da marquee + header */
+  .ec-frame{ position:absolute; inset:calc(var(--pc-top, 0px) + 14px) 14px 14px; border:1px solid var(--env-hair); opacity:var(--in, 0); }
+  .ec-frame i{ position:absolute; width:9px; height:9px; background:var(--accent); }
+  .ec-frame i:nth-child(1){ left:-5px; top:-5px; } .ec-frame i:nth-child(2){ right:-5px; top:-5px; }
+  .ec-frame i:nth-child(3){ left:-5px; bottom:-5px; } .ec-frame i:nth-child(4){ right:-5px; bottom:-5px; }
+  .ec-cap{ position:absolute; opacity:var(--in, 0); }
+  .ec-tl{ left:32px; top:calc(var(--pc-top, 0px) + 28px); }
+  .ec-bc{ left:50%; bottom:28px; transform:translateX(-50%); }
+  .ec-side{ position:absolute; top:0; display:flex; align-items:center; gap:12px; opacity:var(--in, 0); }
+  .ec-side i{ display:block; height:1px; background:var(--env-fg); opacity:.5; }
+  /* o adesivo colado no PC: carimba quando o zoom termina */
+  .ec-stk{ position:absolute; left:0; top:0; width:140px; aspect-ratio:1; opacity:0; filter:brightness(var(--lit, 1)) drop-shadow(0 8px 10px rgba(0,0,0,.28)); }
+  .ec-stk svg{ display:block; width:100%; height:100%; overflow:visible; }
+  .ec-stk.on{ opacity:1; }
+  .ec-stk.stamp svg{ animation:ecStamp .5s cubic-bezier(.2,1.3,.4,1) both; }
+  @keyframes ecStamp{ 0%{ transform:scale(1.9) rotate(18deg); opacity:0; } 45%{ opacity:1; } 100%{ transform:none; opacity:1; } }
+  /* a folha 3D dá lugar ao branco de Trabalhos (.work), fixo na tela */
+  .ecm-sheet{ position:absolute; inset:0; opacity:0; background:var(--panel); }
+  @media(prefers-reduced-motion:reduce){ .pc-spill{ filter:blur(10px); } }

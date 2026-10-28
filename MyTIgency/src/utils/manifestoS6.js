@@ -13,7 +13,8 @@
 // scroll; a tecla ENTER (render do Blender) é uma "letra" a mais e leva um
 // clique, com o impacto do PC da seção 2; o cursor faz cada gesto de verdade
 // (clica, arrasta, risca com a ponta do lápis, puxa a alça, clica em
-// "apresentar" e se desfaz em pixels). Fotos: entram em dither e assentam em
+// "apresentar" e descansa ao lado de "trabalho." — é o mesmo cursor que segue
+// para dentro do PC, manifestoPC.js). Fotos: entram em dither e assentam em
 // cor (a 1ª, quadrada, é o "+" de "+ E POSICIONADA"). Stop-motion de 2 poses
 // (~0,5 s, em degrau, fora de fase) nas etiquetas, caixas, rabiscos e na tecla.
 //
@@ -21,8 +22,7 @@
 // deslocamento lateral (shift 0→1, 1 px de scroll = 1 px de lado); p vai até
 // LENGTH. Os primeiros LEAD são da régua chegando (assenta, o punho solta e
 // vira seta); o roteiro do editor conta dali. Posições são função do scroll;
-// cliques, onda de choque, stop-motion, troca de forma e o cursor se
-// desfazendo andam no tempo real (rAF próprio, só com a seção na tela).
+// cliques, onda de choque, stop-motion e troca de forma andam no tempo real (rAF próprio, só com a seção na tela).
 // Sem o pin (mobile) ou com reduced motion: o cartaz final, parado, com uma
 // régua desenhada no vão.
 import { mountTextGL, mountGridGL, canvasFont, placeholderImage } from './manifestoS6GL'
@@ -80,7 +80,9 @@ const settle = (u) => 1 + 2.2 * (u - 1) ** 3 + 1.2 * (u - 1) ** 2
 // a régua no texto: encolhe só um pouco (o vão é que alarga); teto em fração da coluna
 const RULER_FIT = { shrink: 0.88, max: 0.42 }
 const MORPH_MS = 160 // troca de forma do cursor (dither, por limiar de Bayer)
-const DISSOLVE = { hold: 0.9, dur: 2.4 } // depois do "apresentar", o cursor se desfaz em pixels (s)
+// depois do "apresentar", o cursor vai descansar ao lado de "trabalho." / "você está"
+// (alturas de tela): é ali que o PC (manifestoPC.js) o pega e ele segue para os pop-ups
+const REST = [4.14, 4.6]
 const FOCUS = 0.56
 const PAN = 0.26
 const MOVE_FROM = { x: 0.24, y: 0.6, rot: 5 }
@@ -318,6 +320,12 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   let dockW = 0
   let rulerH = 34
   let owning = false // a régua está presa ao texto (é desta seção)
+  // nest: o editor desenhado dentro de uma caixa escalada (a tela do PC, manifestoPC.js);
+  // a régua vai junto, para dentro dele. Medidas de tela → px do editor: ÷ edK(e)
+  let nested = false
+  let ballBlocked = false // o PC passou do tranco: a bola sai, volta o cursor do site
+  let lastRenderKey = null
+  const edK = (e) => e.width / (ed.offsetWidth || e.width || 1)
 
   const fsOf = (i, gs = 1) => fsBase[i] * (i === iGrow ? gs : 1)
   const placeFg = (i) => {
@@ -431,8 +439,13 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   function holdRuler({ lift, tilt }) {
     if (!carried) return
     if (!owning) { owning = true; ruler.classList.add('is-s6') }
-    const r = slot.getBoundingClientRect()
+    let r = slot.getBoundingClientRect()
     const s = view?.s ?? 1
+    if (nested) { // dentro do editor: a mesma conta, em px dele
+      const e = ed.getBoundingClientRect()
+      const k = edK(e)
+      r = { left: (r.left - e.left) / k, top: (r.top - e.top) / k, height: r.height / k }
+    }
     // assentando, gira em volta do punho (como na seção 5); depois, só a câmera
     Object.assign(ruler.style, {
       transform: `translate(${r.left}px, ${rulerTop(r.top, r.height, s) - lift}px)${tilt ? ` rotate(${tilt}deg)` : ''} scale(${s})`,
@@ -455,16 +468,29 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   let inside = false
   let ballA = 0
   let ballOn = false
+  let client = null // o ponteiro em px de tela
+  // também a cada quadro: aninhado na tela do PC o editor se move com o scroll e
+  // sai de baixo de um ponteiro parado
+  const placeBall = () => {
+    if (!client) return
+    const r = ed.getBoundingClientRect()
+    const k = edK(r)
+    const x = (client[0] - r.left) / k
+    const y = (client[1] - r.top) / k
+    inside = x >= 0 && y >= 0 && x <= r.width / k && y <= r.height / k
+    // fora da tela a bola e a lente que incha o texto ficam no último ponto de dentro
+    // e se apagam ali: seguir o ponteiro lá fora fazia a tela "puxar" para o cursor
+    if (!inside) return
+    mouse = [x, y]
+    // dentro de uma caixa escalada a bola mantém o tamanho de tela
+    ball.style.transform = `translate3d(${x}px, ${y}px, 0)${k !== 1 ? ` scale(${1 / k})` : ''}`
+  }
   const onMove = (e) => {
     if (e.pointerType !== 'mouse') return
-    const r = ed.getBoundingClientRect()
-    const x = e.clientX - r.left
-    const y = e.clientY - r.top
-    inside = x >= 0 && y >= 0 && x <= r.width && y <= r.height
-    mouse = [x, y]
-    ball.style.transform = `translate3d(${x}px, ${y}px, 0)`
+    client = [e.clientX, e.clientY]
+    placeBall()
   }
-  const onLeave = () => { inside = false }
+  const onLeave = () => { inside = false; client = null }
   if (FINE && !still) {
     window.addEventListener('pointermove', onMove, { passive: true })
     document.documentElement.addEventListener('pointerleave', onLeave)
@@ -492,9 +518,16 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   const elAt = (el, fx_ = 0.5, fy_ = 0.5) => {
     const r = el.getBoundingClientRect()
     const e = ed.getBoundingClientRect()
-    return [r.left - e.left + r.width * fx_, r.top - e.top + r.height * fy_]
+    const k = edK(e)
+    return [(r.left - e.left + r.width * fx_) / k, (r.top - e.top + r.height * fy_) / k]
   }
   const presentAt = (fx_ = 0.55, fy_ = 0.6) => elAt(present, fx_, fy_)
+  // o descanso: à direita de "trabalho." / "você está", na altura entre as duas
+  const restPt = () => {
+    const a = tBox(iGrow - 2)
+    const b = tBox(iGrow - 1)
+    return toScene(Math.max(a.x + a.w, b.x + b.w) + fsBase[iGrow - 1] * 0.35, (a.y + a.h + b.y) / 2)
+  }
   // a ponta da caneta: onde o rabisco está sendo desenhado agora (u = o quanto já foi)
   const penAt = (svg, u = drawn.get(svg) ?? 0) => {
     const n = +svg.dataset.n
@@ -504,7 +537,8 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     const r = svg.getBoundingClientRect()
     const e = ed.getBoundingClientRect()
     const sc = r.width / svg.viewBox.baseVal.width
-    return [r.left - e.left + pt.x * sc, r.top - e.top + pt.y * sc]
+    const ek = edK(e)
+    return [(r.left - e.left + pt.x * sc) / ek, (r.top - e.top + pt.y * sc) / ek]
   }
   const pen = (svg, u) => () => penAt(svg, u)
   // onde o punho segura a régua assentada no vão (px do editor)
@@ -512,7 +546,8 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     const r = slot.getBoundingClientRect()
     const e = ed.getBoundingClientRect()
     const s = view?.s ?? 1
-    return [r.left - e.left + r.width * GRAB_AT, rulerTop(r.top, r.height, s) - e.top + GRIP_Y * s - lift]
+    const k = edK(e)
+    return [(r.left - e.left + r.width * GRAB_AT) / k, rulerTop((r.top - e.top) / k, r.height / k, s) + GRIP_Y * s - lift]
   }
   // [de, até, origem, destino, cursor, preso]; preso = segue o alvo sem inércia
   // (a linha que arrasta, a ponta do traço, a alça da caixa). Antes de 0, a chegada da régua.
@@ -534,7 +569,9 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     [P.marker[1], P.hand.arrow[0], pen(scr.under, 1), pen(scr.arrow, 0), 'arrow'],
     [P.hand.arrow[0], P.hand.arrow[1], pen(scr.arrow), pen(scr.arrow), 'brush', 1],
     [P.hand.arrow[1], P.present.press[0], pen(scr.arrow, 1), () => presentAt(), 'arrow'],
-    [P.present.press[0], 99, () => presentAt(), () => presentAt(), 'arrow', 1],
+    [P.present.press[0], REST[0], () => presentAt(), () => presentAt(), 'arrow', 1],
+    [REST[0], REST[1], () => presentAt(), restPt, 'arrow'],
+    [REST[1], 99, restPt, restPt, 'arrow', 1],
   ]
   const damp = (a, b, tau, dt) => (REDUCE || !dt ? b : lerp(a, b, 1 - Math.exp(-dt / tau)))
 
@@ -591,7 +628,8 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     tagHand.classList.toggle('on', p >= P.hand.tag)
     const ui = 1 - easeInOut(ramp(p, ...P.present.ui))
     growBox.style.opacity = ramp(p, ...P.grow.box) * ui
-    tagScale.textContent = `${data.tags.scale} ${Math.round(gs * 100)}%`
+    const scaleTxt = `${data.tags.scale} ${Math.round(gs * 100)}%`
+    if (tagScale.textContent !== scaleTxt) tagScale.textContent = scaleTxt // (trocar o nó a cada quadro repinta tudo em volta)
     tagScale.classList.toggle('on', p >= P.grow.drag[0])
     ed.style.setProperty('--ui', ui)
 
@@ -646,7 +684,8 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     lastAy = view.ay
 
     // ---- bola ----
-    const ballIn = inside && shift > 0.6
+    if (nested) placeBall()
+    const ballIn = inside && shift > 0.6 && !ballBlocked
     ballA = damp(ballA, ballIn ? 1 : 0, 0.12, dt)
     setBall(ballIn)
     ed.classList.toggle('has-ball', ballIn)
@@ -721,9 +760,15 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
         u.uMouseR.value = BALL.r
       } else u.uMouse.value.z = 0
     }
-    gl?.render(now / 1000)
+    // aninhada na tela do PC, sob o filtro da curva do CRT: cada quadro novo daqui
+    // obriga o filtro a refazer a tela inteira. Lá só redesenha no degrau da
+    // fervura da grade (12,5 qps, o mesmo do grão) ou quando algo de fato muda
+    const renderKey = nested ? `${Math.floor(now / 80)}|${pRaw.toFixed(4)}|${ballA.toFixed(2)}|${shock ? 1 : 0}|${view.s.toFixed(4)}` : null
+    const doRender = !nested || renderKey !== lastRenderKey
+    lastRenderKey = renderKey
+    if (doRender) gl?.render(now / 1000)
 
-    grid?.render(now / 1000, REDUCE ? 1 : easeInOut(gridIn), ui, shock, swept)
+    if (doRender) grid?.render(now / 1000, REDUCE ? 1 : easeInOut(gridIn), ui, shock, swept)
 
     // ---- a régua: presa ao vão de CADA ___ LINHA depois do deslocamento ----
     const arrived = shift >= 1 && pRaw >= 0
@@ -757,7 +802,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
       void impact.offsetWidth // reinicia a animação
       impact.classList.add('on')
     }
-    drawCursor(now, pRaw, mode, arrived, ui, { jolt, squash, hitAge, pa })
+    drawCursor(now, pRaw, mode, arrived, ui, { jolt, squash, hitAge })
     if (mode !== toolOn) {
       tools[toolOn]?.classList.remove('on')
       tools[mode]?.classList.add('on')
@@ -769,56 +814,26 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   let shown = null // forma na tela; a anterior some por limiar de Bayer em MORPH_MS
   let prev = null
   let morphT0 = 0
-  let dis = null // os pixels do cursor se desfazendo, depois do "apresentar"
   let cvDpr = 1
-  const disRand = (() => { let s = 23; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280 } })()
   const clearCv = () => { if (cx) { cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, cv.width, cv.height) } }
-  function drawCursor(now, pRaw, mode, arrived, ui, { jolt, squash, hitAge, pa }) {
+  function drawCursor(now, pRaw, mode, arrived, ui, { jolt, squash, hitAge }) {
     if (!cx) return
     cvDpr = cv.width / Math.max(1, window.innerWidth)
     clearCv()
-    // antes de chegar, o punho ainda é da seção 5 (ela o desenha no deslocamento)
-    if (!arrived || (REDUCE && ui < 0.5)) { dis = null; return }
+    // antes de chegar, o punho ainda é da seção 5 (ela o desenha no deslocamento);
+    // aninhado na tela do PC, quem desenha o cursor é o PC (cursor(), abaixo)
+    if (!arrived || nested || (REDUCE && ui < 0.5)) return
     cx.setTransform(cvDpr, 0, 0, cvDpr, 0, 0)
     const e = ed.getBoundingClientRect()
+    const ek = edK(e) // (a camada do cursor é de tela: o editor escalado o encolhe junto)
     // clique: o cursor recua e gira (a pega da linha, mais leve)
     const ha = lastHit ? hitAge(lastHit) : 99
     const hs = lastHit === 'grab' ? 0.4 : 1
     const cj = jolt(ha) * HIT.bump * hs
-    const x = e.left + curPos[0] - cj * 0.4
-    const y = e.top + curPos[1] - cj
+    const x = e.left + (curPos[0] - cj * 0.4) * ek
+    const y = e.top + (curPos[1] - cj) * ek
     const spin = (jolt(ha, 20) * HIT.spin * hs * Math.PI) / 180
-    const hc = cell * squash(ha, 0.2 * hs)
-
-    // depois do "apresentar": segura um instante e se desfaz em pixels (tempo real)
-    if (!REDUCE && pa < 99 && pa > DISSOLVE.hold) {
-      if (!dis) {
-        const { art, anchor } = SPR[shown ?? 'arrow']
-        dis = art.cells.map((c) => {
-          const a = -Math.PI / 2 + (disRand() - 0.5) * 2.6
-          const d = 20 + disRand() * 70
-          return {
-            o: [x + (c.c - anchor[0]) * hc, y + (c.r - anchor[1]) * hc],
-            color: c.red || c.rim ? '#ff4438' : c.l > 0.7 ? '#ffffff' : c.l > 0.45 ? '#b9b9b9' : '#5f5f5f',
-            burst: [Math.cos(a) * d, Math.sin(a) * d],
-            rise: [(disRand() - 0.5) * 60, -(70 + disRand() * 180)],
-            dl: disRand() * 0.3,
-          }
-        })
-      }
-      const age = (pa - DISSOLVE.hold) / DISSOLVE.dur
-      for (const q of dis) {
-        const k = clamp01((age - q.dl * 0.3) / 0.7)
-        if (k >= 1) continue
-        const b = easeOut3(clamp01(k * 2.2))
-        cx.globalAlpha = 1 - k
-        cx.fillStyle = q.color
-        cx.fillRect(Math.round(q.o[0] + q.burst[0] * b + q.rise[0] * k), Math.round(q.o[1] + q.burst[1] * b + q.rise[1] * k * k), Math.ceil(hc), Math.ceil(hc))
-      }
-      cx.globalAlpha = 1
-      return
-    }
-    dis = null
+    const hc = cell * squash(ha, 0.2 * hs) * ek
 
     // a chegada: o punho assenta a régua e vira a seta direto, por limiar de Bayer
     if (mode === 'grab') {
@@ -891,6 +906,24 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     length: () => LEAD + LENGTH,
     measure,
     slotIn,
+    /** o editor passa a ser desenhado dentro de uma caixa escalada (true: a tela do
+     *  PC, manifestoPC.js) ou volta à cena (false); a régua presa ao texto vai junto */
+    nest(on) {
+      if (on === nested) return
+      nested = on
+      if (ruler) (on ? ed : document.body).append(ruler)
+      // mudar de lugar no DOM reinicia animações CSS: a marca do último clique não pode bater de novo
+      impact.classList.remove('on')
+    },
+    /** true: sem a bola que deforma o texto (e sem esconder o cursor do site) — dentro
+     *  do PC, depois do tranco, a tela já é monitor e a bola pesava sob o CRT */
+    ballOff(on) {
+      ballBlocked = on
+      if (on) { setBall(false); ed.classList.remove('has-ball') }
+    },
+    /** o cursor do editor agora: ponta em px do editor, px de tela por pixel do
+     *  desenho e raio do brilho (com o editor em escala 1); null antes de ele existir */
+    cursor: () => (curPos && vw ? { x: curPos[0], y: curPos[1], cell, glow: HAND.length * cell * 0.32 } : null),
     /** o scroll do pin: p (alturas de tela a partir do fim do deslocamento) e shift (0→1);
      *  null = antes da seção (para o rAF) */
     scroll(p, shift) {
@@ -907,6 +940,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
       document.documentElement.removeEventListener('pointerleave', onLeave)
       setBall(false)
       releaseRuler()
+      if (nested && ruler) document.body.append(ruler) // (host.innerHTML = '' a levaria junto)
       cv?.remove()
       gl?.dispose()
       grid?.dispose()

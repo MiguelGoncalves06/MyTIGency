@@ -10,6 +10,8 @@ import { buildSplit } from '../utils/manifestoSplit'
 import { mountAct2, PEN_OUT } from '../utils/manifestoAct2'
 import { mountS5 } from '../utils/manifestoS5'
 import { mountS6 } from '../utils/manifestoS6'
+import { mountPC, pcLength } from '../utils/manifestoPC'
+import { strings } from '../i18n/strings'
 import { EDITOR_CELL } from '../utils/ditherSprite'
 
 gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin)
@@ -121,6 +123,8 @@ const ramp = (p, a, b) => clamp01((p - a) / (b - a))
 const TAU = Math.PI * 2
 // Bézier cúbica: curve(início, c1, c2, fim, c1, c2, fim, ...) em px.
 const curve = (a, ...r) => `M${a}` + r.map((p, i) => (i % 3 ? ' ' : 'C') + p).join('')
+const onIdle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 200))
+const cancelIdle = (id) => (window.cancelIdleCallback ? cancelIdleCallback(id) : clearTimeout(id))
 
 // Scroll lateral do Manifesto: quando o conteúdo da seção 2 chega ao centro da
 // tela, o bloco inteiro fixa (pin) e o scroll vertical passa a mover a trilha
@@ -239,6 +243,7 @@ export function useManifestoHorizontal(rootRef, lang) {
       let sceneAEnd = 0 // px no pin em que a cena A termina (e a faixa começa)
       let shiftLen = 0 // deslocamento lateral até a seção 5 (px)
       let s6At = 0 // px no pin em que a seção 6 começa a entrar de lado
+      let pcAt = 0 // px no pin em que a seção 6 termina e o PC (cartaz → tela → mesa → folha) começa
       let J = [0, 0] // onde o cursor pega o traço A
       let Jdir = [1, 0]
       let pickS = 0 // comprimento da extensão do traço A até J (unid. do SVG)
@@ -311,6 +316,35 @@ export function useManifestoHorizontal(rootRef, lang) {
       const s6Scene = act2El?.querySelector('.ma-c')
       const s6El = s5 && s6Scene?.querySelector('.s6')
       const s6 = s6El ? mountS6(s6El, { ruler }) : null
+      // fim: o PC (utils/manifestoPC.js), depois da seção 6. Pesado (2 WebGL, mesa
+      // 3D, texturas em canvas): monta só quando o scroll passa da cena A, no ócio
+      const pcHost = s6 ? act2El.querySelector('.ma-pc') : null
+      let pc = null
+      let pcIdle = 0
+      let pcLamp = 0 // a lâmpada da sala: acesa, o grão e o header escuro saem
+      let curtainNow = 0
+      const chrome = () => {
+        grain.style.setProperty('--grain', ramp(proxy.d, act2At + vh * CURTAIN_VH * 0.28, act2At + vh * CURTAIN_VH) * (1 - pcLamp))
+        document.documentElement.classList.toggle('ms-dark', curtainNow > 0.55 && pcLamp < 0.5) // header claro sobre o escuro
+      }
+      const mountPCNow = () => {
+        cancelIdle(pcIdle)
+        if (pc || !alive) return
+        pc = mountPC(pcHost, {
+          reduce: reduced, onLamp: (v) => { pcLamp = v; chrome() }, cursorFrom: s6.cursor,
+          onImpact: (v) => s6.ballOff(v), t: strings[lang]?.pc ?? strings.pt.pc,
+        })
+        pc.measure({ vw, vh, top: chromeBottom() })
+      }
+      // o cartaz do PC é a seção 6 viva: o mesmo nó vai para dentro da tela (e
+      // volta), então nada para na troca — stop-motion, régua e bola continuam
+      let s6InPC = false
+      const nestS6 = (on) => {
+        if (on === s6InPC) return
+        s6InPC = on
+        ;(on ? pc.poster : s6Scene).append(s6El)
+        s6.nest(on)
+      }
       // o deslocamento 5 → 6 (d em px do pin): o punho da seção 5 leva a régua até o
       // vão da 6 (slot, px de tela); handed = chegou, a régua e o cursor são da 6
       const carryAt = (d, layerTop) => {
@@ -351,6 +385,9 @@ export function useManifestoHorizontal(rootRef, lang) {
         pinLen = sceneAEnd + (shiftLen ? shiftLen + (s5 ? s5.length(vh) : vh * SCENE_B_VH) : 0)
         s6At = pinLen
         if (s6 && shiftLen) pinLen += vw + vh * s6.length()
+        pcAt = pinLen
+        if (pcHost && shiftLen) pinLen += vh * pcLength(reduced)
+        root.classList.toggle('has-pc', pinLen > pcAt)
         dAway0 = act2At + vh * CURTAIN_VH * PEN_OUT[0]
         dAway1 = act2At + vh * (CURTAIN_VH + SCENE_A_VH * AWAY_END)
         // olho da cena A, já no lugar final (offset* ignora a subida das linhas)
@@ -394,6 +431,7 @@ export function useManifestoHorizontal(rootRef, lang) {
         buildPath()
         s5?.measure({ vw, vh, shift: shiftLen, sceneEndX: act2.sceneEndX(), size: away ? sAway : vh * 0.08, fracs: rFracs })
         s6?.measure({ vw, vh, dockW: s5.dockWidth(), cell: s5.handCell() * EDITOR_CELL })
+        pc?.measure({ vw, vh, top: chromeBottom() })
       }
 
       // caminho do cursor + traço novo (precisa da seção 3 montada para o vão)
@@ -547,7 +585,17 @@ export function useManifestoHorizontal(rootRef, lang) {
         const cam = (s5 ? s5.cam(d - sceneAEnd) : 0) + slide6
         if (s6) {
           s6Scene.style.transform = `translateX(${vw - slide6}px)`
-          s6.scroll(d > s6At ? Math.max(0, d - s6At - vw) / vh : null, slide6 / vw)
+          // (preso no fim do roteiro: o PC vem depois, e o excesso o faria "desandar" com freio ao voltar)
+          s6.scroll(d > s6At ? Math.min(s6.length(), Math.max(0, d - s6At - vw) / vh) : null, slide6 / vw)
+        }
+        if (pcHost && pinLen > pcAt) {
+          if (!pc && !pcIdle && d > sceneAEnd) pcIdle = onIdle(mountPCNow)
+          if (!pc && d >= pcAt) mountPCNow() // chegou rápido demais: monta já
+          if (pc) nestS6(d >= pcAt)
+          pc?.scroll(d >= pcAt ? (d - pcAt) / vh : null)
+          // com o PC no ar (camada opaca por cima de tudo), a trilha atrás dele (seções
+          // 1–3, a grade) não precisa ser pintada: ela seguia repintando, invisível
+          root.classList.toggle('pc-on', !!pc && d >= pcAt)
         }
         act2?.update(reduced ? { curtain: curtain > 0 ? 1 : 0, a: curtain > 0 ? 1 : 0, b, cam } : { curtain, a: sceneA, b, cam })
         // cursor 3D e régua seguem no segundo ato (a régua volta a ter papel
@@ -561,8 +609,8 @@ export function useManifestoHorizontal(rootRef, lang) {
           canvas.style.filter = lit > 0 ? `drop-shadow(0 0 ${(sAway * 0.32 * lit).toFixed(1)}px rgba(244,243,239,${(0.4 * lit).toFixed(3)}))` : ''
         }
         ruler.style.setProperty('--act2-dip', dip)
-        grain.style.setProperty('--grain', ramp(d, act2At + vh * CURTAIN_VH * 0.28, act2At + vh * CURTAIN_VH))
-        document.documentElement.classList.toggle('ms-dark', curtain > 0.55) // header claro sobre o escuro
+        curtainNow = curtain
+        chrome() // grão e header claro sobre o escuro (até a lâmpada do PC acender)
         // régua: cabeçote no scroll do pin, trecho vermelho = cursor no caminho
         const p = clamp01(d / (travelA + scrollB))
         rHead.style.transform = `translateX(${p * ruler.clientWidth}px)`
@@ -780,6 +828,10 @@ export function useManifestoHorizontal(rootRef, lang) {
         s5?.dispose()
         s6?.dispose()
         if (s6Scene) s6Scene.style.transform = ''
+        cancelIdle(pcIdle)
+        if (pc) nestS6(false) // a seção 6 volta para a cena antes do PC limpar o DOM dele
+        pc?.dispose()
+        root.classList.remove('has-pc', 'pc-on')
         act2?.dispose()
         document.documentElement.classList.remove('ms-dark')
         cur?.dispose()

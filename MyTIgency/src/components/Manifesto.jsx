@@ -223,6 +223,10 @@ function Act2({ act }) {
         <h2 className="sr-only">{c.sentence}</h2>
         <div className="s6" aria-hidden="true" data-s6={JSON.stringify(c)} />
       </div>
+      {/* fim do Manifesto: o cartaz da 6 encolhe para dentro de um PC numa mesa e a
+          câmera desce até a folha branca, o começo de Trabalhos. Só desktop (pin
+          lateral); DOM, WebGL e tempo: utils/manifestoPC.js + useManifestoHorizontal. */}
+      <div className="ma-scene ma-pc" aria-hidden="true" />
     </section>
   )
 }

@@ -7,7 +7,8 @@ export function Services() {
   const { t } = useLanguage()
 
   return (
-    <section className="services" id="servicos">
+    // parte de Trabalhos (Work.jsx): a primeira coisa na folha branca depois do Manifesto
+    <div className="services" id="servicos">
       <div className="section-head reveal">
         <span className="eyebrow">{t.services.eyebrow}</span>
         <h2><RedText>{t.services.headingAccent}</RedText> {t.services.headingLine1}<br />{t.services.headingLine2}</h2>
@@ -21,6 +22,6 @@ export function Services() {
           </div>
         ))}
       </div>
-    </section>
+    </div>
   )
 }

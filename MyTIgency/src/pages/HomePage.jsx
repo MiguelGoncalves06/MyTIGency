@@ -3,7 +3,6 @@ import { Header } from '../components/Header'
 import { Hero } from '../components/Hero'
 import { Marquee } from '../components/Marquee'
 import { Manifesto } from '../components/Manifesto'
-import { Services } from '../components/Services'
 import { Work } from '../components/Work'
 import { Footer } from '../components/Footer'
 import { LoadingScreen } from '../components/LoadingScreen'
@@ -35,7 +34,7 @@ export default function HomePage() {
         <Marquee />
         <div className="reveal-panel">
           <Manifesto />
-          <Services />
+          {/* Serviços faz parte de Trabalhos (Work.jsx) */}
           <Work />
         </div>
         {/* Fora do .reveal-panel: o footer (z-index:-1) fica preso atrás dele e é revelado pelo scroll */}

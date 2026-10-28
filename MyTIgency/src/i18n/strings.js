@@ -43,6 +43,23 @@ export const strings = {
         { num: '03', title: 'Produto', desc: '[Placeholder] Estratégia e priorização — o que construir, na ordem certa, com o motivo certo.' },
       ],
     },
+    // fim do Manifesto: o PC, o cartaz e a mesa (utils/manifestoPC.js, manifestoPCDesk.js)
+    pc: {
+      word: 'Trabalhos', // a palavra gigante atrás do PC (a próxima seção)
+      caption: 'MyTigency ®',
+      scroll: 'role para abrir ↓',
+      end: 'fim do manifesto',
+      next: 'trabalhos',
+      sticker: 'FEITO À MÃO · POR 2 PESSOAS · COM CAFÉ ·', // o texto em volta do adesivo
+      icons: ['Meu computador', 'Lixeira', 'Trabalhos', 'manifesto.txt', 'Prompt'],
+      alert: ['Alerta', 'Alerta de site bom demais.', ['Fechar', 'Continuar']], // [título, texto, botões]
+      notice: ['Aviso', 'Feche esse pop-up.', ['OK']],
+      txt: ['manifesto.txt', 'Este pop-up foi posicionado exatamente aqui.', ['OK']],
+      opening: ['Trabalhos', 'Abrindo trabalhos…'],
+      floppy: 'trabalhos', // a etiqueta do disquete na mesa
+      notes: [['2 pessoas', '+ café'], ['cada linha', 'foi escrita', 'aqui']], // os bilhetes na mesa
+      locale: 'pt-BR', // o relógio da barra de tarefas
+    },
     work: {
       eyebrow: 'Trabalhos selecionados',
       heading: 'Alguns dos produtos que ajudamos a vencer.',
@@ -296,6 +313,22 @@ export const strings = {
         { num: '02', title: 'Engineering', desc: '[Placeholder] Front-end, back-end and infrastructure built to last — no shortcuts, no hidden technical debt.' },
         { num: '03', title: 'Product', desc: '[Placeholder] Strategy and prioritization — what to build, in the right order, for the right reason.' },
       ],
+    },
+    pc: {
+      word: 'Work',
+      caption: 'MyTigency ®',
+      scroll: 'scroll to open ↓',
+      end: 'end of manifesto',
+      next: 'work',
+      sticker: 'MADE BY HAND · BY 2 PEOPLE · WITH COFFEE ·',
+      icons: ['My Computer', 'Recycle Bin', 'Work', 'manifesto.txt', 'Prompt'],
+      alert: ['Alert', 'Warning: this site is too good.', ['Close', 'Continue']],
+      notice: ['Notice', 'Close this pop-up.', ['OK']],
+      txt: ['manifesto.txt', 'This pop-up was placed exactly here.', ['OK']],
+      opening: ['Work', 'Opening work…'],
+      floppy: 'work',
+      notes: [['2 people', '+ coffee'], ['every line', 'was written', 'here']],
+      locale: 'en-US',
     },
     work: {
       eyebrow: 'Selected work',
