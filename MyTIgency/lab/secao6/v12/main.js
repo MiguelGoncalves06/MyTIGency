@@ -20,6 +20,8 @@ import { strings } from '../../../src/i18n/strings'
 import logoUrl from '../../../src/assets/logo.svg?url'
 import { EDITOR, shadeOf, drawSprite } from '../../../src/utils/ditherSprite'
 import DEV from './devices.json'
+import { mountDitherTV } from '../../../src/utils/tv3d'
+import tvUrl from '../../../src/assets/pc-terrarium.min.glb?url'
 
 const url = (g) => Object.fromEntries(Object.entries(g).map(([k, v]) => [k.split('/').pop().replace(/\.\w+$/, ''), v]))
 const IMG = url(import.meta.glob('./img/*.png', { eager: true, query: '?url', import: 'default' }))
@@ -45,6 +47,20 @@ const TL = {
   lights: [0.42, 0.8], // o aparelho sai do escuro
   room: [0.74, 0.94], // a sala acende: preto → branco
 }
+// A sala escura: até a lâmpada acender, a única luz da cena é a tela — um halo
+// na parede, a luz vazando no chão e o reflexo no corpo do PC, na cor média do
+// wallpaper. A luz nasce com o wallpaper e some quando a lâmpada acende.
+// A lâmpada é um evento, não um fade: ao passar de LAMP.at rolando para baixo,
+// pisca em degraus (tempo real, ms → nível) e fica acesa; abrir a página depois
+// do ponto já a encontra acesa; voltar para antes apaga.
+const LAMP = { at: 0.76, seq: [[0, 0.85], [55, 0.04], [150, 0.04], [190, 0.6], [250, 0.12], [400, 1]] }
+// Degauss: o "tum" que marca a virada de cartaz para monitor (tempo real, ao
+// passar de at): clarão curto, anéis de cor que giram e se abrem, tremor e
+// curva/cores do tubo oscilando — tudo amortecido em dur segundos.
+const DEGAUSS = { at: 0.07, dur: 1.3 }
+// Câmera: no zoom out ela recua em arco (gira em perspectiva em volta do
+// aparelho) e termina de frente; graus no meio do caminho
+const CAM = { y: -10, x: 4, persp: 2.2 } // persp: distância da câmera em alturas de tela
 // o cursor da seção 6 dentro da tela: se refaz, fecha o "Aviso", abre Trabalhos
 // com dois cliques e espera (ampulheta) até a barra chegar a 100% — em T = 1,
 // quando o trecho fixo solta e o Work entra
@@ -58,14 +74,21 @@ const CUR = {
 const FIT = 0.84 // a tela (antes do zoom) ocupa esta fração da altura
 const FINAL = 0.6 // o aparelho no fim: fração da altura (e no máx. 70% da largura)
 
-const DEVICES = {
+const DEVICES = { // [rótulo, imagem (null = o 3D), geometria]
   s2: ['PC da seção 2', 's2', 's2'],
   's2-d': ['PC da seção 2 · dither', 's2-d', 's2'],
-  'pc-bege': ['PC bege (foto)', 'pc-bege', 'pc-bege'],
-  'pc-bege-d': ['PC bege · dither', 'pc-bege-d', 'pc-bege'],
-  monitor: ['monitor (foto)', 'monitor', 'monitor'],
-  tv: ['TV/DVD (foto)', 'tv-memorex', 'tv-memorex'],
+  's2-3d': ['PC da seção 2 · 3D', null, 's2-3d'],
 }
+// O 3D: o mesmo GLB, dither e paleta da TV da seção 2 (Manifesto.jsx → DitherTV),
+// de frente e parado. A geometria (onde fica o vidro) sai da projeção do modelo
+// quando ele carrega; até lá vale a do render (mesma proporção de canvas).
+const TV3D = {
+  palette: ['#1c1c1c', '#6e6e6e', '#bcbcbc', '#ffffff'],
+  model: { front: 0, colorBoost: 0.25, screenShape: { CX: -0.15, CY: 0.175, HX: 0.41, HY: 0.3, Z0: 0.21, A: 0, B: 0, C: 0, OFFSET: 0.008, MARGIN: 1.03 } },
+  light: 5, // intensidade da luz da tela no aparelho, com a sala apagada
+}
+// como o dither (e depois a cor) toma a tela (o shader do wallpaper → order)
+const REV = { bayer: 0, diag: 1, centro: 2, tubo: 3, linhas: 4 }
 const WALLS = [
   ['ours', 'nosso morro (shader)'], ['u_-nYBR0LFTvQ', 'morro liso'], ['u_oOBMoCOgGrY', 'morro ciano'], ['u_yOkNxeFoh-s', 'morro + nuvens'],
   ['u_FQkQxgO9Kh8', 'colinas'], ['u_nnaxq9I1e3k', 'morro + cirros'], ['u_rG6HB7Af_Js', 'vale'], ['u_K-hzIFI9KM0', 'encosta'],
@@ -104,13 +127,15 @@ const WIN_W = 300 // largura natural das janelas de fora (px), escaladas para ca
 
 // ---------- painel (a escolha fica neste navegador) ----------
 const store = (() => { try { return JSON.parse(localStorage.getItem('lab-s6-v12') || '{}') } catch { return {} } })()
-const sel = { dev: 's2', wall: 'u_yOkNxeFoh-s', mode: '2', tone: 'paper', crt: '1.5', ...store } // padrão = a escolha de 27/10
+const sel = { dev: 's2', wall: 'u_FQkQxgO9Kh8', mode: '2', rev: 'bayer', tone: 'paper', crt: '0.4', ...store } // padrão = a escolha de 28/10
+if (!DEVICES[sel.dev]) sel.dev = 's2' // aparelhos que saíram do painel
 const save = () => { try { localStorage.setItem('lab-s6-v12', JSON.stringify(sel)) } catch { /* sem storage: só não lembra */ } }
 
 const q = (s) => document.querySelector(s)
 const stage = q('.stage'), rig = q('.rig'), crt = q('.crt'), crtIn = q('.crt-in'), poster = q('.poster')
 const devEl = q('.dev'), devImg = q('.dev img'), out = q('.out'), desk = q('.desk'), tOut = q('.panel .t')
 const bend = q('#crt-bend'), offR = q('#crt-r'), offB = q('#crt-b')
+const camEl = q('.cam'), spillEl = q('.spill'), devGlow = q('.dev-glow')
 
 // o mapa da curva: R/G = deslocamento em x/y (0,5 = parado); a borda puxa de fora → barril
 ;(() => {
@@ -265,6 +290,10 @@ const SPRING = {
 }
 const TILT = { gain: 2.4, max: 5 } // graus por (altura de tela / s) de scroll, e teto
 const LOOK = { y: 3.5, x: 2.2 } // graus no máximo, com o cursor na borda da janela
+// O PC 3D: no recuo da câmera ele gira de verdade — vira de lado no meio do zoom
+// (yaw/pitch em graus no pico) e volta de frente; a inclinação pelo scroll e o
+// olhar para o cursor também giram o modelo, look × mais que na imagem plana
+const POSE3D = { yaw: -30, pitch: 7, look: 2.2 }
 const LAND = { drop: 300, kick: 18 } // impulso do pouso: px/s por 1000 px de altura do aparelho (afunda ~2%) e graus/s
 // LEDs (px da imagem do aparelho); só o render do PC da seção 2 tem os pontos medidos
 const LEDS = { s2: { pow: [866, 676], hd: [527, 729] } }
@@ -312,15 +341,36 @@ function lifeFrame(now, T) {
   ledPow.style.opacity = ramp(T, TL.zoom[0], TL.zoom[0] + 0.1)
 
   const rx = L.tilt.x + L.lookX.x, ry = L.lookY.x
-  bodyEl.style.transform = `perspective(${devBox.dh * 4}px) translateY(${L.land.x.toFixed(2)}px) rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`
+  // no 3D quem gira é o modelo (pose3D); o corpo só afunda no pouso
+  bodyEl.style.transform = q3d
+    ? `translateY(${L.land.x.toFixed(2)}px)`
+    : `perspective(${devBox.dh * 4}px) translateY(${L.land.x.toFixed(2)}px) rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`
   // o reflexo do vidro corre ao contrário do giro
   crt.style.setProperty('--gx', `${28 - ry * 5}%`)
   crt.style.setProperty('--gy', `${18 + rx * 4}%`)
-  // a sombra no chão: aparece com a luz; o PC afundando a aperta, inclinando a desloca
-  const lit = easeInOut(ramp(T, ...TL.room))
+  // a sombra no chão: aparece com a lâmpada; o PC afundando a aperta, inclinando a desloca
+  const lit = lampV
   const press = 1 + L.land.x / devBox.dh
   shadowEl.style.opacity = (lit * Math.min(1.3, press)).toFixed(3)
   shadowEl.style.transform = `translateX(${(ry * devBox.dh * 0.004).toFixed(2)}px) scale(${(press * (1 - Math.abs(rx) * 0.01)).toFixed(4)}, 1)`
+}
+
+// ---------- a luz da tela: a cor média do wallpaper, puxada para clara e saturada ----------
+function avgColor(img) {
+  const c = document.createElement('canvas')
+  c.width = c.height = 12
+  const x = c.getContext('2d')
+  x.drawImage(img, 0, 0, 12, 12)
+  const d = x.getImageData(0, 0, 12, 12).data
+  const s = [0, 0, 0]
+  for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) s[k] += d[i + k]
+  return s.map((v) => v / (d.length / 4))
+}
+function setGlow(rgb) {
+  // luz emitida: normaliza pelo canal mais forte (tela acesa nunca é cinza-escuro) e satura um pouco
+  const m = Math.max(...rgb, 1), avg = (rgb[0] + rgb[1] + rgb[2]) / 3
+  const c = rgb.map((v) => Math.round(Math.min(255, (avg + (v - avg) * 1.5) * (235 / m))))
+  stage.style.setProperty('--gc', c.join(','))
 }
 
 // ---------- wallpaper (shader) ----------
@@ -331,13 +381,13 @@ const wall = (() => {
   renderer.setPixelRatio(pr)
   const u = {
     uTex: { value: null }, uTexA: { value: 1 }, uRes: { value: new THREE.Vector2(1, 1) }, uOurs: { value: 1 },
-    uDis: { value: 0 }, uCol: { value: 0 }, uCell: { value: 3 * pr },
+    uDis: { value: 0 }, uCol: { value: 0 }, uCell: { value: 3 * pr }, uRev: { value: 0 },
   }
   const mat = new THREE.ShaderMaterial({
     uniforms: u,
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
     fragmentShader: /* glsl */ `
-      uniform sampler2D uTex; uniform float uTexA, uOurs, uDis, uCol, uCell; uniform vec2 uRes;
+      uniform sampler2D uTex; uniform float uTexA, uOurs, uDis, uCol, uCell, uRev; uniform vec2 uRes;
       varying vec2 vUv;
       float b2(vec2 p) { p = floor(p); return fract(p.x * .5 + p.y * p.y * .75); }
       float b8(vec2 p) { return b2(p * .25) * .0625 + b2(p * .5) * .25 + b2(p); }
@@ -363,6 +413,25 @@ const wall = (() => {
         if (ra > 1.) t.y = (t.y - .5) / ra + .5; else t.x = (t.x - .5) * ra + .5;
         return texture2D(uTex, t).rgb;
       }
+      // por onde a revelação passa primeiro (0 = antes, 1 = por último), por célula;
+      // uRev: 0 a tela toda junta (só o Bayer decide), 1 diagonal (do canto de
+      // cima à esquerda), 2 círculo do centro, 3 tubo (abre da linha do meio,
+      // como um CRT ligando), 4 linhas (de cima para baixo, em faixas, como
+      // imagem antiga carregando)
+      float order(vec2 c) {
+        vec2 uv = (c + .5) * uCell / uRes;
+        float asp = uRes.x / uRes.y;
+        if (uRev < 1.5) return (uv.x * asp + (1. - uv.y)) / (asp + 1.);
+        if (uRev < 2.5) return length((uv - .5) * vec2(asp, 1.)) / length(vec2(asp, 1.) * .5);
+        if (uRev < 3.5) return abs(uv.y - .5) * 2.;
+        return floor((1. - uv.y) * 28.) / 28.;
+      }
+      // a célula já foi revelada? a frente anda com a, a borda (E) se desfaz no Bayer
+      bool shown(float th, float a, vec2 c) {
+        if (uRev < .5) return th < a;
+        const float E = .24;
+        return th < clamp((a * (1. + E) - order(c)) / E, 0., 1.);
+      }
       void main() {
         vec2 cell = floor(gl_FragCoord.xy / uCell);
         float th = b8(cell);
@@ -372,8 +441,8 @@ const wall = (() => {
         float v = clamp((l - .5) * 1.25 + .5, 0., 1.) * 3.;
         float lv = min(3., floor(v) + step(th, fract(v)));
         vec3 pal = lv < .5 ? vec3(.078) : lv < 1.5 ? vec3(.373) : lv < 2.5 ? vec3(.725) : vec3(1.);
-        vec3 o = th < uDis ? pal : vec3(.078);
-        gl_FragColor = vec4(th < uCol ? col : o, 1.);
+        vec3 o = shown(th, uDis, cell) ? pal : vec3(.078);
+        gl_FragColor = vec4(shown(th, uCol, cell) ? col : o, 1.);
       }`,
   })
   const scene = new THREE.Scene()
@@ -385,12 +454,17 @@ const wall = (() => {
     size(w, h) { renderer.setSize(w, h, false); u.uRes.value.set(w * pr, h * pr); dirty = true },
     set(name) {
       u.uOurs.value = name === 'ours' ? 1 : 0
-      if (name !== 'ours') loader.load(WALL[name], (t) => { u.uTex.value?.dispose(); u.uTex.value = t; u.uTexA.value = t.image.width / t.image.height; dirty = true; invalidate() })
+      if (name === 'ours') setGlow([120, 170, 245]) // o céu do nosso morro
+      else loader.load(WALL[name], (t) => {
+        u.uTex.value?.dispose(); u.uTex.value = t; u.uTexA.value = t.image.width / t.image.height; dirty = true
+        setGlow(avgColor(t.image))
+        invalidate()
+      })
       dirty = true
     },
-    draw(dis, col) {
-      if (!dirty && u.uDis.value === dis && u.uCol.value === col) return
-      u.uDis.value = dis; u.uCol.value = col; dirty = false
+    draw(dis, col, rev) {
+      if (!dirty && u.uDis.value === dis && u.uCol.value === col && u.uRev.value === rev) return
+      u.uDis.value = dis; u.uCol.value = col; u.uRev.value = rev; dirty = false
       renderer.render(scene, cam)
     },
   }
@@ -402,8 +476,11 @@ function invalidate() { dirty = true } // a textura do wallpaper chegou depois d
 function layout() {
   vw = innerWidth; vh = innerHeight
   const [, img, geo] = DEVICES[sel.dev]
-  const d = DEV[geo], s = d.screen
-  devImg.src = IMG[img]
+  const is3d = img === null
+  const d = is3d ? (geo3d ?? DEV.s2) : DEV[geo], s = d.screen
+  devEl.classList.toggle('is-3d', is3d)
+  bodyEl.classList.toggle('is-3d', is3d)
+  if (!is3d) devImg.src = IMG[img]
   // a tela antes do zoom: FIT da altura, na proporção do buraco do aparelho
   H1 = vh * FIT; W1 = (H1 * s.w) / s.h
   if (W1 > vw * 0.92) { W1 = vw * 0.92; H1 = (W1 * s.h) / s.w }
@@ -419,10 +496,27 @@ function layout() {
   const box = { left: `${-s.x * ds}px`, top: `${-s.y * ds}px`, width: `${dw}px`, height: `${dh}px` }
   Object.assign(devEl.style, box)
   Object.assign(ledsEl.style, box)
+  // 3D: o canvas é o render inteiro; a caixa do aparelho é só a do modelo dentro dele
+  if (is3d) {
+    const g = geo3d?.canvas ?? { x: 0, y: 0 }
+    Object.assign(dev3d.style, { position: 'absolute', left: `${g.x * ds}px`, top: `${g.y * ds}px`, width: `${R3D.w * ds}px`, height: `${R3D.h * ds}px` })
+    q3d = { ox: (g.x - s.x) * ds, oy: (g.y - s.y) * ds, cw: R3D.w * ds, ch: R3D.h * ds }
+  } else {
+    q3d = null
+    crt.style.transform = ''
+  }
   // o corpo gira pela base do aparelho; a sombra é uma elipse rente a ela
   devBox = { dh }
   bodyEl.style.transformOrigin = `${-s.x * ds + dw / 2}px ${-s.y * ds + dh}px`
   Object.assign(shadowEl.style, { left: `${-s.x * ds + dw * 0.04}px`, top: `${-s.y * ds + dh * 0.955}px`, width: `${dw * 0.92}px`, height: `${dh * 0.09}px` })
+  // a luz da tela: no chão (mais larga que o aparelho, à frente dele) e no corpo (recortada pela imagem)
+  Object.assign(spillEl.style, { left: `${-s.x * ds - dw * 0.2}px`, top: `${-s.y * ds + dh * 0.86}px`, width: `${dw * 1.4}px`, height: `${dh * 0.3}px` })
+  Object.assign(devGlow.style, box)
+  // no 3D o reflexo é luz de verdade na cena (tv3d → setScreenLight), não a máscara
+  devGlow.style.display = is3d ? 'none' : ''
+  if (!is3d) devGlow.style.setProperty('--devmask', `url("${IMG[img]}")`)
+  devGlow.style.setProperty('--sx', `${((s.x + s.w / 2) / d.w) * 100}%`)
+  devGlow.style.setProperty('--sy', `${((s.y + s.h / 2) / d.h) * 100}%`)
   const led = LEDS[geo]
   ledsEl.style.display = led ? '' : 'none'
   if (led) for (const [el, [x, y]] of [[ledPow, led.pow], [ledHd, led.hd]]) Object.assign(el.style, { left: `${(x / d.w) * 100}%`, top: `${(y / d.h) * 100}%` })
@@ -436,16 +530,123 @@ function layout() {
     else stks[i].style.width = '100%'
   })
   wall.size(W1, H1)
+  if (is3d) ensure3D()
   dirty = true
 }
 
+// ---------- o PC 3D da seção 2 ----------
+const dev3d = q('.dev3d')
+let tv = null
+let q3d = null // onde o canvas do 3D fica no corpo (px do rig) e o tamanho dele
+// a geometria do 3D, num espaço de render de 1228 × 983 (a proporção do canvas):
+// a caixa do modelo (w, h) — é ela que conta como "aparelho" —, o vidro dentro
+// dela (screen) e onde o canvas inteiro fica em relação a ela (canvas)
+let geo3d = null
+const R3D = { w: 1228, h: 983 }
+function ensure3D() {
+  if (tv) return
+  // o modelo como ele é: sem dither e com os materiais originais
+  tv = mountDitherTV(dev3d, {
+    url: tvUrl, palette: TV3D.palette, ...TV3D.model, showScreen: false, dither: false,
+    restAngle: 0, autoPlay: false, revealDuration: 0.01, spinDuration: 0.01,
+  })
+  tv.play()
+  dev3d.addEventListener('tv3d:loaded', () => {
+    const cw = dev3d.clientWidth, ch = dev3d.clientHeight
+    const b = tv.projBox(0), r = tv.projScreen(0)
+    if (!b || !r || !cw) return
+    const bx = (b.x / cw) * R3D.w, by = (b.y / ch) * R3D.h
+    geo3d = {
+      w: (b.w / cw) * R3D.w, h: (b.h / ch) * R3D.h,
+      screen: { x: r.x * R3D.w - bx, y: r.y * R3D.h - by, w: r.w * R3D.w, h: r.h * R3D.h, r: 6 },
+      canvas: { x: -bx, y: -by },
+    }
+    layout()
+  }, { once: true })
+}
+
+// a projeção que leva o retângulo w × h (origem no canto) aos 4 pontos q
+// [↖, ↗, ↘, ↙], como matrix3d do CSS (quadrado → quadrilátero, de Heckbert)
+function quadMatrix(w, h, q) {
+  const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = q
+  const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2
+  const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3
+  const den = dx1 * dy2 - dx2 * dy1 || 1e-9
+  const g = (sx * dy2 - dx2 * sy) / den, k = (dx1 * sy - sx * dy1) / den
+  const a = x1 - x0 + g * x1, b = x3 - x0 + k * x3, d = y1 - y0 + g * y1, e = y3 - y0 + k * y3
+  return `matrix3d(${[a / w, d / w, 0, g / w, b / h, e / h, 0, k / h, 0, 0, 1, 0, x0, y0, 0, 1].map((v) => +v.toFixed(8)).join(',')})`
+}
+
+// o PC 3D a cada quadro: o giro do recuo da câmera + a inclinação do scroll + o
+// olhar para o cursor (as molas de lifeFrame) viram a pose do modelo, e a tela
+// em DOM é deformada para cair nos 4 cantos do vidro nessa pose
+// a escala do rig (tela + aparelho) em T: cobrindo a viewport → tela 4:3 → aparelho
+const rigScale = (T) => Math.exp(lerp(Math.log(k0), 0, easeInOut(ramp(T, ...TL.shrink))) + lerp(0, Math.log(kf), easeInOut(ramp(T, ...TL.zoom))))
+// O canvas do 3D tem o tamanho do aparelho em px do rig (milhares de px) e o rig o
+// encolhe: renderizar nesse tamanho é pagar 4–10× os pixels que aparecem. A
+// resolução segue a escala do rig × a densidade da tela, em degraus de ~12% (trocar
+// a resolução recria os buffers) e no máximo 1 (o tamanho do canvas, como antes).
+const RES3D = { steps: 6, min: 0.15 }
+function resolution3D(T) {
+  const want = Math.min(1, Math.max(RES3D.min, rigScale(T) * (devicePixelRatio || 1)))
+  return Math.min(1, 2 ** (Math.ceil(Math.log2(want) * RES3D.steps) / RES3D.steps))
+}
+
+function pose3D(T) {
+  if (!q3d || !tv) return
+  tv.setResolution(resolution3D(T))
+  const e2 = easeInOut(ramp(T, ...TL.zoom))
+  const arc = REDUCE ? 0 : Math.sin(Math.PI * e2) * (1 - 0.35 * e2)
+  const deg = Math.PI / 180
+  const yaw = (POSE3D.yaw * arc + life.lookY.x * POSE3D.look) * deg
+  // rotateX do CSS (positivo = o topo vai para trás) é o contrário do eixo x do three
+  const pitch = -(POSE3D.pitch * arc + (life.tilt.x + life.lookX.x) * POSE3D.look) * deg
+  tv.setPose(yaw, pitch)
+  const quad = tv.projScreenQuad()
+  if (!quad) return
+  crt.style.transformOrigin = '0 0'
+  crt.style.transform = quadMatrix(W1, H1, quad.map(([fx, fy]) => [q3d.ox + fx * q3d.cw, q3d.oy + fy * q3d.ch]))
+}
+
 const rgb = (a, b, t) => `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], t))).join(',')})`
+
+// ---------- eventos em tempo real: a lâmpada e o degauss ----------
+// disparam quando o scroll PASSA do ponto rolando para baixo (abrir a página
+// depois do ponto não dispara: a lâmpada já está acesa, o degauss já passou)
+let lampV = 0
+const lamp = { t0: null, prevT: null }
+function lampLevel(now, T) {
+  const was = lamp.prevT
+  lamp.prevT = T
+  if (T < LAMP.at) { lamp.t0 = null; return 0 }
+  if (REDUCE) return 1
+  if (lamp.t0 === null) lamp.t0 = was !== null && was < LAMP.at ? now : -1e9
+  const age = now - lamp.t0
+  let v = 0
+  for (const [t, l] of LAMP.seq) if (age >= t) v = l
+  return v
+}
+const deg = { t0: null, prevT: null }
+function degaussAge(now, T) {
+  if (deg.prevT !== null && deg.prevT < DEGAUSS.at && T >= DEGAUSS.at && !REDUCE) deg.t0 = now
+  if (T < DEGAUSS.at) deg.t0 = null
+  deg.prevT = T
+  return deg.t0 === null ? 99 : (now - deg.t0) / 1000
+}
+
 function frame(now) {
+  if (!vh || !vw) return // janela sem tamanho (aba oculta): nada a medir
   const T = REDUCE ? 1 : clamp01((scrollY - HOLD0 * vh) / (LEN * vh))
   // stop-motion das figurinhas de fora: 2 poses, cada uma na sua fase (janelas não balançam)
   wobble.forEach((el, i) => { const p = String(Math.floor(now / 500 + i * 0.37) % 2); if (el.dataset.pose !== p) el.dataset.pose = p })
+  const lv = lampLevel(now, T)
+  const dga = degaussAge(now, T)
+  // enquanto a lâmpada pisca ou o degauss acontece, o quadro precisa ser redesenhado
+  if (lv !== lampV || dga < DEGAUSS.dur + 0.05) dirty = true
+  lampV = lv
   cursorFrame(now, T) // inércia, cliques e troca de forma andam no tempo real
   lifeFrame(now, T) // molas do PC e LEDs, idem
+  pose3D(T) // o PC 3D gira de verdade e a tela o acompanha (todo quadro: as molas andam no tempo)
   if (T === lastT && !dirty) return
   lastT = T; dirty = false
   tOut.textContent = T.toFixed(2)
@@ -454,10 +655,25 @@ function frame(now) {
   const c = ramp(T, ...TL.crt) * Number(sel.crt)
   stage.style.setProperty('--crt', c)
   crt.style.setProperty('--rad', `${c * 3.4}% / ${c * 4.4}%`)
-  crtIn.classList.toggle('curved', c > 0.001) // sem efeito, sem filtro: o cartaz nítido como na seção 6
-  bend.setAttribute('scale', (0.1 * c).toFixed(4))
-  offR.setAttribute('dx', (0.0013 * c).toFixed(5))
-  offB.setAttribute('dx', (-0.0013 * c).toFixed(5))
+  crtIn.classList.toggle('curved', c > 0.001 || dga < DEGAUSS.dur) // sem efeito, sem filtro: o cartaz nítido como na seção 6
+  // degauss: env amortece; o tubo treme, a curva e as cores oscilam, anéis de cor se abrem
+  const da = dga / DEGAUSS.dur
+  const env = da < 1 ? Math.exp(-da * 4.2) * (1 - da) : 0
+  const thump = dga < 1 ? Math.exp(-dga * 16) : 0 // o "tum": um clarão curto
+  bend.setAttribute('scale', (0.1 * c + 0.07 * env * Math.sin(dga * 21)).toFixed(4))
+  offR.setAttribute('dx', (0.0013 * c + 0.007 * env * Math.sin(dga * 27)).toFixed(5))
+  offB.setAttribute('dx', (-0.0013 * c - 0.007 * env * Math.sin(dga * 23 + 1)).toFixed(5))
+  // a curva puxa a imagem para dentro e as bordas ficariam vazias (o preto do
+  // tubo aparecendo): o conteúdo é ampliado o quanto a curva encolhe os cantos
+  // (½ × escala do mapa, dos dois lados) e o excesso fica fora da tela
+  const over = 1 + 0.1 * c + 0.07 * env
+  crtIn.style.transform = env > 0.002
+    ? `translate(${(Math.sin(dga * 57) * 7 * env).toFixed(2)}px, ${(Math.cos(dga * 44) * 3.5 * env).toFixed(2)}px) scale(${(over * (1 + 0.014 * env * Math.sin(dga * 31))).toFixed(4)})`
+    : over > 1.0005 ? `scale(${over.toFixed(4)})` : ''
+  crtIn.style.filter = thump > 0.01 ? `url(#crt) brightness(${(1 + 0.9 * thump).toFixed(3)})` : ''
+  crt.style.setProperty('--dg', (0.42 * env).toFixed(3))
+  crt.style.setProperty('--dgs', (0.6 + da * 1.6).toFixed(3))
+  crt.style.setProperty('--dgh', (dga * 260).toFixed(1))
   // o texto sobre o wallpaper ganha a sombra dos rótulos da área de trabalho
   const sh = ramp(T, ...TL.wall)
   poster.style.filter = [
@@ -466,10 +682,18 @@ function frame(now) {
   ].filter(Boolean).join(' ')
 
   // o rig: encolhe (cobrindo → tela 4:3) e dá o zoom out (tela → aparelho)
-  const e1 = easeInOut(ramp(T, ...TL.shrink)), e2 = easeInOut(ramp(T, ...TL.zoom))
-  const k = Math.exp(lerp(Math.log(k0), 0, e1) + lerp(0, Math.log(kf), e2))
+  const e2 = easeInOut(ramp(T, ...TL.zoom))
+  const k = rigScale(T)
   const cx = lerp(vw / 2, fcx, e2), cy = lerp(vh / 2, fcy, e2)
   rig.style.transform = `translate3d(${cx - (W1 / 2) * k}px, ${cy - (H1 / 2) * k}px, 0) scale(${k})`
+  // a câmera recua em arco: gira em volta do aparelho no meio do zoom e termina de frente
+  const arc = REDUCE ? 0 : Math.sin(Math.PI * e2) * (1 - 0.35 * e2)
+  camEl.style.transformOrigin = `${cx}px ${cy}px`
+  // (no 3D quem gira é o próprio modelo — pose3D)
+  camEl.style.transform = arc > 0.001 && !q3d ? `perspective(${(vh * CAM.persp).toFixed(0)}px) rotateY(${(CAM.y * arc).toFixed(3)}deg) rotateX(${(CAM.x * arc).toFixed(3)}deg)` : ''
+  // a luz da tela na parede acompanha o aparelho
+  stage.style.setProperty('--ax', `${cx}px`)
+  stage.style.setProperty('--ay', `${cy}px`)
   // scanlines e máscara somem quando a tela fica pequena (abaixo disso viram moiré)
   stage.style.setProperty('--fine', ramp(k, 0.5, 0.85))
 
@@ -477,11 +701,16 @@ function frame(now) {
   const w = ramp(T, ...TL.wall)
   const steps = (x) => Math.floor(x * 8) / 8
   const [dis, col] = sel.mode === '2' ? [ramp(w, 0, 0.55), steps(ramp(w, 0.55, 1))] : sel.mode === '1' ? [0, steps(w)] : [w, 0]
-  wall.draw(dis, col)
+  wall.draw(dis, col, REV[sel.rev] ?? 0)
 
-  // o aparelho sai do escuro; a sala acende
-  stage.style.setProperty('--lit', lerp(0.04, 1, easeInOut(ramp(T, ...TL.lights))))
-  stage.style.setProperty('--room', rgb([20, 20, 20], [255, 255, 255], easeInOut(ramp(T, ...TL.room))))
+  // sala escura: o aparelho só aparece pela luz da tela (um tiquinho de corpo, o
+  // resto é o reflexo); a lâmpada acende em degraus e a luz da tela some com ela
+  const glow = ramp(T, ...TL.wall) * (1 - lampV)
+  stage.style.setProperty('--glow', glow.toFixed(3))
+  tv?.setScreenLight(sel.dev === 's2-3d' ? TV3D.light * glow : 0)
+  stage.style.setProperty('--lit', (lerp(0.05 + 0.12 * glow * ramp(T, ...TL.lights), 1, lampV)).toFixed(3))
+  stage.style.setProperty('--room', rgb([20, 20, 20], [255, 255, 255], lampV))
+  stage.style.setProperty('--lamp', lampV)
 
   // a área de trabalho, as janelas e as figurinhas
   deskPops.forEach((el, i) => el.classList.toggle('on', T >= deskOn[i][0] && T < deskOn[i][1]))

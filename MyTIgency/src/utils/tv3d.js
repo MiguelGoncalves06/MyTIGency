@@ -236,6 +236,9 @@ export function mountDitherTV(canvas, {
   screenShape = SCREEN,
   showScreen = true,
   colorBoost = 2.5, // clareia o material (plástico escuro); modelo claro pede menos
+  // false = o modelo como ele é: sem o dither (cor real, bordas suavizadas) e
+  // sem mexer nos materiais (colorBoost/metalness ficam de fora)
+  dither = true,
 } = {}) {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true })
@@ -284,7 +287,7 @@ export function mountDitherTV(canvas, {
     model.position.sub(box.getCenter(new THREE.Vector3()))
     // Plástico preto metálico vira mancha no dither; fosco e mais claro deixa o volume aparecer.
     model.traverse((o) => {
-      if (!o.material) return
+      if (!o.material || !dither) return
       for (const m of [].concat(o.material)) {
         Object.assign(m, { metalness: 0, metalnessMap: null })
         m.color?.setScalar(colorBoost)
@@ -318,11 +321,12 @@ export function mountDitherTV(canvas, {
   }
 
   // Cena → render target → dither ordenado (Bayer 8×8) em paleta de 4 cores.
-  const rt = new THREE.WebGLRenderTarget(1, 1)
+  // sem dither, o render target leva multisample (bordas suaves) e o passe só corrige a gama
+  const rt = new THREE.WebGLRenderTarget(1, 1, dither ? {} : { samples: 4 })
   const post = new THREE.ShaderMaterial({
     transparent: true,
     uniforms: {
-      tMap: { value: rt.texture }, uRes: { value: new THREE.Vector2() },
+      tMap: { value: rt.texture }, uRes: { value: new THREE.Vector2() }, uRaw: { value: dither ? 0 : 1 },
       uPx: { value: 1 }, uReveal: { value: 0 }, uGap: { value: gap }, uGrid: { value: 0 },
       uLevels: { value: 3 },
       uContrast: { value: contrast }, uBright: { value: bright },
@@ -332,11 +336,18 @@ export function mountDitherTV(canvas, {
     // uLevels: degraus de tom — 3 = as 4 cores (repouso), 1 = só os extremos.
     fragmentShader: `
       uniform sampler2D tMap; uniform vec2 uRes; uniform vec3 uPal[4];
-      uniform float uPx, uReveal, uGap, uGrid, uLevels, uContrast, uBright;
+      uniform float uPx, uReveal, uGap, uGrid, uLevels, uContrast, uBright, uRaw;
       float b2(vec2 a){ a = floor(a); return fract(dot(a, vec2(.5, a.y * .75))); }
       float b4(vec2 a){ return b2(.5 * a) * .25 + b2(a); }
       float b8(vec2 a){ return b4(.5 * a) * .25 + b2(a); }
       void main(){
+        if (uRaw > .5) {
+          vec4 r = texture2D(tMap, gl_FragCoord.xy / uRes);
+          // a borda do multisample vem pré-multiplicada (sobre o fundo transparente):
+          // desfaz, corrige a gama, e a mistura do material multiplica de novo
+          gl_FragColor = vec4(pow(r.rgb / max(r.a, 1e-4), vec3(1. / 2.2)), r.a * step(.001, uReveal));
+          return;
+        }
         vec2 cell = floor(gl_FragCoord.xy / uPx);
         vec4 c = texture2D(tMap, (cell + .5) * uPx / uRes);
         float l = pow(dot(c.rgb, vec3(.299, .587, .114)), 1. / 2.2);
@@ -357,7 +368,7 @@ export function mountDitherTV(canvas, {
   const postCam = new THREE.Camera()
 
   let basePx = 1
-  const resizeObserver = new ResizeObserver(() => {
+  const applySize = () => {
     const { clientWidth: w, clientHeight: h } = canvas
     if (!w || !h) return
     renderer.setSize(w, h, false)
@@ -369,8 +380,17 @@ export function mountDitherTV(canvas, {
     post.uniforms.uGrid.value = basePx > 2 ? 1 : 0
     camera.aspect = w / h
     camera.updateProjectionMatrix()
-  })
+  }
+  const resizeObserver = new ResizeObserver(applySize)
   resizeObserver.observe(canvas)
+  // Resolução do render em relação ao tamanho do canvas (opcional; padrão 1). Para
+  // quando o canvas é encolhido por um transform de fora: renderizar no tamanho em
+  // que ele de fato aparece (LAB da transição 6 → Work)
+  const setResolution = (r) => {
+    if (Math.abs(renderer.getPixelRatio() - r) < 1e-3) return
+    renderer.setPixelRatio(r)
+    applySize()
+  }
 
   // Intro: pontos dissolvem + giro até o repouso; render pausa fora da tela.
   // autoPlay: repete a cada entrada. Senão: escondida (introStart = +∞ → t
@@ -415,6 +435,9 @@ export function mountDitherTV(canvas, {
   const turnB = { x: 0, v: 0 }
   const tiltB = { x: 0, v: 0 }
   let hold = 0
+  // pose dirigida de fora (setPose), somada ao resto: giro em Y e inclinação pela base
+  let poseYaw = 0
+  let posePitch = 0
   let blur = 0
   let hitAmt = 0 // impacto do esbarrão (1 → 0)
   let tune = reduceMotion ? 1 : initialTune
@@ -462,8 +485,9 @@ export function mountDitherTV(canvas, {
     // hold (setHold): perto do esbarrão a pose segue o scroll sem a massa
     // (giro exato do alvo, sem inclinação) — é a pose em que o toque foi
     // medido; o tranco (turnB/tiltB) continua por cima
-    pivot.rotation.y = restAngle - 2 * (1 - ease(t / spinDuration)) + turnS.x + (turnTarget - turnS.x) * hold + turnB.x
+    pivot.rotation.y = restAngle - 2 * (1 - ease(t / spinDuration)) + turnS.x + (turnTarget - turnS.x) * hold + turnB.x + poseYaw
     tilt.rotation.z = tiltS.x * (1 - hold) + tiltB.x
+    tilt.rotation.x = posePitch
     // tremor curto e forte do impacto (além do balanço na mola)
     tilt.position.x = Math.sin(now * 0.09) * HIT_SHAKE * hitAmt
     if (mixer && dt > 0 && !reduceMotion) mixer.update(dt)
@@ -572,6 +596,51 @@ export function mountDitherTV(canvas, {
     return ray.intersectObject(modelHolder, true).length > 0
   })
   const setScreenVisible = (v) => { screenVisible = v; if (screen) screen.visible = v }
+  // O vidro (screenShape, sem a curva) projetado na tela, em frações do canvas —
+  // para alinhar uma tela feita em DOM por cima dele (LAB da transição 6 → Work)
+  const projScreen = (turn) => withTurn(turn, () => {
+    if (!modelHolder) return null
+    const { CX = 0, CY, HX, HY, Z0 } = screenShape
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+    for (const [u, v] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const p = pivot.localToWorld(new THREE.Vector3(CX + u * HX, CY + v * HY, Z0).multiplyScalar(screenScale)).project(camera)
+      const px = (p.x + 1) / 2, py = (1 - p.y) / 2
+      x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py)
+    }
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
+  })
+  // Os 4 cantos do vidro na pose atual, em frações do canvas: [↖, ↗, ↘, ↙] —
+  // para deformar a tela em DOM e mantê-la no vidro com o modelo girando
+  const projScreenQuad = () => withTurn(undefined, () => {
+    if (!modelHolder) return null
+    const { CX = 0, CY, HX, HY, Z0 } = screenShape
+    return [[-1, 1], [1, 1], [1, -1], [-1, -1]].map(([u, v]) => {
+      const p = pivot.localToWorld(new THREE.Vector3(CX + u * HX, CY + v * HY, Z0).multiplyScalar(screenScale)).project(camera)
+      return [(p.x + 1) / 2, (1 - p.y) / 2]
+    })
+  })
+  // Pose dirigida de fora (opcional; rad): giro em Y e inclinação para trás pela
+  // base. Vale já (as matrizes são atualizadas, projScreenQuad mede esta pose) e
+  // o loop a mantém nos quadros seguintes.
+  const setPose = (yaw, pitch) => {
+    pivot.rotation.y += yaw - poseYaw
+    tilt.rotation.x = pitch
+    poseYaw = yaw
+    posePitch = pitch
+  }
+  // Luz saindo da tela (opcional): uma luz pontual logo à frente do vidro, que
+  // ilumina o próprio aparelho — a tela como a luz da sala escura (0 = apagada)
+  let screenLight = null
+  const setScreenLight = (intensity) => {
+    if (!screenLight) {
+      if (!modelHolder) return
+      const { CX = 0, CY, Z0 } = screenShape
+      screenLight = new THREE.PointLight(0xffffff, 0, 2.6)
+      screenLight.position.set(CX, CY, Z0 + 0.35).multiplyScalar(screenScale)
+      pivot.add(screenLight)
+    }
+    screenLight.intensity = intensity
+  }
 
-  return { play, dispose, setScrolling, setTurn, setShift, setScroll, setTune, setScreenVisible, setScreenShape, setBoot, bump, setHold, projBox, hit }
+  return { play, dispose, setScrolling, setTurn, setShift, setScroll, setTune, setScreenVisible, setScreenShape, setBoot, bump, setHold, projBox, hit, projScreen, projScreenQuad, setPose, setScreenLight, setResolution }
 }

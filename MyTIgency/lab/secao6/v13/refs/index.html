@@ -1,0 +1,208 @@
+<!doctype html>
+<!-- LAB: seção 6 · v13 — as referências do entorno do PC (prints e o que cada uma
+     ensina). Só em dev: /lab/secao6/v13/refs/. Os prints são capturas para
+     estudo interno; não entram no build. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entorno do PC · referências</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root { --paper: #f4f3ef; --ink: #141414; --dim: #77756e; --hair: rgba(20,20,20,.14); --accent: #FF4438; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.5 'Archivo', sans-serif; }
+    .mono { font: 500 11px/1.4 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+    main { max-width: 1240px; margin: 0 auto; padding: 64px 32px 120px; }
+    h1 { font: 800 clamp(40px, 6vw, 84px)/.92 'Archivo', sans-serif; font-stretch: 75%; letter-spacing: -.04em; margin: 12px 0 20px; }
+    h2 { font: 800 30px/1 'Archivo', sans-serif; font-stretch: 80%; letter-spacing: -.03em; margin: 0 0 6px; }
+    p { margin: 0 0 10px; max-width: 70ch; }
+    a { color: inherit; }
+    .lead { font-size: 19px; max-width: 62ch; }
+    .rule { height: 1px; background: var(--hair); margin: 48px 0; }
+    .ref { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+    .shots { display: grid; gap: 12px; }
+    .shots img { width: 100%; display: block; border: 1px solid var(--hair); border-radius: 4px; background: #fff; }
+    ul { margin: 8px 0 14px; padding-left: 18px; }
+    li { margin: 0 0 6px; }
+    .use { display: inline-flex; gap: 8px; align-items: center; padding: 6px 10px; border: 1px solid var(--ink); border-radius: 999px; }
+    .use b { color: var(--accent); font-weight: 500; }
+    .ideas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .idea { border-top: 2px solid var(--ink); padding-top: 14px; }
+    .idea .k { color: var(--accent); }
+    .idea-d { margin-bottom: 36px; }
+    .idea-d p:not(.mono) { max-width: 82ch; }
+    .lessons { counter-reset: l; list-style: none; padding: 0; }
+    .lessons li { counter-increment: l; display: grid; grid-template-columns: 40px 1fr; gap: 8px; padding: 12px 0; border-top: 1px solid var(--hair); }
+    .lessons li::before { content: counter(l, decimal-leading-zero); font: 500 12px/1.9 'JetBrains Mono', monospace; color: var(--accent); }
+    @media (max-width: 860px) { .ref, .ideas { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="mono">LAB · seção 6 · v13 — pesquisa</p>
+  <h1>O entorno<br>do objeto central</h1>
+  <p class="lead">Oito referências em que um objeto é o protagonista e o que está em volta dele conta a história. Para cada uma: o que compõe o entorno, o que aprendi e onde a ideia foi replicada no <a href="../">LAB v13</a>.</p>
+
+  <div class="rule"></div>
+  <p class="mono">O que se repete nas boas</p>
+  <ol class="lessons">
+    <li><span><b>O entorno não compete com o objeto.</b> Tipografia pequena, fios finos, presa aos cantos; o objeto traz a cor (A24, Igloo, Teenage Engineering).</span></li>
+    <li><span><b>Profundidade em três camadas:</b> algo atrás do objeto (tipo gigante, cortina, parede), o objeto, algo na frente dele (adesivo, anotação) (Santioni, Playdate).</span></li>
+    <li><span><b>O objeto tem um habitat</b> que diz quem o usa: mesa, caneca, papéis (Henry Heffernan).</span></li>
+    <li><span><b>Conteúdo verdadeiro vira textura:</b> ficha técnica, lista de itens, créditos (Teenage Engineering, A24). No nosso caso, dados reais da visita e o que de fato aconteceu no manifesto, sem nada inventado.</span></li>
+    <li><span><b>Vermelho como pontuação:</b> um ponto, um adesivo, um preenchimento no momento de consequência, não um fundo (Nothing).</span></li>
+    <li><span><b>A transição é o cenário se movendo,</b> não uma cortina: a câmera muda de ângulo e uma parte do cenário vira a próxima página (Oryzo: a base de corte; Henry Heffernan: a tela do PC).</span></li>
+  </ol>
+
+  <div class="rule"></div>
+  <p class="mono">As ideias replicadas no v13 (painel → entorno)</p>
+  <div class="idea idea-d">
+    <p class="mono k">D · cartaz + mesa — B com C</p>
+    <h2>A mesa que atravessa as duas seções</h2>
+    <p>O cartaz de B inteiro (só sem "manifesto · 2026" e sem os pontos da sala escura), agora com uma mesa de nogueira escura cobrindo a parte de baixo da tela e uma base de corte grafite na frente do teclado (Oryzo). Os objetos de C continuam na mesa: disquetes, as duas canecas, bilhetes, a tecla ENTER e o lápis.</p>
+    <p><b>A transição:</b> com a barra em 100%, mais scroll inclina a câmera até ver a mesa de cima. O PC continua apoiado nela (encolhe e sai por cima, como a câmera o veria), a palavra sobe com a parede, os textos do cartaz somem e a base de corte toma a tela. No fim, ela é trocada pela mesma grade em CSS, fixa na tela, que é o fundo da seção de trabalhos: a página corre por cima da base e os cards caem nela como folhas. A mesa está nas duas seções.</p>
+    <p class="mono">Pensadas e deixadas de lado: a mesa subir como uma faixa (corta a cena em vez de continuá-la) · a câmera entrar na tela (repete a entrada da seção 6, que já sai de dentro do PC).</p>
+  </div>
+  <div class="ideas">
+    <div class="idea"><p class="mono k">A · ficha técnica</p><h2>O PC como peça catalogada</h2><p>Créditos com fios nos cantos (A24), anotações numeradas ligadas às partes do PC (Igloo), dados reais da visita e a lista do que aconteceu no manifesto (Teenage Engineering).</p></div>
+    <div class="idea"><p class="mono k">B · cartaz</p><h2>O PC na frente da palavra</h2><p>"TRABALHOS" gigante atrás do PC (Santioni), que se preenche de vermelho junto com a barra "Abrindo trabalhos…"; microtexto simétrico nos lados, moldura de página e um adesivo colado no PC (Playdate).</p></div>
+    <div class="idea"><p class="mono k">C · mesa</p><h2>O habitat de quem fez</h2><p>O PC em cima de uma mesa em 3D, com os objetos do manifesto em volta: disquetes dos trabalhos, a caneca do café, bilhetes rabiscados, lápis (Henry Heffernan). Na sala escura, só a tela os ilumina.</p></div>
+  </div>
+
+  <div class="rule"></div>
+  <section class="ref">
+    <div class="shots"><img src="a24-1.jpg" alt="A24 Films (conceito): disco em 3D com a ficha técnica no canto"><img src="a24-2.jpg" alt="A24 Films (conceito): fila de discos com citações embaixo"></div>
+    <div>
+      <p class="mono">01 · A24 Films (conceito) — Ravi Klaassens · prêmio DesignRush out/2026</p>
+      <h2>O disco e a ficha técnica</h2>
+      <ul>
+        <li>O objeto é enorme, inclinado em 3D e <b>cortado pela borda da tela</b>; o próximo da fila espia na direita, puxando o scroll.</li>
+        <li>No canto, <b>título serifado + tabela com fios finos</b>: rótulo minúsculo e espaçado à esquerda, valor à direita.</li>
+        <li>Embaixo, citações em duas colunas com estrelas, em caixa-alta serifada.</li>
+        <li>Fundo papel off-white com grão; toda a cor vem do objeto.</li>
+      </ul>
+      <p class="use mono">usado em <b>A · ficha técnica</b></p>
+      <p class="mono"><a href="https://a24.raviklaassens.com/">a24.raviklaassens.com</a></p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section class="ref">
+    <div class="shots"><img src="santioni-2.jpg" alt="Santioni: garrafa na frente do nome do sabor gigante"><img src="santioni-1.jpg" alt="Santioni: garrafas num palco com cortina"><img src="santioni-3.jpg" alt="Santioni: mão ilustrada servindo e cartaz de texto"></div>
+    <div>
+      <p class="mono">02 · Santioni Spirits — Active Theory + plan8 · Awwwards Site of the Day (5/10/2026)</p>
+      <h2>O objeto na frente da palavra</h2>
+      <ul>
+        <li>A garrafa fica <b>na frente de uma tipografia gigante</b> (o nome do sabor): a palavra é o fundo, o objeto a interrompe.</li>
+        <li><b>Microtexto simétrico</b> nos dois lados do objeto, na linha do meio.</li>
+        <li><b>Moldura</b> em volta da página inteira, como uma página impressa.</li>
+        <li>As garrafas são apresentadas num <b>palco/pedestal com cortina</b>; uma mão ilustrada interage com o mouse.</li>
+        <li>Um campo de cor forte (vermelho) com preto e branco gravado.</li>
+      </ul>
+      <p>O site em si abre com uma verificação de idade; os prints são da página dele na Awwwards.</p>
+      <p class="use mono">usado em <b>B · cartaz</b></p>
+      <p class="mono"><a href="https://www.awwwards.com/sites/santioni-spirits">awwwards.com/sites/santioni-spirits</a> · <a href="https://santionispirits.com/">santionispirits.com</a></p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section class="ref">
+    <div class="shots"><img src="te-1.jpg" alt="Teenage Engineering OP-1 field: produto gigante e navegação ilustrada"><img src="te-2.jpg" alt="Teenage Engineering: lista centralizada de novidades"></div>
+    <div>
+      <p class="mono">03 · Teenage Engineering — OP–1 field</p>
+      <h2>A escala e a lista</h2>
+      <ul>
+        <li>O produto em escala enorme sobre cinza neutro, com <b>uma frase só</b>.</li>
+        <li>Navegação feita de <b>pequenas ilustrações técnicas em traço fino</b> com legenda minúscula.</li>
+        <li>As "100 novidades" viram uma <b>lista centralizada em caixa-alta</b> que funciona como textura.</li>
+      </ul>
+      <p class="use mono">usado em <b>A · ficha técnica</b></p>
+      <p class="mono"><a href="https://teenage.engineering/products/op-1">teenage.engineering/products/op-1</a></p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section class="ref">
+    <div class="shots"><img src="henry.jpg" alt="Henry Heffernan: PC numa mesa, diorama num estúdio claro"></div>
+    <div>
+      <p class="mono">04 · Henry Heffernan — portfolio</p>
+      <h2>O habitat do PC</h2>
+      <ul>
+        <li>O PC não está sozinho: <b>mesa, cadeira, planta, pastas, caneca e papéis</b> formam um diorama pequeno num estúdio infinito claro, com sombra macia.</li>
+        <li>Um prompt de terminal embaixo convida a entrar.</li>
+        <li>A câmera depois entra na tela, onde há um sistema funcionando (o mesmo caminho da nossa transição, ao contrário).</li>
+      </ul>
+      <p class="use mono">usado em <b>C · mesa</b></p>
+      <p class="mono"><a href="https://henryheffernan.com/">henryheffernan.com</a></p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section class="ref">
+    <div class="shots"><img src="igloo.jpg" alt="Igloo Inc: objeto 3D com textos nos cantos e pontos numerados"></div>
+    <div>
+      <p class="mono">05 · Igloo Inc. — Awwwards Site of the Year 2024</p>
+      <h2>Cantos e constelação</h2>
+      <ul>
+        <li>Texto <b>preso aos quatro cantos</b>, em mono pequeno: marca, manifesto, convite para rolar, som.</li>
+        <li><b>Pontos numerados ligados por linhas finas</b> sobre o objeto: lê como dado, não como decoração.</li>
+        <li>O objeto vive num ambiente (relevo de neve) com a mesma paleta fria.</li>
+      </ul>
+      <p class="use mono">usado em <b>A · ficha técnica</b></p>
+      <p class="mono"><a href="https://www.igloo.inc/">igloo.inc</a></p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section class="ref">
+    <div class="shots"><img src="playdate.jpg" alt="Playdate: aparelho com um adesivo colado torto no canto"></div>
+    <div>
+      <p class="mono">06 · Playdate — Panic</p>
+      <h2>Um adesivo basta</h2>
+      <ul>
+        <li><b>Um adesivo grande colado torto</b> no canto do aparelho, com sombra: personalidade com um elemento só.</li>
+        <li>A tela do aparelho mostra conteúdo de verdade, não uma imagem genérica.</li>
+      </ul>
+      <p class="use mono">usado em <b>B · cartaz</b></p>
+      <p class="mono"><a href="https://play.date/">play.date</a></p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section class="ref">
+    <div class="shots"><img src="nothing.jpg" alt="Nothing: produto no escuro com grade de pontos e um quadrado vermelho"></div>
+    <div>
+      <p class="mono">07 · Nothing</p>
+      <h2>Pontos e um vermelho</h2>
+      <ul>
+        <li>Fundo escuro com <b>grade de pontos</b> (a mesma linguagem da nossa seção 6) e o nome em matriz de pontos.</li>
+        <li>O título serifado passa <b>por cima</b> do produto.</li>
+        <li><b>Um único quadrado vermelho</b> no produto: o vermelho como pontuação.</li>
+      </ul>
+      <p class="use mono">usado na <b>sala escura</b> de A, B e C</p>
+      <p class="mono"><a href="https://nothing.tech/">nothing.tech</a></p>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+  <section class="ref">
+    <div class="shots"><img src="oryzo-1.jpg" alt="Oryzo: porta-copos de cortiça no centro de uma base de corte verde, vista de cima"><img src="oryzo-2.jpg" alt="Oryzo: a mesa de madeira com lápis, estilete, clipe e borracha em volta da base de corte"><img src="oryzo-3.jpg" alt="Oryzo: a mesa desfocada e o porta-copos com cotas de desenho técnico"></div>
+    <div>
+      <p class="mono">08 · Oryzo — Lusion</p>
+      <h2>A mesa vista de cima</h2>
+      <ul>
+        <li>O produto (um porta-copos de cortiça) fica <b>no meio de uma base de corte</b>, vista de cima, numa mesa de madeira com lápis, estilete, clipe e borracha: o habitat de quem desenha.</li>
+        <li>A grade da base é <b>a régua da página</b>: números nas bordas, linhas finas; o texto corre por cima dela.</li>
+        <li>No scroll a mesa desfoca, a base se aproxima e o objeto ganha <b>cotas de desenho técnico</b>: o cenário vira a página.</li>
+      </ul>
+      <p class="use mono">usado em <b>D · cartaz + mesa</b> (a base de corte e a vista de cima)</p>
+      <p class="mono"><a href="https://oryzo.ai/">oryzo.ai</a> · <a href="https://www.designrush.com/best-designs/websites/oryzo-website-design">designrush</a> · <a href="https://www.landing.love/sites/oryzo/">landing.love</a></p>
+      <p class="mono">Técnica da câmera no scroll: <a href="https://tympanus.net/codrops/2023/02/14/animate-a-camera-fly-through-on-scroll-using-theatre-js-and-react-three-fiber/">Codrops</a> · <a href="https://garden.bradwoods.io/notes/javascript/three-js/scroll-driven-camera-animation">Brad Woods</a></p>
+    </div>
+  </section>
+</main>
+</body>
+</html>

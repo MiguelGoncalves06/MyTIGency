@@ -41,8 +41,9 @@
     .fx-noise { opacity: calc(var(--crt) * .16); animation: msGrain .5s steps(1) infinite;
       background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -.66'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 180px; }
     /* vidro (fora da curva): vinheta do tubo + reflexo */
-    .fx-vig { opacity: var(--crt); box-shadow: inset 0 0 calc(var(--h) * .09) calc(var(--h) * .02) rgba(0,0,0,.85);
-      background: radial-gradient(120% 110% at 50% 50%, transparent 55%, rgba(0,0,0,.55) 100%); }
+    /* sem moldura preta: só uma queda suave de luz nos cantos do tubo */
+    .fx-vig { opacity: var(--crt); box-shadow: inset 0 0 calc(var(--h) * .06) rgba(0,0,0,.4);
+      background: radial-gradient(130% 120% at 50% 50%, transparent 62%, rgba(0,0,0,.32) 100%); }
     .fx-glass { opacity: calc(var(--crt) * .9);
       background: radial-gradient(60% 45% at var(--gx, 28%) var(--gy, 18%), rgba(255,255,255,.13), transparent 70%),
                   linear-gradient(160deg, rgba(255,255,255,.07) 0 30%, transparent 30.5%); }
@@ -58,7 +59,38 @@
     .led-hd { background: #ffb43a; box-shadow: 0 0 6px 2px rgba(255,170,50,.85), 0 0 16px 5px rgba(255,170,50,.35); }
     /* o aparelho: a foto/render com o buraco da tela; acende com a sala */
     .dev { position: absolute; pointer-events: none; filter: brightness(var(--lit, 1)); }
-    .dev img { display: block; width: 100%; height: 100%; }
+    .dev img, .dev canvas { display: block; width: 100%; height: 100%; }
+    /* o PC 3D da seção 2 (tv3d.js, o mesmo dither) no lugar da imagem */
+    .dev.is-3d img, .dev:not(.is-3d) canvas { display: none; }
+    /* o render 3D não tem buraco na tela: a tela em DOM fica à frente dele, sobre o vidro projetado */
+    .body.is-3d .crt { z-index: 1; }
+    /* no 3D a tela é deformada em perspectiva todo quadro: o conteúdo (com o filtro
+       do tubo) fica numa camada própria, que o navegador reaproveita enquanto a
+       tela só gira — o filtro só é refeito quando o conteúdo muda */
+    .body.is-3d .crt, .body.is-3d .crt-in { will-change: transform; }
+
+    /* ---------- a sala escura: a tela é a única luz (--glow), na cor do wallpaper (--gc) ---------- */
+    .cam { position: absolute; inset: 0; will-change: transform; }
+    /* na parede, atrás do aparelho */
+    .amb { position: absolute; inset: 0; pointer-events: none; opacity: var(--glow, 0);
+      background: radial-gradient(ellipse 46% 52% at var(--ax, 50%) var(--ay, 50%), rgba(var(--gc), .24), rgba(var(--gc), .07) 55%, transparent 80%);
+      animation: gflk .25s steps(1) infinite; }
+    /* no chão, à frente do aparelho */
+    .spill { position: absolute; pointer-events: none; border-radius: 50%; opacity: var(--glow, 0); mix-blend-mode: screen;
+      background: radial-gradient(closest-side, rgba(var(--gc), .5), rgba(var(--gc), .16) 55%, transparent);
+      animation: gflkb .25s steps(1) infinite; }
+    /* no próprio PC: o reflexo só onde há aparelho (máscara = a imagem dele) */
+    .dev-glow { position: absolute; pointer-events: none; opacity: var(--glow, 0); mix-blend-mode: screen;
+      -webkit-mask: var(--devmask) 0 0 / 100% 100% no-repeat; mask: var(--devmask) 0 0 / 100% 100% no-repeat;
+      background: radial-gradient(ellipse 62% 56% at var(--sx, 50%) var(--sy, 40%), rgba(var(--gc), .8), rgba(var(--gc), .26) 45%, transparent 78%); }
+    /* a luz da tela cintila junto com o tubo */
+    @keyframes gflk { 0% { filter: brightness(1); } 33% { filter: brightness(.86); } 66% { filter: brightness(1.07); } }
+    @keyframes gflkb { 0% { filter: blur(10px) brightness(1); } 33% { filter: blur(10px) brightness(.86); } 66% { filter: blur(10px) brightness(1.07); } }
+
+    /* degauss: anéis de cor que giram, se abrem e se apagam (--dg, --dgs, --dgh) */
+    .fx-dg { opacity: var(--dg, 0); mix-blend-mode: screen; transform: scale(var(--dgs, 1));
+      background: repeating-radial-gradient(circle at 50% 56%, #ff2fa0 0, #ffb02e 5%, #2effa0 10%, #2e7dff 15%, #b02eff 20%, #ff2fa0 25%);
+      filter: hue-rotate(calc(var(--dgh, 0) * 1deg)) blur(14px); }
 
     /* ---------- Windows antigo (98): janelas, ícones, barra ---------- */
     .w98, .desk { font: 11px/1.3 Tahoma, 'MS Sans Serif', 'Segoe UI', sans-serif; color: #000; -webkit-font-smoothing: none; }
@@ -103,7 +135,7 @@
     .tb .clock { margin-left: auto; height: 22px; padding: 0 10px; line-height: 22px; box-shadow: inset 1px 1px #808080, inset -1px -1px #fff; }
 
     /* fora da tela: figurinhas (stop-motion de 2 poses, ~0,5 s, como na seção 6) */
-    .out { position: absolute; left: 0; top: 0; pointer-events: none; }
+    .out { position: absolute; left: 0; top: 0; pointer-events: none; filter: brightness(calc(.32 + .68 * var(--lamp, 1))); } /* na sala escura, à meia-luz */
     .stk { position: absolute; display: block; height: auto; }
     .stk[data-pose="1"] { rotate: 1.6deg; translate: 1px -2px; }
     .pop .w98 { position: relative; }
@@ -117,7 +149,7 @@
 
     .panel select, .panel input { font: inherit; color: inherit; background: #222; border: 1px solid #444; border-radius: 4px; }
     .panel label { display: flex; align-items: center; gap: 6px; }
-    @media (prefers-reduced-motion: reduce) { .fx-band, .fx-flick, .fx-noise, .pop.on { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .fx-band, .fx-flick, .fx-noise, .pop.on, .amb { animation: none; } .spill { animation: none; filter: blur(10px); } }
   </style>
 </head>
 <body>
@@ -138,7 +170,12 @@
 
   <div class="tr">
     <div class="stage">
+      <!-- a luz da tela na parede (sala escura) -->
+      <div class="amb"></div>
+      <!-- a câmera: gira em perspectiva em volta do aparelho durante o zoom out -->
+      <div class="cam">
       <div class="rig">
+        <div class="spill"></div>
         <div class="shadow"></div>
         <!-- o corpo: tela + aparelho + LEDs, que pousam, inclinam e olham para o cursor juntos -->
         <div class="body">
@@ -151,12 +188,15 @@
           </div>
           <!-- os efeitos animados ficam FORA da curva: dentro, refariam o filtro a cada quadro -->
           <div class="fx fx-band"></div><div class="fx fx-flick"></div><div class="fx fx-noise"></div>
+          <div class="fx fx-dg"></div>
           <div class="fx fx-vig"></div><div class="fx fx-glass"></div>
         </div>
-        <div class="dev"><img alt="" /></div>
+        <div class="dev"><img alt="" /><canvas class="dev3d"></canvas></div>
+        <div class="dev-glow"></div>
         <div class="leds"><i class="led-pow"></i><i class="led-hd"></i></div>
         </div>
         <div class="out"></div>
+      </div>
       </div>
     </div>
   </div>
@@ -167,6 +207,7 @@
     <label>aparelho <select data-k="dev"></select></label>
     <label>wallpaper <select data-k="wall"></select></label>
     <label>cor <select data-k="mode"><option value="2">dither → cor</option><option value="1">só cor</option><option value="0">só dither</option></select></label>
+    <label>entrada <select data-k="rev"><option value="bayer">toda a tela (atual)</option><option value="diag">diagonal</option><option value="centro">do centro</option><option value="tubo">tubo (linha do meio)</option><option value="linhas">linhas (carregando)</option></select></label>
     <label>texto <select data-k="tone"><option value="paper">papel</option><option value="phos">fósforo</option></select></label>
     <label>CRT <input data-k="crt" type="range" min="0" max="1.6" step="0.1" value="1" /></label>
     <p class="phase mono">t <b class="t">0.00</b></p>

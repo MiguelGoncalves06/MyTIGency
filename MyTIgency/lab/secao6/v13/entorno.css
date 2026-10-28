@@ -1,0 +1,116 @@
+/* LAB v13 — o entorno do PC (entorno.js). As cores seguem a lâmpada (--lamp,
+   do main.js): na sala escura o texto é papel, aceso é tinta. */
+.stage {
+  --env-fg: color-mix(in srgb, #141414 calc(var(--lamp, 0) * 100%), #e7e5df);
+  --env-dim: color-mix(in srgb, #7a776f calc(var(--lamp, 0) * 100%), #8d8a83);
+  --env-hair: color-mix(in srgb, rgba(20, 20, 20, .2) calc(var(--lamp, 0) * 100%), rgba(244, 243, 239, .2));
+}
+.env-back, .env-front { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.env-desk { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.stage:not([data-env="mesa"]):not([data-env^="cartaz-"]) .env-desk { display: none; }
+
+/* a grade de pontos da sala escura (Nothing; a mesma da seção 6) */
+.env-dots { position: absolute; inset: 0; opacity: 0;
+  background: radial-gradient(circle, rgba(244, 243, 239, .2) 1px, transparent 1.6px) 11px 11px / 22px 22px; }
+
+.env-mono { margin: 0; font: 500 11px/1.45 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--env-dim); white-space: nowrap; }
+.env-mono b { font-weight: 500; color: var(--accent); }
+
+/* ---------- A · ficha técnica (A24 + Igloo + Teenage Engineering) ---------- */
+.ef-blk { position: absolute; opacity: var(--in, 0); transform: translateY(calc((1 - var(--in, 0)) * 14px)); }
+.ef-tl { left: 3vw; top: 88px; width: 300px; }
+.ef-tr { right: 3vw; top: 88px; text-align: right; }
+.ef-list li { white-space: nowrap; }
+.ef-bl { left: 3vw; bottom: 64px; width: 300px; }
+.ef-br { right: 3vw; bottom: 64px; text-align: right; }
+.ef-title { margin: 6px 0 10px; font: italic 400 52px/.9 'Instrument Serif', serif; letter-spacing: -.01em; color: var(--env-fg); }
+.ef-tab { margin: 0; border-top: 1px solid var(--env-hair); }
+.ef-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 7px 0 6px; border-bottom: 1px solid var(--env-hair);
+  clip-path: inset(0 calc((1 - var(--in, 0)) * 100%) 0 0); }
+.ef-row dt { font: 500 9.5px/1.2 'JetBrains Mono', monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--env-dim); }
+.ef-row dd { margin: 0; font: 500 13px/1.2 'Archivo', sans-serif; color: var(--env-fg); font-variant-numeric: tabular-nums; }
+.ef-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.ef-list li { padding: 3px 0; font: 500 11px/1.3 'JetBrains Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--env-fg);
+  clip-path: inset(0 0 0 calc((1 - var(--in, 0)) * 100%)); }
+.ef-list li b { margin-right: 10px; font-weight: 500; color: var(--accent); }
+.ef-bar { position: relative; width: 220px; height: 3px; margin: 8px 0; background: var(--env-hair); }
+.ef-bar i { position: absolute; inset: 0; background: var(--accent); transform-origin: left center; transform: scaleX(var(--p, 0)); }
+/* anotações ligadas às partes do PC (Igloo: pontos numerados e linhas finas) */
+.ef-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ef-lines polyline { fill: none; stroke: var(--env-fg); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 1; }
+.ef-lines .dot { fill: var(--accent); }
+.ef-lines .ring { fill: none; stroke: var(--accent); stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: efRing 1.8s ease-out infinite; }
+@keyframes efRing { from { transform: scale(.6); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+.ef-note { position: absolute; left: 0; top: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; opacity: var(--in, 0); }
+.ef-note b { font: 500 10px/1 'JetBrains Mono', monospace; color: var(--accent); }
+.ef-note span { font: 600 13px/1 'Archivo', sans-serif; color: var(--env-fg); }
+.ef-note em { font: 400 10px/1 'JetBrains Mono', monospace; font-style: normal; letter-spacing: .06em; text-transform: uppercase; color: var(--env-dim); }
+
+/* ---------- B · cartaz (Santioni + Playdate) ---------- */
+/* a palavra gigante atrás do PC: contorno, e o vermelho a preenche com a barra de "Abrindo trabalhos…" */
+.ec-word { position: absolute; left: 50%; top: 0; white-space: nowrap; text-transform: uppercase;
+  font: 900 100px/.8 'Archivo', sans-serif; font-stretch: 62%; letter-spacing: -.01em; }
+.ec-word > div { display: flex; }
+.ec-word > div + div { position: absolute; inset: 0; }
+.ec-word span { display: block; }
+.ec-o span { color: transparent; -webkit-text-stroke: 1.5px var(--env-hair); }
+.ec-f { color: var(--accent); clip-path: inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0); }
+.ec-frame { position: absolute; inset: 14px; border: 1px solid var(--env-hair); opacity: var(--in, 0); }
+.ec-frame i { position: absolute; width: 9px; height: 9px; background: var(--accent); }
+.ec-frame i:nth-child(1) { left: -5px; top: -5px; } .ec-frame i:nth-child(2) { right: -5px; top: -5px; }
+.ec-frame i:nth-child(3) { left: -5px; bottom: -5px; } .ec-frame i:nth-child(4) { right: -5px; bottom: -5px; }
+.ec-cap { position: absolute; opacity: var(--in, 0); }
+.ec-tl { left: 32px; top: 28px; } .ec-tr { right: 32px; top: 28px; } .ec-bc { left: 50%; bottom: 28px; transform: translateX(-50%); }
+/* microtexto dos dois lados do PC, na linha do meio, com um fio até ele */
+.ec-side { position: absolute; top: 0; display: flex; align-items: center; gap: 12px; opacity: var(--in, 0); }
+.ec-side i { display: block; height: 1px; background: var(--env-fg); opacity: .5; }
+/* o adesivo colado no PC (Playdate): carimba quando o zoom termina */
+.ec-stk { position: absolute; left: 0; top: 0; width: 140px; aspect-ratio: 1; opacity: 0; filter: brightness(var(--lit, 1)) drop-shadow(0 8px 10px rgba(0, 0, 0, .28)); }
+.ec-stk svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.ec-stk.on { opacity: 1; }
+.ec-stk.stamp svg { animation: ecStamp .5s cubic-bezier(.2, 1.3, .4, 1) both; }
+@keyframes ecStamp { 0% { transform: scale(1.9) rotate(18deg); opacity: 0; } 45% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+.ec-imp { position: absolute; }
+
+/* ---------- C · mesa (Henry Heffernan) ---------- */
+/* o bilhete no monitor: uma lista de tarefas; "trabalhos" é marcado quando a barra chega a 100% */
+.em-note { position: absolute; left: 0; top: 0; width: 120px; padding: 12px 12px 14px; background: #f6eda8; transform-origin: 50% 0;
+  box-shadow: 0 10px 14px -8px rgba(0, 0, 0, .35); filter: brightness(var(--lit, 1)); opacity: var(--in, 0);
+  font: 400 15px/1.5 'Nothing You Could Do', cursive; color: #26231c; }
+.em-note p { margin: 0; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.em-note i { position: relative; flex: none; width: .82em; height: .82em; border: 1.5px solid #26231c; border-radius: 2px; }
+.em-note svg { position: absolute; left: -.15em; top: -.35em; width: 1.3em; height: 1.3em; overflow: visible; }
+.em-note path { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: var(--chk, 1); }
+.em-note s { text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+
+/* ---------- D · cartaz + mesa: a base de corte que atravessa as duas seções ---------- */
+/* a mesma grade da textura 3D (MAT em entorno.js): uma linha a cada 0,05 da mesa,
+   uma forte a cada 0,25 — no fim da inclinação 1 unidade = metade da largura da
+   tela, então 2,5vw e 12,5vw; centrada na tela e fixa (o fundo fica parado e o
+   conteúdo da seção corre por cima, como papéis sobre a base) */
+.ecm-mat, .work-lab.on-mat {
+  background-color: #1c1d1f;
+  background-image:
+    linear-gradient(rgba(244, 243, 239, .2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 243, 239, .2) 1px, transparent 1px),
+    linear-gradient(rgba(244, 243, 239, .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 243, 239, .08) 1px, transparent 1px);
+  background-size: 12.5vw 12.5vw, 12.5vw 12.5vw, 2.5vw 2.5vw, 2.5vw 2.5vw;
+  background-position: calc(50% + 6.25vw) calc(50% + 6.25vw), calc(50% + 6.25vw) calc(50% + 6.25vw),
+    calc(50% + 1.25vw) calc(50% + 1.25vw), calc(50% + 1.25vw) calc(50% + 1.25vw);
+  background-attachment: fixed;
+}
+.ecm-mat { position: absolute; inset: 0; opacity: 0; }
+.work-lab.on-mat { color: #f4f3ef; }
+/* os trabalhos como folhas sobre a base: caem, giram um pouco e assentam */
+.work-lab.on-mat .card { --r: 0deg; border: 0; border-radius: 2px; background: #f4f1ea; color: #8d8a83;
+  box-shadow: 0 26px 40px -18px rgba(0, 0, 0, .75), 0 2px 0 rgba(0, 0, 0, .2);
+  transform: rotate(var(--r)); transition: transform 1s cubic-bezier(.2, 1.2, .3, 1), opacity .45s ease; }
+.work-lab.on-mat .card:not(.in) { opacity: 0; transform: translateY(-40px) scale(1.07) rotate(calc(var(--r) + 6deg)); }
+
+/* ---------- E · cartaz + mesa + folha: a folha branca vira a seção de trabalhos ---------- */
+.ecm-sheet { position: absolute; inset: 0; opacity: 0; background: #fff; }
+/* os trabalhos como fotos coladas na folha: caem, giram um pouco e assentam */
+.work-lab.on-sheet .card { --r: 0deg; background: #fff; box-shadow: 0 16px 26px -18px rgba(0, 0, 0, .4);
+  transform: rotate(var(--r)); transition: transform 1s cubic-bezier(.2, 1.2, .3, 1), opacity .45s ease; }
+.work-lab.on-sheet .card:not(.in) { opacity: 0; transform: translateY(-40px) scale(1.07) rotate(calc(var(--r) + 6deg)); }
