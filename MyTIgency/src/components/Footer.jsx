@@ -244,9 +244,22 @@ export function Footer() {
     const root = document.documentElement
     let push = 0
     let rafId = 0
+    // Só mede com o footer a até uma tela de distância: medir a cada scroll da
+    // página inteira forçava um layout por quadro (o Manifesto é enorme)
+    let near = false
+    const nearObserver = new IntersectionObserver(([e]) => {
+      near = e.isIntersecting
+      footerRef.current?.toggleAttribute('data-far', !near) // longe: o relógio para de piscar (Footer.css)
+      onScroll()
+    }, { rootMargin: '100% 0px' })
+    nearObserver.observe(container)
 
     function update() {
       rafId = 0
+      if (!near) {
+        if (push) { push = 0; root.style.setProperty('--chrome-push', '0px'); root.classList.remove('footer-revealed') }
+        return
+      }
       // Base do header sem o empurrão = até onde o "cromo" do topo desce
       const chromeBottom = header.getBoundingClientRect().bottom - push
       const next = Math.min(0, Math.max(-chromeBottom, container.getBoundingClientRect().top - chromeBottom))
@@ -264,6 +277,7 @@ export function Footer() {
     window.addEventListener('resize', onScroll)
     update()
     return () => {
+      nearObserver.disconnect()
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
       cancelAnimationFrame(rafId)

@@ -5,6 +5,7 @@ import { useActiveSection } from '../hooks/useActiveSection'
 import { useLanguage } from '../context/LanguageContext'
 import { usePrevLabelHeld } from '../utils/pageTransition'
 import { DecodeText } from './DecodeText'
+import { useSkipState } from '../utils/manifestoSkip'
 import { Menu } from './Menu'
 import logo from '../assets/logo.svg'
 
@@ -42,7 +43,11 @@ export function Header({ page = 'home' }) {
   useEffect(() => () => clearTimeout(toggleTimeoutRef.current), [])
 
   const homeSectionId = useActiveSection(isContact ? [] : ['top', 'manifesto', 'trabalhos', 'carreiras'])
-  const activeId = isContact ? 'contato' : homeSectionId
+  // no cartaz do fim do Manifesto (e na folha) o assunto já é Trabalhos. Vale por
+  // cima da seção ativa: depois de um salto ela pode não ter visto o Manifesto
+  // (o pin decide quando é cartaz, só dentro dele — utils/manifestoSkip.js)
+  const { cartaz } = useSkipState()
+  const activeId = isContact ? 'contato' : cartaz ? 'trabalhos' : homeSectionId
   const sectionLabels = {
     top: t.header.home,
     manifesto: t.header.manifesto,

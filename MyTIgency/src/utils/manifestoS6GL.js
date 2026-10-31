@@ -19,6 +19,7 @@
 // Também: lupa sob a bola do cursor, desfoque leve das linhas fora de foco,
 // grão. A câmera em perspectiva é posta de modo que z = 0 caia 1:1 em px.
 import * as THREE from 'three'
+import { drawAll } from './warmup'
 
 const FOV = 35
 const STRETCH_KW = [[56, 'ultra-condensed'], [69, 'extra-condensed'], [81, 'condensed'], [94, 'semi-condensed'], [106, 'normal'], [119, 'semi-expanded'], [131, 'expanded']]
@@ -329,6 +330,8 @@ export function mountTextGL(canvas) {
   return {
     resize,
     addLine,
+    /** compila os shaders das linhas antes do 1º quadro e os usa uma vez (utils/warmup.js) */
+    warm: () => renderer.compileAsync(scene, camera).then(() => { drawAll(renderer, scene, camera, { all: true }); renderer.clear() }),
     render(time) {
       for (const l of lines) l.u.uTime.value = time
       renderer.render(scene, camera)
@@ -404,6 +407,7 @@ export function mountGridGL(canvas) {
   scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat))
   let last = ''
   return {
+    warm: () => renderer.compileAsync(scene, camera).then(() => { drawAll(renderer, scene, camera); renderer.clear() }),
     resize(w, h) {
       const dpr = Math.min(2, devicePixelRatio || 1)
       renderer.setPixelRatio(dpr)

@@ -16,8 +16,9 @@
 // Lâmpada, degauss, cliques do cursor e molas andam em tempo real (rAF próprio,
 // só com a cena ativa e na tela); cada camada só redesenha quando muda.
 import * as THREE from 'three'
-import { EDITOR, shadeOf, drawSprite } from './ditherSprite'
+import { EDITOR, FIST, FIST_C, shadeOf, drawSprite, DCELL } from './ditherSprite'
 import { mountPCDesk, TRAVEL } from './manifestoPCDesk'
+import { drawAll } from './warmup'
 import logoUrl from '../assets/logo.svg?url'
 import pcUrl from '../assets/s6/pc/pc.png'
 import wallUrl from '../assets/s6/pc/wallpaper.jpg'
@@ -38,6 +39,11 @@ const HOLD0 = 0.35 // alturas de tela com o cartaz parado antes de começar
 const LEN = 3.2 // alturas de tela da transição
 /** alturas de tela de scroll que a cena pede no pin (reduced motion: o estado final, parado) */
 export const pcLength = (reduce) => (reduce ? 1 : HOLD0 + LEN + TRAVEL.len)
+/** onde fica o cartaz completo (barra em 99%, lâmpada acesa, adesivo), em alturas de
+ *  tela: o destino do botão de pular o Manifesto (utils/manifestoSkip.js) */
+export const pcCartaz = (reduce) => (reduce ? 0.5 : HOLD0 + LEN * 0.99)
+/** a partir daqui a câmera inclina para a folha (o botão de pular sai) */
+export const pcTravelAt = (reduce) => (reduce ? Infinity : HOLD0 + LEN)
 // Degauss: o "tum" que marca a virada de cartaz para monitor (tempo real, ao
 // passar de at): clarão curto, anéis de cor que giram e se abrem, tremor e
 // curva/cores do tubo oscilando — tudo amortecido em dur segundos. O tranco
@@ -97,7 +103,8 @@ const HOURGLASS = [[
   '...kwwwk...', '....kwk....', '....kwk....', '...kwwwk...', '..kwwwwwk..', '.kwwwkwwwk.', '.kwwkkkwwk.',
   '.kwkkkkkwk.', '.kkkkkkkkk.', 'kkkkkkkkkkk', 'kwwwwwwwwwk', 'kkkkkkkkkkk',
 ], [5, 9]]
-const SPR = Object.fromEntries(Object.entries({ arrow: EDITOR.arrow, wait: HOURGLASS }).map(([k, [art, anchor]]) => [k, { art: shadeOf(art), anchor }]))
+// as formas da seção 6 (o cursor é o mesmo: chega aqui em qualquer uma delas) e a ampulheta
+const SPR = Object.fromEntries(Object.entries({ ...EDITOR, fist: [FIST, FIST_C], wait: HOURGLASS }).map(([k, [art, anchor]]) => [k, { art: shadeOf(art), anchor }]))
 const CELL = 2.1 // px do desktop por pixel do desenho (com a tela já pequena; no começo, o tamanho que tinha na seção 6)
 const RES = 2 // canvas do cursor em 2×
 const HIT = { bump: 7, spin: 14, dbl: 0.18 } // recuo (px), giro (graus), intervalo do duplo clique (s)
@@ -154,9 +161,10 @@ const STAGE = `
             <div class="pc-poster"><canvas class="pc-pvig"></canvas></div>
             <div class="pc-desk"></div>
             <div class="pc-fx pc-fx-scan"></div><div class="pc-fx pc-fx-mask"></div>
+            <div class="pc-fx pc-fx-thump"></div>
           </div>
           <div class="pc-fx pc-fx-band"><canvas></canvas></div><div class="pc-fx pc-fx-flick"></div><div class="pc-fx pc-fx-noise"></div>
-          <div class="pc-fx pc-fx-dg"></div>
+          <div class="pc-fx pc-fx-dg"><canvas></canvas></div>
           <div class="pc-fx pc-fx-vig"><canvas></canvas></div><div class="pc-fx pc-fx-glass"><canvas class="g-band"></canvas><canvas class="g-hl"></canvas></div>
         </div>
         <div class="pc-dev"><img alt="" src="${pcUrl}" /></div>
@@ -228,13 +236,25 @@ function mountWall(canvas, onGlow) {
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
   let dirty = true
   let alive = true
+  let texDone
+  const texReady = new Promise((r) => { texDone = r })
   new THREE.TextureLoader().load(wallUrl, (t) => {
+    texDone()
     if (!alive) { t.dispose(); return }
     u.uTex.value = t; u.uTexA.value = t.image.width / t.image.height; dirty = true
     onGlow(t.image)
-  })
+  }, undefined, texDone)
   return {
     get dirty() { return dirty },
+    /** compila o shader e sobe a foto antes da cena (ver mountPC → warm) */
+    async warm() {
+      await renderer.compileAsync(scene, cam)
+      await texReady
+      if (alive && u.uTex.value) renderer.initTexture(u.uTex.value)
+      if (!alive) return
+      drawAll(renderer, scene, cam) // (o 1º uso do shader: ver utils/warmup.js)
+      renderer.clear()
+    },
     size(w, h) { renderer.setSize(w, h, false); u.uRes.value.set(w * pr, h * pr); dirty = true },
     draw(dis, col, wave = 0) {
       if (!dirty && u.uDis.value === dis && u.uCol.value === col && u.uWave.value === wave) return
@@ -299,12 +319,13 @@ const TEX_DPR = () => Math.min(2, devicePixelRatio || 1)
 /**
  * @param host  .ma-pc (camada do tamanho da tela no segundo ato)
  * @param opts  { reduce, onLamp(v): a lâmpada mudou,
- *                cursorFrom(): o cursor da seção 6 agora ({ x, y } em px do editor, cell),
+ *                cursorFrom(): o cursor da seção 6 agora (posição em px do editor, forma, troca, clique: manifestoS6 → cursor()),
  *                onImpact(v): passou (true) ou voltou de antes (false) do tranco do degauss,
  *                t: os textos da cena no idioma da página (strings.js → pc) }
  * O cartaz é a própria seção 6, viva: o hook move o .s6 para dentro de poster
  * (o retorno) enquanto a cena está ativa, e ela continua andando dentro da tela.
- * O cursor também é o dela: o PC o desenha a partir de onde ela o deixou.
+ * O cursor também é o dela, um só: aninhada, a seção 6 só calcula o estado dele e
+ * o PC o desenha, igual, até tomar o gesto (sair para o "Aviso").
  */
 export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = () => null, onImpact = () => {}, t: tx }) {
   let impacted = false // já passou do tranco (a tela virou monitor)
@@ -317,7 +338,7 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
   const bodyEl = q('.pc-body'), shadowEl = q('.pc-shadow'), ledsEl = q('.pc-leds')
   const ledPow = q('.pc-led-pow'), ledHd = q('.pc-led-hd')
   const ambCv = q('.pc-amb canvas'), pvigCv = q('.pc-pvig'), bandCv = q('.pc-fx-band canvas')
-  const glassBand = q('.g-band'), glassHl = q('.g-hl'), vigCv = q('.pc-fx-vig canvas')
+  const glassBand = q('.g-band'), glassHl = q('.g-hl'), vigCv = q('.pc-fx-vig canvas'), dgCv = q('.pc-fx-dg canvas')
   const pcImg = new Image()
   pcImg.src = pcUrl
 
@@ -386,6 +407,27 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
     x.fill('evenodd')
     x.restore()
   }
+  // os anéis do degauss: repeating-radial-gradient(circle at 50% 56%, as 5 cores a cada
+  // 5%, período de 25% do raio até o canto mais longe) com blur(14px) — o desfoque era
+  // refeito na tela inteira a cada quadro do tranco (a escala e o matiz mudam). Desfocado
+  // aqui uma vez, em meia resolução (tudo suave), com a borda de 3σ em volta, por onde o
+  // blur do CSS também espalhava (a camada começa menor que a tela, a borda aparece); na
+  // tela ficam a escala, a opacidade e o giro do matiz (App.css → .pc-fx-dg)
+  const DG_RING = ['#ff2fa0', '#ffb02e', '#2effa0', '#2e7dff', '#b02eff']
+  function paintDg() {
+    if (!W1) return
+    const r = 0.5, B = 14, P = B * 3
+    const x = ctx2d(dgCv, (W1 + 2 * P) * r, (H1 + 2 * P) * r)
+    Object.assign(dgCv.style, { left: `${-P}px`, top: `${-P}px`, width: `${W1 + 2 * P}px`, height: `${H1 + 2 * P}px` })
+    const cx = W1 * 0.5, cy = H1 * 0.56
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, Math.hypot(Math.max(cx, W1 - cx), Math.max(cy, H1 - cy)))
+    for (let i = 0; i < 4; i++) DG_RING.forEach((c, j) => g.addColorStop((i * 5 + j) * 0.05, c))
+    g.addColorStop(1, DG_RING[0])
+    x.filter = `blur(${B * r}px)` // (em px do canvas: o filtro não segue a escala do setTransform)
+    x.setTransform(r, 0, 0, r, P * r, P * r)
+    x.fillStyle = g
+    x.fillRect(0, 0, W1, H1)
+  }
   // a faixa que desce pelo tubo: linear-gradient(180deg, transparente 0 40%, branco 50%,
   // transparente 60% 100%) num ladrilho de 3 alturas da tela, repetido. O canvas tem 4
   // alturas (ladrilho em 0 e em 3) e anda 3 alturas por ciclo, por transform (App.css → pcBand)
@@ -446,7 +488,7 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
     return [x, y]
   }
   let P = null
-  const freshCursor = () => ({ pos: null, shown: 'arrow', prev: null, morph0: 0, last: 0, prevT: null, hit: { ok: null, dbl: null }, lastHit: null, dbl2: false, drawn: '', cell0: CELL, glow0: 0, filter: '' })
+  const freshCursor = () => ({ pos: null, shown: 'arrow', prev: null, morph0: 0, last: 0, prevT: null, hit: { ok: null, dbl: null }, lastHit: null, dbl2: false, drawn: '', cell0: CELL, glow0: 0, filter: '', shadows: [] })
   const cursor = freshCursor()
   function measureCursor(DH) {
     curCv.width = 800 * RES; curCv.height = Math.round(DH * RES)
@@ -459,22 +501,53 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
   // o cartaz e o desktop estão os dois no rig, o cartaz escalado em cs)
   function takeCursor() {
     const c = cursorFrom()
-    if (!c || !W1) return
+    if (!c || !W1) return null
     const toDesk = 800 / W1
     P.start = [((W1 - vw * cs) / 2 + c.x * cs) * toDesk, ((H1 - vh * cs) / 2 + c.y * cs) * toDesk]
     cursor.cell0 = c.cell * cs * toDesk // o mesmo tamanho na tela
     cursor.glow0 = c.glow * cs * toDesk // e o mesmo brilho
+    return c
   }
   // o estilo: no preto, o brilho claro que ele tinha na seção 6; com o wallpaper
   // chegando, vira o contorno escuro da seta do Windows (que lê sobre o céu)
+  // As sombras (o brilho do preto, o contorno escuro da seta, a sombra) eram filtros:
+  // primeiro CSS no canvas inteiro (800 px × RES), depois ctx.filter — 6 passes
+  // encadeados, um com desfoque, refeitos a cada quadro (no escuro o cursor anda, muda
+  // de tamanho e de estilo todo quadro): o que mais pesava na GPU integrada. Agora são
+  // as sombras do próprio canvas, uma por passo, na mesma ordem e com a mesma conta do
+  // drop-shadow (cada uma sobre o resultado da anterior; desfoque = shadowBlur), só no
+  // recorte do cursor e só as visíveis (alpha 0 não entra). Medidas em px do canvas (× RES)
   const curStyle = (T) => {
     const g = 1 - ramp(T, ...TL.wall)
-    const o = (1 - g).toFixed(3)
-    const f = `drop-shadow(0 0 ${cursor.glow0.toFixed(2)}px rgba(244,243,239,${(0.4 * g).toFixed(3)}))`
-      + ` drop-shadow(1.5px 0 rgba(20,20,20,${o})) drop-shadow(-1.5px 0 rgba(20,20,20,${o})) drop-shadow(0 1.5px rgba(20,20,20,${o})) drop-shadow(0 -1.5px rgba(20,20,20,${o}))`
-      + ` drop-shadow(2px 3px 0 rgba(0,0,0,${(0.3 * (1 - g)).toFixed(3)}))`
-    if (cursor.filter !== f) { cursor.filter = f; curCv.style.filter = f }
+    const o = +(1 - g).toFixed(3)
+    const ink = (a) => `rgba(20,20,20,${a})`
+    cursor.shadows = [
+      [0, 0, cursor.glow0 * RES, `rgba(244,243,239,${(0.4 * g).toFixed(3)})`, 0.4 * g],
+      [1.5 * RES, 0, 0, ink(o), o], [-1.5 * RES, 0, 0, ink(o), o], [0, 1.5 * RES, 0, ink(o), o], [0, -1.5 * RES, 0, ink(o), o],
+      [2 * RES, 3 * RES, 0, `rgba(0,0,0,${(0.3 * (1 - g)).toFixed(3)})`, 0.3 * (1 - g)],
+    ].filter((sh) => sh[4] > 0.0005)
+    cursor.filter = cursor.shadows.map((sh) => sh.slice(0, 4).join(',')).join('|') // (a chave do redesenho)
   }
+  // aplica as sombras em sequência, alternando entre os dois canvases do recorte
+  function shadowChain(side) {
+    let src = curTmp, dst = curTmp2
+    for (const [sx, sy, blur, color] of cursor.shadows) {
+      const d = dst.getContext('2d')
+      d.setTransform(1, 0, 0, 1, 0, 0)
+      d.clearRect(0, 0, side, side)
+      Object.assign(d, { shadowOffsetX: sx, shadowOffsetY: sy, shadowBlur: blur, shadowColor: color })
+      d.drawImage(src, 0, 0, side, side, 0, 0, side, side)
+      Object.assign(d, { shadowOffsetX: 0, shadowOffsetY: 0, shadowBlur: 0, shadowColor: 'transparent' })
+      ;[src, dst] = [dst, src]
+    }
+    return src
+  }
+  // o recorte: o maior desenho, girado, com folga para o brilho e as sombras; a origem
+  // presa ao grid do dither (DCELL), para o pontilhado sair igual ao do canvas inteiro
+  const SPR_MAX = Math.max(...Object.values(SPR).map(({ art }) => Math.max(art.cols, art.rows)))
+  const curTmp = document.createElement('canvas')
+  const curTmp2 = document.createElement('canvas')
+  const tmpCx = curTmp.getContext('2d')
   function curTarget(T) {
     const seg = ([a, b], p0, p1) => { const e = easeInOut(ramp(T, a, b)); return [lerp(p0[0], p1[0], e), lerp(p0[1], p1[1], e)] }
     if (T < CUR.toOk[1]) return seg(CUR.toOk, P.start, P.ok)
@@ -491,10 +564,13 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
     const c = cursor
     const dt = c.last ? Math.min(0.05, (now - c.last) / 1000) : 0
     c.last = now
-    if (T < CUR.toOk[1]) takeCursor() // até sair para o "Aviso", ele parte de onde a seção 6 o tem
+    const s6c = T < CUR.toOk[1] ? takeCursor() : null // até sair para o "Aviso", ele parte de onde a seção 6 o tem
+    // antes disso o gesto ainda é da seção 6: a forma, a troca e o clique são os dela
+    // (ela já dá a inércia: sem uma segunda aqui, o desenho fica onde ela o calcula)
+    const own = s6c && T < CUR.toOk[0]
     curStyle(T)
     const tgt = curTarget(T)
-    c.pos = c.pos && dt && !reduce ? [damp(c.pos[0], tgt[0], TAU, dt), damp(c.pos[1], tgt[1], TAU, dt)] : tgt
+    c.pos = c.pos && dt && !reduce && !own ? [damp(c.pos[0], tgt[0], TAU, dt), damp(c.pos[1], tgt[1], TAU, dt)] : tgt
     // cliques: só quando o scroll PASSA do ponto (chegar no meio não clica)
     for (const [h, th] of [['ok', CUR.ok], ['dbl', CUR.dbl]]) {
       if (c.prevT !== null && c.prevT < th && T >= th && !reduce) { c.hit[h] = now; c.lastHit = h; c.dbl2 = false; fireImpact(tgt) }
@@ -505,24 +581,37 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
       if (!c.dbl2) { c.dbl2 = true; fireImpact(tgt) } // o segundo clique do duplo
       ha -= HIT.dbl
     }
-    // forma: esperando a janela abrir, ampulheta; a barra em 100%, seta de novo
-    const want = T >= CUR.open && T < 1 ? 'wait' : 'arrow'
-    if (want !== c.shown) { c.prev = c.shown; c.shown = want; c.morph0 = now }
-    const u = c.prev && !reduce ? clamp01((now - c.morph0) / MORPH_MS) * 1.01 : 1.01
+    // forma: a da seção 6 (a troca dela continua daqui, no mesmo ponto); depois, esperando
+    // a janela abrir, ampulheta; a barra em 100%, seta de novo
+    if (own) { c.shown = s6c.shape; c.prev = s6c.from; c.morph0 = now - (Math.min(1, s6c.k) * MORPH_MS) }
+    else {
+      const want = T >= CUR.open && T < 1 ? 'wait' : 'arrow'
+      if (want !== c.shown) { c.prev = c.shown; c.shown = want; c.morph0 = now }
+    }
+    const u = own ? s6c.k : c.prev && !reduce ? clamp01((now - c.morph0) / MORPH_MS) * 1.01 : 1.01
     const a = 1.01 // sempre visível: ele não some nem se refaz, só continua
     // o tamanho: o da seção 6 enquanto o cartaz encolhe, até o de ler na tela pequena
     const cell = lerp(c.cell0, CELL, easeInOut(ramp(T, ...TL.shrink)))
-    const key = `${c.pos[0].toFixed(1)},${c.pos[1].toFixed(1)},${cell.toFixed(3)},${c.shown},${u.toFixed(2)},${ha < 1.4 ? ha.toFixed(3) : ''}`
+    const key = `${c.pos[0].toFixed(1)},${c.pos[1].toFixed(1)},${cell.toFixed(3)},${c.prev},${c.shown},${u.toFixed(2)},${own ? `${s6c.spin.toFixed(3)},${s6c.sq.toFixed(3)}` : ha < 1.4 ? ha.toFixed(3) : ''},${c.filter}`
     if (key === c.drawn) return
     c.drawn = key
     cx.clearRect(0, 0, curCv.width, curCv.height)
-    const cj = jolt(ha) * HIT.bump
-    const spin = (jolt(ha, 20) * HIT.spin * Math.PI) / 180
-    const hc = cell * squash(ha, 0.2) * RES
+    const cj = own ? 0 : jolt(ha) * HIT.bump // (o recuo da seção 6 já vem na posição)
+    const spin = own ? s6c.spin : (jolt(ha, 20) * HIT.spin * Math.PI) / 180
+    const hc = cell * (own ? s6c.sq : squash(ha, 0.2)) * RES
     const x = (c.pos[0] - cj * 0.4) * RES, y = (c.pos[1] - cj) * RES
-    const draw = (name, show) => { const { art, anchor } = SPR[name]; drawSprite(cx, art, x, y, anchor[0], anchor[1], hc, show, spin) }
+    // desenha no recorte (coordenadas do canvas inteiro, deslocadas) e o pousa com o filtro
+    const R = SPR_MAX * hc * 1.5 + Math.ceil(c.glow0 * RES * 3 + 8 * RES) // (1,5: a diagonal, com a ponta na âncora)
+    const ox = Math.floor((x - R) / DCELL) * DCELL, oy = Math.floor((y - R) / DCELL) * DCELL
+    const side = Math.ceil(2 * R) + DCELL * 2
+    if (curTmp.width < side) curTmp.width = curTmp.height = curTmp2.width = curTmp2.height = side
+    tmpCx.setTransform(1, 0, 0, 1, 0, 0)
+    tmpCx.clearRect(0, 0, side, side)
+    tmpCx.setTransform(1, 0, 0, 1, -ox, -oy)
+    const draw = (name, show) => { const { art, anchor } = SPR[name]; drawSprite(tmpCx, art, x, y, anchor[0], anchor[1], hc, show, name === 'fist' ? 0 : spin) }
     if (u < 1 && c.prev) draw(c.prev, (t) => t >= u && t < a)
     draw(c.shown, (t) => t < Math.min(a, u))
+    cx.drawImage(shadowChain(side), 0, 0, side, side, ox, oy, side, side)
   }
 
   // ---------- vida no PC ----------
@@ -578,6 +667,22 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
   const env = mountPCDesk({ back: q('.env-back'), desk: q('.env-desk'), front: q('.env-front') }, tx)
   let pcOv = null, pcKey = ''
 
+  // As variáveis que mudam a cada quadro vão direto em quem as usa, e só quando
+  // mudam: escritas no host ou no tubo (que têm a seção 6 inteira dentro da tela),
+  // cada mudança se herdava e recalculava o estilo de ~450 elementos por quadro
+  const setVar = (els, name, v) => {
+    v = String(v)
+    for (const el of els) if (el && el.style.getPropertyValue(name) !== v) el.style.setProperty(name, v)
+  }
+  const fxEls = [...host.querySelectorAll('.pc-fx')] // --crt (e --fine: varredura e máscara)
+  const fineEls = [q('.pc-fx-scan'), q('.pc-fx-mask')]
+  const dgEl = q('.pc-fx-dg'), thumpEl = q('.pc-fx-thump')
+  thumpEl.style.visibility = 'hidden' // (só no clarão do tranco)
+  const glowEls = [q('.pc-amb'), spillEl, devGlow]
+  const litEls = [devEl, q('.ec-stk')]
+  // camada invisível fora da composição (as de brilho têm mix-blend e filtro animado)
+  const showIf = (els, on) => { const v = on ? '' : 'hidden'; for (const el of els) if (el.style.visibility !== v) el.style.visibility = v }
+
   // ---------- medidas ----------
   let vw = 0, vh = 0, W1, H1, cs, k0, kf, fcx, fcy, devRig = null, lastT = -1, dirty = true
   function measure({ vw: w, vh: h, top = 0 }) {
@@ -611,7 +716,7 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
     wall.size(W1, H1)
     devRig = { x: -s.x * ds, y: -s.y * ds, w: dw, h: dh }
     env.resize(vw, vh)
-    paintGlow(); paintAmb(); paintPosterVig(); paintGlass(); paintBand(); paintVig()
+    paintGlow(); paintAmb(); paintPosterVig(); paintGlass(); paintBand(); paintVig(); paintDg()
     dirty = true
     wake()
   }
@@ -680,8 +785,8 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
 
     // o tubo
     const c = ramp(T, ...TL.crt)
-    host.style.setProperty('--crt', c)
-    crt.style.setProperty('--rad', `${c * 3.4}% / ${c * 4.4}%`)
+    setVar(fxEls, '--crt', c)
+    crt.style.borderRadius = `${c * 3.4}% / ${c * 4.4}%`
     crtIn.classList.toggle('curved', c > 0.001 || dga < DEGAUSS.dur) // sem efeito, sem filtro: o cartaz nítido como na seção 6
     // degauss: o tubo treme, a curva e as cores oscilam, anéis de cor se abrem
     const da = dga / DEGAUSS.dur
@@ -695,10 +800,21 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
     crtIn.style.transform = dEnv > 0.002
       ? `translate(${(Math.sin(dga * 57) * 7 * dEnv).toFixed(2)}px, ${(Math.cos(dga * 44) * 3.5 * dEnv).toFixed(2)}px) scale(${(over * (1 + 0.014 * dEnv * Math.sin(dga * 31))).toFixed(4)})`
       : over > 1.0005 ? `scale(${over.toFixed(4)})` : ''
-    crtIn.style.filter = thump > 0.01 ? `url(#pc-crt) brightness(${(1 + 0.9 * thump).toFixed(3)})` : ''
-    crt.style.setProperty('--dg', (0.42 * dEnv).toFixed(3))
-    crt.style.setProperty('--dgs', (0.6 + da * 1.6).toFixed(3))
-    crt.style.setProperty('--dgh', (dga * 260).toFixed(1))
+    // o clarão: era brightness() depois do filtro da curva (mais uma passada na tela toda,
+    // e trocar a string do filtro refazia a cadeia dele). Agora uma camada em color-dodge
+    // por cima do conteúdo do tubo: com cinza s = 1 − 1/f, cor / (1 − s) = cor × f, a
+    // mesma conta (e o mesmo teto em 1) do brightness(f); a curva e as cores desalinhadas
+    // deslocam um cinza liso sem mudar nada
+    const flash = thump > 0.01 ? 1 - 1 / (1 + 0.9 * thump) : 0
+    showIf([thumpEl], flash > 0)
+    if (flash > 0) thumpEl.style.backgroundColor = `rgb(${(flash * 100).toFixed(2)}%, ${(flash * 100).toFixed(2)}%, ${(flash * 100).toFixed(2)}%)`
+    const dg = (0.42 * dEnv).toFixed(3)
+    setVar([dgEl], '--dg', dg)
+    showIf([dgEl], dg > 0)
+    if (dg > 0) {
+      setVar([dgEl], '--dgs', (0.6 + da * 1.6).toFixed(3))
+      setVar([dgEl], '--dgh', (dga * 260).toFixed(1))
+    }
     // o texto sobre o wallpaper ganha a sombra dos rótulos da área de trabalho
     const sh = ramp(T, ...TL.wall)
     poster.style.filter = sh > 0 ? `drop-shadow(0 4px 3px rgba(0,0,0,${0.75 * sh}))` : ''
@@ -717,7 +833,9 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
     // a luz da tela na parede acompanha o aparelho (o centro do canvas, 2× a viewport, vai até ele)
     ambCv.style.transform = `translate(${(cx0 - vw).toFixed(1)}px, ${(cy0 - vh).toFixed(1)}px)`
     // scanlines e máscara somem quando a tela fica pequena (abaixo disso viram moiré)
-    host.style.setProperty('--fine', ramp(k, 0.5, 0.85))
+    const fine = ramp(k, 0.5, 0.85)
+    setVar(fineEls, '--fine', fine)
+    showIf(fineEls, fine > 0 && c > 0)
 
     // o wallpaper: preto → dither → cor, as duas frentes contínuas (do centro, a borda
     // se desfazendo no Bayer). O tranco do degauss empurra a frente do dither
@@ -727,14 +845,18 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
     const push = T < DEGAUSS.at ? 0 : DEGAUSS.push * (hit ? 1 - Math.exp(-dga * DEGAUSS.pushK) : 1)
     const wave = hit && dga < DEGAUSS.waveDur ? Math.exp(-dga * DEGAUSS.waveK) : 0
     wall.draw(Math.min(1, ramp(w, 0, 0.55) + push), ramp(w, 0.55, 1), wave)
-    host.style.setProperty('--pv', (1 - w).toFixed(3)) // a vinheta do cartaz sai com o wallpaper
+    setVar([pvigCv], '--pv', (1 - w).toFixed(3)) // a vinheta do cartaz sai com o wallpaper
 
     // sala escura: o aparelho só aparece pela luz da tela; a lâmpada acende em degraus
-    const glow = w * (1 - lampV)
-    host.style.setProperty('--glow', glow.toFixed(3))
-    host.style.setProperty('--lit', (lerp(0.05 + 0.12 * glow * ramp(T, ...TL.lights), 1, lampV)).toFixed(3))
-    host.style.setProperty('--room', rgb([20, 20, 20], [255, 255, 255], lampV))
-    host.style.setProperty('--lamp', lampV)
+    const glow = (w * (1 - lampV)).toFixed(3)
+    setVar(glowEls, '--glow', glow)
+    showIf(glowEls, glow > 0)
+    const lit = (lerp(0.05 + 0.12 * glow * ramp(T, ...TL.lights), 1, lampV)).toFixed(3)
+    setVar(litEls, '--lit', lit)
+    devEl.style.filter = lit >= 1 ? 'none' : '' // brightness(1) ainda custava uma passada de filtro
+    // (--room e --lamp só mudam no instante da lâmpada: ficam no host, onde os usam)
+    setVar([host], '--room', rgb([20, 20, 20], [255, 255, 255], lampV))
+    setVar([host], '--lamp', lampV)
 
     // a área de trabalho e as janelas
     deskPops.forEach((el, i) => el.classList.toggle('on', T >= deskOn[i][0] && T < deskOn[i][1]))
@@ -768,6 +890,9 @@ export function mountPC(host, { reduce = false, onLamp = () => {}, cursorFrom = 
   return {
     poster,
     measure,
+    /** aquece a cena antes de ela entrar (shaders, texturas, sombras da mesa, a
+     *  imagem do PC): o hook o chama sob a tela de carregamento (utils/warmup.js) */
+    warm: () => Promise.all([wall.warm(), env.warm(), pcImg.decode().catch(() => {})]),
     /** p: alturas de tela de scroll desde o fim da seção 6; null = antes da cena (some e para o rAF) */
     scroll(p) {
       if ((p === null) !== (pIn === null)) host.classList.toggle('on', p !== null)

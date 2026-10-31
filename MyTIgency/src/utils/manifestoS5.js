@@ -162,6 +162,16 @@ export function mountS5(host, { ruler = null } = {}) {
     + '</div>'
 
   const q = (s) => host.querySelector(s)
+  // texto e atributos só quando mudam: reescritos a cada quadro (mesmo iguais),
+  // inseriam um nó novo e invalidavam o estilo em volta, o tempo todo
+  const setText = (el, v) => { if (el.textContent !== v) el.textContent = v }
+  const setAttr = (el, name, v) => { if (el.getAttribute(name) !== v) el.setAttribute(name, v) }
+  // a seção na tela? (o observer vê os transforms do deslocamento lateral) — fora
+  // dela as cordas, as notas da pauta e o player param; o quadro segue rodando
+  // até o fim do pin, pela régua e pelo cursor que vão para a seção 6
+  let inView = true
+  const viewIO = new IntersectionObserver(([e]) => { inView = e.isIntersecting }, { rootMargin: '0px 25%' })
+  viewIO.observe(host)
   const sceneB = host.closest('.ma-b') ?? host
   const blockA = q('.s5-a')
   const blockB = q('.s5-b')
@@ -470,8 +480,8 @@ export function mountS5(host, { ruler = null } = {}) {
     const settle = ramp(e, 0.5, 0.72)
     const wob = 10 * Math.sin(settle * Math.PI * 3) * (1 - settle)
     const mA = -720 * (1 - spin) + wob
-    clockM.setAttribute('transform', `rotate(${mA})`)
-    clockH.setAttribute('transform', `rotate(${-60 * (1 - spin) + wob * 0.3})`)
+    setAttr(clockM, 'transform', `rotate(${mA})`)
+    setAttr(clockH, 'transform', `rotate(${-60 * (1 - spin) + wob * 0.3})`)
     const m360 = ((mA % 360) + 360) % 360
     const spinning = spin > 0 && spin < 1
     ticks.forEach((el, i) => {
@@ -485,8 +495,8 @@ export function mountS5(host, { ruler = null } = {}) {
     held = ramp(d5, P.end, P.end + VH.end * H) > 0.8
     if (reduce) {
       // reduced motion: estado final e parado, sem player/régua dirigidos pelo scroll
-      hint.textContent = data.hint[1]
-      plState.textContent = data.player.held
+      setText(hint, data.hint[1])
+      setText(plState, data.player.held)
     }
 
     // régua (desktop): só nas mãos da seção 5 depois que a faixa começa
@@ -537,7 +547,7 @@ export function mountS5(host, { ruler = null } = {}) {
     // na pegada (take) só o cadeado some; a régua vai inteira para a seção 6
     const fade = ramp(tk, ...TAKE.fade)
     rHead.style.opacity = rFill.style.opacity = `${headOn}`
-    rVal.textContent = `${String(Math.round(hp * 100)).padStart(3, '0')}%`
+    setText(rVal, `${String(Math.round(hp * 100)).padStart(3, '0')}%`)
     rFill.style.transform = `scaleX(${hp})`
     rStops.forEach((el, i) => el.classList.toggle('on', hp >= rFracs[i] - 0.001))
     // cadeado: assim que a régua encaixa no lugar, entra de pé (como os rótulos),
@@ -703,21 +713,23 @@ export function mountS5(host, { ruler = null } = {}) {
     smoothV += (v - smoothV) * (1 - Math.exp(-dt * 8))
     amp += (Math.min(AMP_MAX, smoothV * 0.35) - amp) * (1 - Math.exp(-dt * 6))
     kick *= Math.exp(-dt * 2.2)
-    drawStrings(d5 * 0.03, now)
+    if (inView) drawStrings(d5 * 0.03, now)
     if (!reduce && strRect.x + strRect.w > 0 && strRect.x < W && d5raw > 0) {
       spawnAcc += Math.min(30, smoothV) * dt * 0.5
       while (spawnAcc >= 1) { spawnAcc -= 1; spawnNote(now, sceneX, strRect) }
     } else spawnAcc = 0
     const level = clamp01((amp + kick) / AMP_MAX)
     const playing = level > 0.06
-    player.classList.toggle('is-playing', playing)
-    plState.textContent = playing ? data.player.playing : held ? data.player.held : data.player.paused
-    hint.textContent = held ? data.hint[1] : data.hint[0]
-    bpmEl.textContent = String(playing ? Math.round(60 + level * 120) : 0).padStart(3, '0')
-    eqBars.forEach((el, i) => {
-      el.style.transform = `scaleY(${0.15 + 0.85 * level * (0.45 + 0.55 * Math.abs(Math.sin(now * 0.011 * (i + 1) + i * 1.7)))})`
-    })
-    clockS.setAttribute('transform', `rotate(${(Math.floor(Date.now() / 1000) % 60) * 6})`) // segundos: tempo real
+    if (inView) {
+      player.classList.toggle('is-playing', playing)
+      setText(plState, playing ? data.player.playing : held ? data.player.held : data.player.paused)
+      setText(hint, held ? data.hint[1] : data.hint[0])
+      setText(bpmEl, String(playing ? Math.round(60 + level * 120) : 0).padStart(3, '0'))
+      eqBars.forEach((el, i) => {
+        el.style.transform = `scaleY(${0.15 + 0.85 * level * (0.45 + 0.55 * Math.abs(Math.sin(now * 0.011 * (i + 1) + i * 1.7)))})`
+      })
+      setAttr(clockS, 'transform', `rotate(${(Math.floor(Date.now() / 1000) % 60) * 6})`) // segundos: tempo real
+    }
     if (reduce) { drawNotes(now, sceneX); return }
 
     // ----- cursor: o caminho guia o olhar (eye-trace) -----
@@ -905,6 +917,7 @@ export function mountS5(host, { ruler = null } = {}) {
     idle,
     still,
     dispose() {
+      viewIO.disconnect()
       window.removeEventListener('pointermove', onMove)
       releaseRuler()
       caps.forEach((el) => el.remove())

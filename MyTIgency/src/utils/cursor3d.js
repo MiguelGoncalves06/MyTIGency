@@ -72,6 +72,12 @@ export async function mountCursor3D(canvas, { size = 200, before } = {}) {
   const postScene = new THREE.Scene()
   postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post))
   const postCam = new THREE.Camera()
+  // compila antes do 1º quadro (com compilação paralela, sem travar): no 1º render a
+  // espera pelos shaders caía no meio do scroll. A cena com o rt ligado: é o destino real
+  renderer.setRenderTarget(rt)
+  const sceneDone = renderer.compileAsync(scene, camera)
+  renderer.setRenderTarget(null)
+  await Promise.all([sceneDone, renderer.compileAsync(postScene, postCam)])
 
   let W = 1, H = 1, upp = 1 // unidades de mundo por px no plano z=0
   function resize() {

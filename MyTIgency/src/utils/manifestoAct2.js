@@ -303,8 +303,11 @@ export function mountAct2(root, { behind, ribbon = false } = {}) {
     const c = clamp01(curtain)
     curC = c
     root.style.visibility = c > 0 ? 'visible' : 'hidden'
+    root.toggleAttribute('data-offscreen', c === 0) // escondido: os loops CSS de dentro param (App.css)
     root.style.setProperty('--grain', ramp(c, FILL[0], 1)) // o grão chega com a tinta
-    if (c > 0 && root.clientWidth !== W) measure()
+    // (o resize já remede: ler clientWidth aqui, depois das escritas acima, forçava
+    // um layout do documento inteiro a cada quadro do segundo ato)
+    if (c > 0 && !W) measure()
     // a tinta só redesenha se a cortina andou (ou ferve na borda enquanto anda)
     if (c !== lastC) {
       lastC = c
@@ -376,6 +379,7 @@ export function mountAct2(root, { behind, ribbon = false } = {}) {
       window.removeEventListener('resize', onResize)
       if (behind) behind.style.transform = ''
       root.style.visibility = ''
+      root.removeAttribute('data-offscreen')
     },
   }
 }

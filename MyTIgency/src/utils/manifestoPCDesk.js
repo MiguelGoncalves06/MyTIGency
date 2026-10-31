@@ -16,6 +16,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+import { drawAll } from './warmup'
 import logoRaw from '../assets/logo.svg?raw'
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
@@ -278,6 +279,10 @@ function mesa({ desk }, tx) {
   renderer.setPixelRatio(Math.min(1.5, devicePixelRatio || 1))
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  // a cena é parada (as luzes e o alvo do sol nunca andam; só a câmera e as
+  // intensidades mudam): as sombras são assadas uma vez, não refeitas a cada quadro
+  renderer.shadowMap.autoUpdate = false
+  renderer.shadowMap.needsUpdate = true
   const scene = new THREE.Scene()
   // reflexos de estúdio (o verniz da mesa, as canecas): só com a lâmpada acesa
   const pmrem = new THREE.PMREMGenerator(renderer)
@@ -454,6 +459,16 @@ function mesa({ desk }, tx) {
     /** y de tela da borda de trás da mesa (acima é parede) */
     get horizon() { return horizon },
     resize(vw, vh) { w = vw; h = vh; renderer.setSize(vw, vh, false); last = '' },
+    /** sob a tela de carregamento: compila os shaders, sobe as texturas e assa as
+     *  sombras — feito no 1º quadro visível, travava a página por até 2 s */
+    async warm() {
+      await renderer.compileAsync(scene, camera)
+      scene.traverse((o) => [].concat(o.material ?? []).forEach((m) => { if (m.map) renderer.initTexture(m.map) }))
+      renderer.render(scene, camera) // shadowMap.needsUpdate: este render assa as sombras
+      drawAll(renderer, scene, camera) // (as sombras já assadas: este só usa cada shader uma vez)
+      renderer.clear()
+      last = ''
+    },
     frame(st) {
       if (!w || st.T < 0.38) return null // antes do zoom a mesa está fora de quadro
       const e = easeInOut(st.T2)
@@ -511,6 +526,7 @@ export function mountPCDesk(layers, tx) {
   layers.front.prepend(sheetLayer)
   return {
     resize(vw, vh) { m.resize(vw, vh); c.resize(vw) },
+    warm: () => m.warm(),
     frame(st) {
       const pc = m.frame(st)
       c.frame({ ...st, pc, horizon: m.horizon })

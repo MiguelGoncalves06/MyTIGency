@@ -333,8 +333,13 @@ export function mountDitherEye(canvas, { cell = 2 } = {}) {
     s.tx = Math.max(-1, Math.min(1, dx)) * GAZE.x
     s.ty = Math.max(-1, Math.min(1, dy)) * GAZE.y
   }
+  // na tela de fato (a cena A desliza para fora no segundo ato): fora dela o tick
+  // seguia redesenhando e medindo o canvas a cada quadro, até o fim do Manifesto
+  let inView = true
+  const viewIO = new IntersectionObserver(([e]) => { inView = e.isIntersecting })
+  viewIO.observe(canvas)
   const tick = () => {
-    if (!live) return
+    if (!live || !inView) return
     const ex = s.tx - s.gx
     const ey = s.ty - s.gy
     if (Math.abs(ex) > 0.15 || Math.abs(ey) > 0.15) {
@@ -375,6 +380,7 @@ export function mountDitherEye(canvas, { cell = 2 } = {}) {
       if (live) { dirty = true; tick() }
     },
     dispose() {
+      viewIO.disconnect()
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('resize', onResize)
       gsap.ticker.remove(tick)

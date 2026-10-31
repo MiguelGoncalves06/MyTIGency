@@ -7,6 +7,7 @@ import { useClickOutside } from '../hooks/useClickOutside'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { DecodeText } from './DecodeText'
+import { hasSkipGo, skipGo } from '../utils/manifestoSkip'
 
 const CLOSE_ON_SCROLL_PX = 24
 
@@ -27,6 +28,19 @@ export function Menu({ open, onClose, triggerRef, activeId, isContact = false })
       e.preventDefault()
       e.stopPropagation()
       lenis?.scrollTo(0)
+    }
+    // Work: o destino é o cartaz do Manifesto (utils/manifestoSkip.js) — longe,
+    // o portal nasce do link; perto, só rola
+    if (sectionId === 'trabalhos' && hasSkipGo()) {
+      e.preventDefault()
+      e.stopPropagation()
+      let { clientX: x, clientY: y } = e
+      if (!x && !y) { // teclado: o portal nasce do próprio link
+        const r = e.currentTarget.getBoundingClientRect()
+        x = r.left + r.width / 2
+        y = r.top + r.height / 2
+      }
+      skipGo('work', [x, y])
     }
   }
 

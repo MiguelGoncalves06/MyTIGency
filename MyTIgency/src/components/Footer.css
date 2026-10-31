@@ -293,6 +293,8 @@
 /* Os dois pontos piscam para mostrar que o relógio está ao vivo */
 @media (prefers-reduced-motion: no-preference) {
   .ft-contact__clock-sep { animation: ft-clock-blink 2s steps(1) infinite; }
+  /* longe do footer (Footer.jsx → data-far) para de piscar: seguia recalculando estilo */
+  .site-footer[data-far] .ft-contact__clock-sep { animation-play-state: paused; }
 }
 
 @keyframes ft-clock-blink {

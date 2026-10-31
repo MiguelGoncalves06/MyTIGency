@@ -86,8 +86,15 @@ export function useMarqueeDecode(containerRef, trackRef, deps = []) {
     let loopWidth = 0 // metade da faixa: o conteúdo é repetido, então -50% volta ao início
     let trackBase = 0 // left da faixa sem translate
     let offset = 0
+    // bordas da faixa: só mudam no resize (o scroll a move na vertical). Medidas
+    // aqui, não a cada quadro — ler o layout logo depois de escrever o transform
+    // forçava um layout da página inteira por quadro, inclusive no Manifesto
+    let edgeL = 0
+    let edgeR = 0
+    let width = 0
 
     function measure() {
+      ;({ left: edgeL, right: edgeR, width } = container.getBoundingClientRect())
       const trackRect = track.getBoundingClientRect()
       loopWidth = trackRect.width / 2
       trackBase = trackRect.left - offset
@@ -119,7 +126,6 @@ export function useMarqueeDecode(containerRef, trackRef, deps = []) {
       offset = -phase * loopWidth
       track.style.transform = `translate3d(${offset}px, 0, 0)`
 
-      const { left: edgeL, right: edgeR, width } = container.getBoundingClientRect()
       const trackLeft = trackBase + offset
       const zone = Math.max(zoneMinFor(width), Math.min(ZONE_MAX, width * ZONE_RATIO))
 

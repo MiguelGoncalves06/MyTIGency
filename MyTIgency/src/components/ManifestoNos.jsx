@@ -13,7 +13,10 @@ import { DecodeText } from './DecodeText'
 // Aro (com o brilho e as estrelinhas), sublinhado e seta: traços do Figma
 // (preenchimento, não stroke) — a entrada os revela com um "wipe" de
 // clip-path (useManifestoNos).
-import haloSrc from '../assets/s2-halo.svg'
+// O aro vem rasterizado (WebP 1200 px, 2,5× o maior tamanho em tela): o SVG do
+// Figma (3,3 MB, PNG embutido + filtro de turbulência) travava a entrada do NÓS
+// ao decodificar. Fonte editável: s2-halo.svg
+import haloSrc from '../assets/s2-halo.webp'
 import underSrc from '../assets/s2-under.svg'
 import arrowSrc from '../assets/s2-arrow.svg'
 

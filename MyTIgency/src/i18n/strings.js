@@ -82,6 +82,16 @@ export const strings = {
         'Não ficamos satisfeitos até você parar de mandar "só mais um ajuste".',
       ],
     },
+    // botão de pular o Manifesto (components/ManifestoSkip.jsx)
+    skip: {
+      skip: 'Pular manifesto',
+      toWork: 'Ir para trabalhos',
+      back: 'Voltar ao início',
+      hint: 'Com pressa? Dá pra pular.',
+      landing: 'Trabalhos',
+      announce: 'Manifesto pulado. Você está em Trabalhos.',
+      announceBack: 'De volta ao início do manifesto.',
+    },
     manifesto: {
       label: 'Ethos',
       // 3 linhas fixas do Figma; role: brand (elipse), highlight (fundo
@@ -351,6 +361,15 @@ export const strings = {
         'We reply fast because anxiety is fuel too.',
         'We\'re not satisfied until you stop sending "just one more tweak."',
       ],
+    },
+    skip: {
+      skip: 'Skip manifesto',
+      toWork: 'Go to work',
+      back: 'Back to start',
+      hint: 'In a hurry? You can skip.',
+      landing: 'Work',
+      announce: 'Manifesto skipped. You are at Work.',
+      announceBack: 'Back to the start of the manifesto.',
     },
     manifesto: {
       label: 'Ethos',

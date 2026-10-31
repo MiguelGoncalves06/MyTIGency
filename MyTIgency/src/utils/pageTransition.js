@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { decodeAt, decodeDuration, DECODE_TICK_MS } from '../hooks/useAsciiGlitch'
+import { hasSkipGo } from './manifestoSkip'
 
 // ---------- Transição entre páginas (home ⇄ contato) ----------
 // Cortina de dither: a página atual é coberta de tinta por uma onda de
@@ -273,11 +274,24 @@ function scrollTo(target) {
   if (lenis) lenis.scrollTo(target, { immediate: true, force: true })
   else if (target === 0) window.scrollTo(0, 0)
 }
+/** rola na hora (px), sem a suavização do Lenis: o salto do botão de pular o Manifesto */
+export function scrollNow(y) {
+  if (lenis) {
+    lenis.resize() // (o Lenis limita o destino à altura que mediu por último: no celular a página ainda crescia)
+    lenis.scrollTo(y, { immediate: true, force: true })
+  } else window.scrollTo(0, y)
+}
+/** rola suave (px): "Work" no menu já perto do cartaz (force: o menu do celular trava o Lenis até fechar) */
+export function scrollSmooth(y) {
+  if (lenis) lenis.scrollTo(y, { force: true })
+  else window.scrollTo({ top: y, behavior: 'smooth' })
+}
 
 // Âncora vinda de outra página (/#trabalhos): os pins do GSAP da home ainda
 // estão se montando e empurram o layout, então repete até a seção parar no
 // topo — tudo ainda por baixo da cortina.
 async function scrollToAnchor(hash) {
+  if (hash === '#trabalhos' && hasSkipGo()) return // a home já pousou no cartaz do Manifesto (useAppReady)
   const el = document.getElementById(decodeURIComponent(hash.slice(1)))
   if (!el) return
   for (let i = 0; i < 12; i++) {

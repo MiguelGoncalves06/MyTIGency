@@ -15,6 +15,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js'
+import { drawAll } from './warmup'
 
 // Molas (k = rigidez, zeta = amortecimento; < 1 passa do ponto e volta).
 // Giro: segue o alvo do scroll com um leve overshoot — sensação de massa.
@@ -274,7 +275,7 @@ export function mountDitherTV(canvas, {
   let mixer = null
   let disposed = false
   let modelHolder = null
-  load(url).then(({ scene: src, animations }) => {
+  const loaded = load(url).then(({ scene: src, animations }) => {
     if (disposed) return
     // SkeletonUtils: um clone simples quebra modelos com esqueleto
     const model = cloneSkinned(src)
@@ -366,6 +367,23 @@ export function mountDitherTV(canvas, {
   const postQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post)
   postScene.add(postQuad)
   const postCam = new THREE.Camera()
+
+  // ready: modelo carregado, shaders compilados e texturas na GPU — sem isso, o
+  // 1º quadro visível fazia tudo de uma vez no meio do scroll (utils/warmup.js).
+  // A cena compila com o render target ligado: é com ele que ela é desenhada
+  // (o programa muda com o destino), e o passe de post no canvas
+  const ready = loaded.then(async () => {
+    if (disposed) return
+    renderer.setRenderTarget(rt)
+    const sceneDone = renderer.compileAsync(scene, camera)
+    renderer.setRenderTarget(null)
+    await Promise.all([sceneDone, renderer.compileAsync(postScene, postCam)])
+    if (disposed) return
+    renderer.setRenderTarget(rt)
+    drawAll(renderer, scene, camera) // sobe as texturas do modelo e usa cada shader (invisível: só o rt; ver utils/warmup.js)
+    renderer.setRenderTarget(null)
+    renderer.render(postScene, postCam) // (o passe de post também: o 1º uso dele travava)
+  }).catch(() => {})
 
   let basePx = 1
   const applySize = () => {
@@ -642,5 +660,5 @@ export function mountDitherTV(canvas, {
     screenLight.intensity = intensity
   }
 
-  return { play, dispose, setScrolling, setTurn, setShift, setScroll, setTune, setScreenVisible, setScreenShape, setBoot, bump, setHold, projBox, hit, projScreen, projScreenQuad, setPose, setScreenLight, setResolution }
+  return { ready, play, dispose, setScrolling, setTurn, setShift, setScroll, setTune, setScreenVisible, setScreenShape, setBoot, bump, setHold, projBox, hit, projScreen, projScreenQuad, setPose, setScreenLight, setResolution }
 }

@@ -74,7 +74,10 @@ const ARRIVE = { line0: [0.06, 0.32], seat: [0, 0.22], arrow: [0.22, 0.36] }
 // e o lápis nunca pulam. Enquanto o lápis desenha (rabiscos à mão), o teto
 // cai para draw: o traço sai devagar, por mais rápido que se role; a troca
 // entre os tetos é suave (shift, s)
-const PACE = { tau: 0.18, max: 0.9, draw: 0.14, shift: 0.3 }
+// rush: o scroll já passou do fim da seção (rolou rápido para o PC): o que falta do
+// roteiro toca nesse ritmo, sem o freio dos desenhos, e só então o PC começa a transição
+// (useManifestoHorizontal → stepPC). Com scroll lento ele nunca entra
+const PACE = { tau: 0.18, max: 0.9, draw: 0.14, shift: 0.3, rush: 2.6 }
 // a régua assentando: desce e passa um tiquinho do lugar antes de parar
 const settle = (u) => 1 + 2.2 * (u - 1) ** 3 + 1.2 * (u - 1) ** 2
 // a régua no texto: encolhe só um pouco (o vão é que alarga); teto em fração da coluna
@@ -325,7 +328,38 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   let nested = false
   let ballBlocked = false // o PC passou do tranco: a bola sai, volta o cursor do site
   let lastRenderKey = null
-  const edK = (e) => e.width / (ed.offsetWidth || e.width || 1)
+  let boxes = null // medidas de layout das linhas (lineBoxes)
+  let camSettled = false // a câmera do editor já assentou no alvo (done)
+  let caretLeft = 0
+  // a caixa do editor na tela, lida uma vez por quadro (o update a zera): os
+  // transforms que ele escreve são dos filhos, ela mesma só muda com quem a contém
+  let edNow = null
+  const edRect = () => edNow || (edNow = ed.getBoundingClientRect())
+  // Aninhada na tela do PC, as leituras de posição (getBoundingClientRect) do quadro
+  // são feitas todas juntas no começo do update — um layout só —, e o resto do update
+  // usa esse retrato: lidas no meio dele, depois das escritas do PC e da própria seção,
+  // cada uma forçava um layout do documento (o roteiro ainda anda no começo do PC:
+  // câmera, crescimento). O retrato é o editor antes das escritas deste quadro, um
+  // quadro de atraso, dentro da tela do PC (onde quem desenha o cursor é o PC).
+  // Quais ler: as que o quadro anterior pediu (o trecho do roteiro muda pouco)
+  let shot = new Map()
+  let wanted = new Map() // chave → leitura
+  const ids = new WeakMap()
+  let nextId = 0
+  const idOf = (el) => { if (!ids.has(el)) ids.set(el, ++nextId); return ids.get(el) }
+  const nestedRead = (k, fn) => {
+    if (!nested) return fn()
+    wanted.set(k, fn)
+    if (!shot.has(k)) shot.set(k, fn())
+    return shot.get(k)
+  }
+  function takeShot() {
+    const w = wanted
+    shot = new Map()
+    wanted = new Map()
+    if (nested) for (const [k, fn] of w) shot.set(k, fn())
+  }
+  const edK =(e) => e.width / (ed.offsetWidth || e.width || 1)
 
   const fsOf = (i, gs = 1) => fsBase[i] * (i === iGrow ? gs : 1)
   const placeFg = (i) => {
@@ -359,6 +393,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
    *  dockW: a largura da régua na seção 5; cell: px por célula do cursor em dither */
   function measure(size = { vw: host.clientWidth, vh: host.clientHeight }) {
     ({ vw, vh } = size)
+    boxes = null
     if (size.cell) cell = size.cell
     if (size.dockW) dockW = size.dockW
     if (!vw || !vh) return
@@ -406,6 +441,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     drawn.clear()
     lns[iGrow].style.setProperty('--gs', 1)
     placeFg(iGrow)
+    boxes = null
     gl?.resize(vw, vh)
     grid?.resize(vw, vh)
     if (cv) {
@@ -425,9 +461,11 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
    *  topo-esquerda da régua e a largura */
   function slotIn() {
     if (!vw) return null
-    const x = lns[0].offsetLeft + ts[0].offsetLeft + slot.offsetLeft
-    const top = lns[0].offsetTop + ts[0].offsetTop + slot.offsetTop
-    return { x: ax0 + x, y: vh * FOCUS - focusY(0) + rulerTop(top, slot.offsetHeight, 1), w: slot.offsetWidth }
+    // (chamada a cada quadro pelo pin: as medidas vêm do cache de lineBoxes)
+    const b = lineBoxes()
+    const x = b.t[0].x + b.slot.x
+    const top = b.t[0].y + b.slot.y
+    return { x: ax0 + x, y: vh * FOCUS - focusY(0) + rulerTop(top, b.slot.h, 1), w: b.slot.w }
   }
   // a régua chegando (pRaw da chegada): quanto ainda está acima (px) e inclinada (graus)
   const seatOf = (pRaw) => {
@@ -439,18 +477,20 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   function holdRuler({ lift, tilt }) {
     if (!carried) return
     if (!owning) { owning = true; ruler.classList.add('is-s6') }
-    let r = slot.getBoundingClientRect()
     const s = view?.s ?? 1
-    if (nested) { // dentro do editor: a mesma conta, em px dele
-      const e = ed.getBoundingClientRect()
-      const k = edK(e)
-      r = { left: (r.left - e.left) / k, top: (r.top - e.top) / k, height: r.height / k }
-    }
+    const r = nested // dentro do editor: a mesma conta, em px dele
+      ? nestedRead('slot', () => {
+        const sr = slot.getBoundingClientRect()
+        const e = edRect()
+        const k = edK(e)
+        return { left: (sr.left - e.left) / k, top: (sr.top - e.top) / k, height: sr.height / k }
+      })
+      : slot.getBoundingClientRect()
     // assentando, gira em volta do punho (como na seção 5); depois, só a câmera
     Object.assign(ruler.style, {
       transform: `translate(${r.left}px, ${rulerTop(r.top, r.height, s) - lift}px)${tilt ? ` rotate(${tilt}deg)` : ''} scale(${s})`,
       transformOrigin: tilt ? `${GRAB_AT * 100}% ${GRIP_Y}px` : '0 0',
-      width: `${slot.offsetWidth}px`,
+      width: `${lineBoxes().slot.w}px`,
     })
     rParts.forEach((el) => { el.style.opacity = '0' }) // a régua vem inteira; só o cadeado (e as pontas da fita) já se foram
   }
@@ -473,7 +513,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   // sai de baixo de um ponteiro parado
   const placeBall = () => {
     if (!client) return
-    const r = ed.getBoundingClientRect()
+    const r = edRect()
     const k = edK(r)
     const x = (client[0] - r.left) / k
     const y = (client[1] - r.top) / k
@@ -488,6 +528,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   const onMove = (e) => {
     if (e.pointerType !== 'mouse') return
     client = [e.clientX, e.clientY]
+    edNow = null // fora do quadro: a caixa pode ter andado desde ele
     placeBall()
   }
   const onLeave = () => { inside = false; client = null }
@@ -504,23 +545,37 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     else delete cursorRoot.dataset.cursor
   }
 
+  // As medidas das linhas (offset*: sem os transforms), lidas uma vez e
+  // reaproveitadas: o update as lia ~10× por quadro, intercaladas com escritas de
+  // estilo, e cada leitura forçava um layout do documento inteiro. Valem até o
+  // próximo measure() ou até a linha que cresce (--gs) mudar de tamanho
+  const lineBoxes = () => {
+    if (boxes) return boxes
+    const b = {
+      t: lns.map((l, i) => ({ x: l.offsetLeft + ts[i].offsetLeft, y: l.offsetTop + ts[i].offsetTop, w: ts[i].offsetWidth, h: ts[i].offsetHeight })),
+      typeEnd: typeUnits.map((el) => el.offsetLeft + el.offsetWidth),
+      caret: { top: caret.offsetTop, h: caret.offsetHeight },
+      slot: { x: slot.offsetLeft, y: slot.offsetTop, w: slot.offsetWidth, h: slot.offsetHeight },
+    }
+    if (b.t[0].h) boxes = b // fora do layout tudo mede 0: não guarda
+    return b
+  }
   const tBox = (i) => {
-    const x = lns[i].offsetLeft + ts[i].offsetLeft + (i === iMove ? moveOff.x : 0)
-    const y = lns[i].offsetTop + ts[i].offsetTop + (i === iMove ? moveOff.y : 0)
-    return { x, y, w: ts[i].offsetWidth, h: ts[i].offsetHeight }
+    const b = lineBoxes().t[i]
+    return i === iMove ? { x: b.x + moveOff.x, y: b.y + moveOff.y, w: b.w, h: b.h } : b
   }
   const toScene = (x, y) => [view.ax + x * view.s, view.ay + y * view.s]
   const focusY = (i) => { const b = tBox(i); return b.y + b.h / 2 }
   // pontos do trajeto do cursor do editor (frações da caixa de cada linha)
-  const caretPt = () => { const b = tBox(iType); return toScene(b.x + caret.offsetLeft + 3, b.y + caret.offsetTop + caret.offsetHeight * 0.5) }
+  const caretPt = () => { const b = tBox(iType); const c = lineBoxes().caret; return toScene(b.x + caretLeft + 3, b.y + c.top + c.h * 0.5) }
   const movePt = () => { const b = tBox(iMove); return toScene(b.x + b.w * 0.42, b.y + b.h * 0.55) }
   // um ponto (frações) de um elemento da tela, em px do editor
-  const elAt = (el, fx_ = 0.5, fy_ = 0.5) => {
+  const elAt = (el, fx_ = 0.5, fy_ = 0.5) => nestedRead(`a${idOf(el)},${fx_},${fy_}`, () => {
     const r = el.getBoundingClientRect()
-    const e = ed.getBoundingClientRect()
+    const e = edRect()
     const k = edK(e)
     return [(r.left - e.left + r.width * fx_) / k, (r.top - e.top + r.height * fy_) / k]
-  }
+  })
   const presentAt = (fx_ = 0.55, fy_ = 0.6) => elAt(present, fx_, fy_)
   // o descanso: à direita de "trabalho." / "você está", na altura entre as duas
   const restPt = () => {
@@ -529,26 +584,39 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     return toScene(Math.max(a.x + a.w, b.x + b.w) + fsBase[iGrow - 1] * 0.35, (a.y + a.h + b.y) / 2)
   }
   // a ponta da caneta: onde o rabisco está sendo desenhado agora (u = o quanto já foi)
+  // (o comprimento de cada traço, guardado enquanto o desenho dele não muda)
+  const lenOf = new WeakMap()
+  const pathLen = (pth) => {
+    const d = pth.getAttribute('d')
+    const c = lenOf.get(pth)
+    if (c && c.d === d) return c.len
+    const len = pth.getTotalLength()
+    lenOf.set(pth, { d, len })
+    return len
+  }
   const penAt = (svg, u = drawn.get(svg) ?? 0) => {
     const n = +svg.dataset.n
     const k = Math.min(n - 1, Math.floor(clamp01(u) * n))
     const pth = svg.querySelector(`.p${svg.dataset.pose} [data-k="${k}"]`)
-    const pt = pth.getPointAtLength(clamp01(u * n - k) * pth.getTotalLength())
-    const r = svg.getBoundingClientRect()
-    const e = ed.getBoundingClientRect()
-    const sc = r.width / svg.viewBox.baseVal.width
-    const ek = edK(e)
-    return [(r.left - e.left + pt.x * sc) / ek, (r.top - e.top + pt.y * sc) / ek]
+    const pt = pth.getPointAtLength(clamp01(u * n - k) * pathLen(pth))
+    // a caixa do rabisco em px do editor (a leitura de layout; o ponto no traço não é)
+    const [x0, y0, sc] = nestedRead(`s${idOf(svg)}`, () => {
+      const r = svg.getBoundingClientRect()
+      const e = edRect()
+      const ek = edK(e)
+      return [(r.left - e.left) / ek, (r.top - e.top) / ek, r.width / svg.viewBox.baseVal.width / ek]
+    })
+    return [x0 + pt.x * sc, y0 + pt.y * sc]
   }
   const pen = (svg, u) => () => penAt(svg, u)
   // onde o punho segura a régua assentada no vão (px do editor)
-  const gripPt = (lift = 0) => {
+  const gripPt = (lift = 0) => nestedRead(`g${lift}`, () => {
     const r = slot.getBoundingClientRect()
-    const e = ed.getBoundingClientRect()
+    const e = edRect()
     const s = view?.s ?? 1
     const k = edK(e)
     return [(r.left - e.left + r.width * GRAB_AT) / k, rulerTop((r.top - e.top) / k, r.height / k, s) + GRIP_Y * s - lift]
-  }
+  })
   // [de, até, origem, destino, cursor, preso]; preso = segue o alvo sem inércia
   // (a linha que arrasta, a ponta do traço, a alça da caixa). Antes de 0, a chegada da régua.
   const PATH = [
@@ -576,6 +644,8 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   const damp = (a, b, tau, dt) => (REDUCE || !dt ? b : lerp(a, b, 1 - Math.exp(-dt / tau)))
 
   function update(pRaw, { now, v, shift }) {
+    edNow = null
+    takeShot()
     const dt = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0
     lastNow = now
     const live = !REDUCE
@@ -591,8 +661,9 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     const typeU = ramp(p, ...P.type)
     const typed = p < IN[iType] ? 0 : typeAt.filter((t) => t <= typeU * typeAt.at(-1)).length
     const typing = typed > 0 && typed < typeUnits.length
-    const last = typeUnits[typed - 1]
-    caret.style.left = typed ? `${last.offsetLeft + last.offsetWidth + 2}px` : '0px'
+    const typedEnd = typed ? lineBoxes().typeEnd[typed - 1] : 0
+    caretLeft = typed ? typedEnd + 2 : 0
+    caret.style.left = `${caretLeft}px`
     caret.classList.toggle('on', p >= IN[iType] && p < P.move.show[0])
     caret.classList.toggle('typing', typing) // digitando: cursor de texto fixo; parado: pisca
 
@@ -602,7 +673,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
 
     // ---- estados da história ----
     const k = easeInOut(ramp(p, ...P.move.drop))
-    moveOff = { x: MOVE_FROM.x * W * (1 - k), y: MOVE_FROM.y * ts[iMove].offsetHeight * (1 - k), rot: MOVE_FROM.rot * (1 - k) }
+    moveOff = { x: MOVE_FROM.x * W * (1 - k), y: MOVE_FROM.y * lineBoxes().t[iMove].h * (1 - k), rot: MOVE_FROM.rot * (1 - k) }
     const mvT = `translate(${moveOff.x}px, ${moveOff.y}px) rotate(${moveOff.rot}deg)`
     ts[iMove].style.transform = mvT
     fgls[iMove].style.transform = mvT
@@ -622,6 +693,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     if (lns[iGrow].style.getPropertyValue('--gs') !== String(gs)) {
       lns[iGrow].style.setProperty('--gs', gs)
       placeFg(iGrow)
+      boxes = null // a linha mudou de tamanho
     }
     drawScribble(scr.under, easeInOut(ramp(p, ...P.marker)))
     drawScribble(scr.arrow, easeInOut(ramp(p, ...P.hand.arrow)))
@@ -677,6 +749,11 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
       ay: lerp(vh * FOCUS - fy, (vh - artH * fitS) / 2 + 16, fit),
     }
     view = view ? { s: damp(view.s, target.s, TAU.cam, dt), ax: damp(view.ax, target.ax, TAU.cam, dt), ay: damp(view.ay, target.ay, TAU.cam, dt) } : target
+    // a inércia nunca chega exatamente: perto o bastante, encaixa no alvo — senão o
+    // transform mudava nas últimas casas a cada quadro, para sempre (repintura do
+    // editor e as leituras de posição refeitas sem nada ter se movido)
+    camSettled = Math.abs(view.s - target.s) < 1e-4 && Math.abs(view.ax - target.ax) < 0.05 && Math.abs(view.ay - target.ay) < 0.05
+    if (camSettled) view = target
     const artT = `translate3d(${view.ax}px, ${view.ay}px, 0) scale(${view.s})`
     art.style.transform = artT
     fg.style.transform = artT
@@ -684,7 +761,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     lastAy = view.ay
 
     // ---- bola ----
-    if (nested) placeBall()
+    if (nested && (!ballBlocked || ballA > 0.01)) placeBall() // (sem a bola, nada a medir)
     const ballIn = inside && shift > 0.6 && !ballBlocked
     ballA = damp(ballA, ballIn ? 1 : 0, 0.12, dt)
     setBall(ballIn)
@@ -750,7 +827,7 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
       u.uInvX.value = i === iMark ? (px + (-0.1 * fsl + hl * (b.w + 0.2 * fsl))) / (b.w + px * 2) : -1
       // "foi escrita": só o que já foi digitado
       u.uRevealX.value = i === iType
-        ? (typed === typeUnits.length ? 2 : typed ? (px + last.offsetLeft + last.offsetWidth) / (b.w + px * 2) : -1)
+        ? (typed === typeUnits.length ? 2 : typed ? (px + typedEnd) / (b.w + px * 2) : -1)
         : 2
       if (shock) u.uShock.value.set(...shock)
       else u.uShock.value.w = 0
@@ -770,13 +847,11 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
 
     if (doRender) grid?.render(now / 1000, REDUCE ? 1 : easeInOut(gridIn), ui, shock, swept)
 
-    // ---- a régua: presa ao vão de CADA ___ LINHA depois do deslocamento ----
     const arrived = shift >= 1 && pRaw >= 0
     const seat = seatOf(pRaw)
-    if (carried && arrived) holdRuler(seat)
-    else releaseRuler()
 
     // ---- cursor do editor (alvo pelo trajeto, posição com inércia) ----
+    // (antes da régua: as leituras de layout do trajeto vêm juntas, antes de ela escrever)
     // antes de 0: o punho que trouxe a régua a assenta e vira a seta
     let mode
     let cTarget
@@ -795,6 +870,12 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
       stuck = !!seg[5]
     }
     curPos = curPos && !stuck ? [damp(curPos[0], cTarget[0], TAU.cur, dt), damp(curPos[1], cTarget[1], TAU.cur, dt)] : cTarget
+    if (Math.abs(curPos[0] - cTarget[0]) < 0.05 && Math.abs(curPos[1] - cTarget[1]) < 0.05) curPos = cTarget // (idem: encaixa)
+
+    // ---- a régua: presa ao vão de CADA ___ LINHA depois do deslocamento ----
+    if (carried && arrived) holdRuler(seat)
+    else releaseRuler()
+
     // a marca de impacto (riscos vermelhos que se abrem e somem) na ponta do cursor
     if (fired && fired !== 'grab' && live) {
       Object.assign(impact.style, { left: `${cTarget[0]}px`, top: `${cTarget[1]}px` })
@@ -816,38 +897,49 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
   let morphT0 = 0
   let cvDpr = 1
   const clearCv = () => { if (cx) { cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, cv.width, cv.height) } }
+  // O estado do cursor (px do editor: ponta, forma, troca, clique) é calculado aqui
+  // sempre; aninhada na tela do PC, quem o desenha é o PC, com este mesmo estado
+  // (cursor(), abaixo) — um cursor só, que não pula de forma nem de lugar na troca
+  let curState = null
   function drawCursor(now, pRaw, mode, arrived, ui, { jolt, squash, hitAge }) {
     if (!cx) return
     cvDpr = cv.width / Math.max(1, window.innerWidth)
     clearCv()
-    // antes de chegar, o punho ainda é da seção 5 (ela o desenha no deslocamento);
-    // aninhado na tela do PC, quem desenha o cursor é o PC (cursor(), abaixo)
-    if (!arrived || nested || (REDUCE && ui < 0.5)) return
-    cx.setTransform(cvDpr, 0, 0, cvDpr, 0, 0)
-    const e = ed.getBoundingClientRect()
-    const ek = edK(e) // (a camada do cursor é de tela: o editor escalado o encolhe junto)
+    curState = null
+    // antes de chegar, o punho ainda é da seção 5 (ela o desenha no deslocamento)
+    if (!arrived || (REDUCE && ui < 0.5)) return
     // clique: o cursor recua e gira (a pega da linha, mais leve)
     const ha = lastHit ? hitAge(lastHit) : 99
     const hs = lastHit === 'grab' ? 0.4 : 1
     const cj = jolt(ha) * HIT.bump * hs
-    const x = e.left + (curPos[0] - cj * 0.4) * ek
-    const y = e.top + (curPos[1] - cj) * ek
     const spin = (jolt(ha, 20) * HIT.spin * hs * Math.PI) / 180
-    const hc = cell * squash(ha, 0.2 * hs) * ek
-
-    // a chegada: o punho assenta a régua e vira a seta direto, por limiar de Bayer
+    let from, k
     if (mode === 'grab') {
+      // a chegada: o punho assenta a régua e vira a seta direto, por limiar de Bayer
       shown = 'arrow'
       prev = null
-      const a = REDUCE ? 1.01 : easeInOut(ramp(pRaw, ...ARRIVE.arrow)) * 1.01
-      if (a < 1.01) drawSprite(cx, fist, x, y, FIST_C[0], FIST_C[1], hc, (t) => t >= a)
-      if (a > 0) { const { art, anchor } = SPR.arrow; drawSprite(cx, art, x, y, anchor[0], anchor[1], hc, (t) => t < a, spin) }
+      from = 'fist'
+      k = REDUCE ? 1.01 : easeInOut(ramp(pRaw, ...ARRIVE.arrow)) * 1.01
+    } else {
+      // troca de forma (texto, mover, lápis, redimensionar)
+      if (mode !== shown) { prev = shown; shown = mode; morphT0 = now }
+      from = prev
+      k = REDUCE || !prev ? 1.01 : clamp01((now - morphT0) / MORPH_MS) * 1.01
+    }
+    curState = { x: curPos[0] - cj * 0.4, y: curPos[1] - cj, shape: shown, from, k, spin, sq: squash(ha, 0.2 * hs) }
+    if (nested) return
+    cx.setTransform(cvDpr, 0, 0, cvDpr, 0, 0)
+    const e = edRect()
+    const ek = edK(e) // (a camada do cursor é de tela: o editor escalado o encolhe junto)
+    const x = e.left + curState.x * ek
+    const y = e.top + curState.y * ek
+    const hc = cell * curState.sq * ek
+    if (from === 'fist') {
+      if (k < 1.01) drawSprite(cx, fist, x, y, FIST_C[0], FIST_C[1], hc, (t) => t >= k)
+      if (k > 0) { const { art, anchor } = SPR.arrow; drawSprite(cx, art, x, y, anchor[0], anchor[1], hc, (t) => t < k, spin) }
       return
     }
-    // troca de forma (texto, mover, lápis, redimensionar)
-    if (mode !== shown) { prev = shown; shown = mode; morphT0 = now }
-    const k = REDUCE || !prev ? 1.01 : clamp01((now - morphT0) / MORPH_MS) * 1.01
-    if (k < 1.01 && prev) { const { art, anchor } = SPR[prev]; drawSprite(cx, art, x, y, anchor[0], anchor[1], hc, (t) => t >= k, spin) }
+    if (k < 1.01 && from) { const { art, anchor } = SPR[from]; drawSprite(cx, art, x, y, anchor[0], anchor[1], hc, (t) => t >= k, spin) }
     const { art, anchor } = SPR[shown]
     drawSprite(cx, art, x, y, anchor[0], anchor[1], hc, k < 1.01 ? (t) => t < k : null, spin)
   }
@@ -874,7 +966,8 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
       const diff = pos.p - pS
       const q = pS - LEAD
       const drawing = BRUSH.some(([a, b]) => q >= a - 0.03 && q <= b + 0.01)
-      paceMax += ((drawing ? PACE.draw : PACE.max) - paceMax) * (1 - Math.exp(-dt / PACE.shift))
+      const rush = pos.p >= LEAD + LENGTH - 1e-6 && diff > 0
+      paceMax += ((rush ? PACE.rush : drawing ? PACE.draw : PACE.max) - paceMax) * (1 - Math.exp(-dt / PACE.shift))
       pS += Math.sign(diff) * Math.min(Math.abs(diff) * (1 - Math.exp(-dt / PACE.tau)), paceMax * dt)
     }
     const px = pS * vh + pos.shift * vw
@@ -906,11 +999,14 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
     length: () => LEAD + LENGTH,
     measure,
     slotIn,
+    /** compila os shaders do texto e da grade antes da seção entrar (utils/warmup.js) */
+    warm: () => Promise.all([gl?.warm(), grid?.warm()]),
     /** o editor passa a ser desenhado dentro de uma caixa escalada (true: a tela do
      *  PC, manifestoPC.js) ou volta à cena (false); a régua presa ao texto vai junto */
     nest(on) {
       if (on === nested) return
       nested = on
+      if (on) clearCv() // daqui o PC desenha o cursor: nunca os dois na tela
       if (ruler) (on ? ed : document.body).append(ruler)
       // mudar de lugar no DOM reinicia animações CSS: a marca do último clique não pode bater de novo
       impact.classList.remove('on')
@@ -921,11 +1017,25 @@ export function mountS6(host, { still = false, ruler = null } = {}) {
       ballBlocked = on
       if (on) { setBall(false); ed.classList.remove('has-ball') }
     },
-    /** o cursor do editor agora: ponta em px do editor, px de tela por pixel do
-     *  desenho e raio do brilho (com o editor em escala 1); null antes de ele existir */
-    cursor: () => (curPos && vw ? { x: curPos[0], y: curPos[1], cell, glow: HAND.length * cell * 0.32 } : null),
+    /** o cursor do editor agora: ponta em px do editor (com o recuo do clique), forma
+     *  (from → shape pela troca k, de 0 a 1,01, por limiar de Bayer; from 'fist' = a
+     *  chegada do punho), giro e achatamento do clique, px de tela por pixel do desenho
+     *  e raio do brilho (com o editor em escala 1); null sem cursor na tela */
+    cursor: () => (curState && vw ? { ...curState, cell, glow: HAND.length * cell * 0.32 } : null),
     /** o scroll do pin: p (alturas de tela a partir do fim do deslocamento) e shift (0→1);
      *  null = antes da seção (para o rAF) */
+    /** o roteiro chegou ao fim (o freio de PACE alcançou o fim da seção e a câmera
+     *  assentou no enquadramento final, o "cartaz"): o PC só
+     *  começa a transição depois disso (useManifestoHorizontal → stepPC) */
+    done: () => REDUCE || !onScreen || (pS !== null && pS >= LEAD + LENGTH - 1e-3 && camSettled), // (fora da tela, nada a esperar)
+    /** salto (botão de pular o Manifesto): o roteiro vai direto aonde o scroll está,
+     *  sem o freio de PACE, e a câmera já no enquadramento dele, sem inércia */
+    snap() {
+      pS = null
+      view = null
+      curPos = null
+      lastPx = null
+    },
     scroll(p, shift) {
       pos = p === null ? null : { p, shift }
       if (!pos) { lastPx = null; pS = null; setBall(false); releaseRuler(); clearCv() }

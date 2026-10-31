@@ -2,10 +2,13 @@ import { useEffect, useRef } from 'react'
 import { useLenis } from 'lenis/react'
 import { useLanguage } from '../context/LanguageContext'
 import { mountDitherTV } from '../utils/tv3d'
+import { warmup } from '../utils/warmup'
+import { pauseOffscreen } from '../utils/pauseOffscreen'
 import { useManifestoHorizontal, DESKTOP_QUERY } from '../hooks/useManifestoHorizontal'
 import { useManifestoIntro } from '../hooks/useManifestoIntro'
 import { useManifestoS2Enter } from '../hooks/useManifestoS2Enter'
 import { NosGroup } from './ManifestoNos'
+import { ManifestoSkip } from './ManifestoSkip'
 import handImg from '../assets/mao-halftone.png'
 import targetImg from '../assets/alvo.png'
 import arrowImg from '../assets/seta.png'
@@ -161,7 +164,7 @@ function Graphic({ role }) {
   )
 }
 
-function Act2({ act }) {
+function Act2({ act, landing }) {
   const { a, b, c } = act
   return (
     <section className="ms-act2" aria-labelledby="ma-a-title">
@@ -227,6 +230,8 @@ function Act2({ act }) {
           câmera desce até a folha branca, o começo de Trabalhos. Só desktop (pin
           lateral); DOM, WebGL e tempo: utils/manifestoPC.js + useManifestoHorizontal. */}
       <div className="ma-scene ma-pc" aria-hidden="true" />
+      {/* onde o botão de pular o Manifesto deixa o foco (a cena do PC é aria-hidden) */}
+      <h2 className="sr-only" id="pc-cartaz" tabIndex={-1}>{landing}</h2>
     </section>
   )
 }
@@ -252,43 +257,29 @@ function DitherTV() {
   const canvasRef = useRef(null)
   const sceneRef = useRef(null)
   const scrollSettleRef = useRef(0)
-  // Adia o fetch do .glb + setup do WebGL (cena, PMREM) até a TV chegar
-  // perto da viewport, em vez de pagar esse custo no load da página inteira
-  // enquanto a seção ainda está fora de tela. rootMargin generoso dá meia
-  // tela de antecedência, então o modelo já está pronto quando o usuário
-  // de fato rola até lá — sem atraso visível na entrada.
+  // Monta já com a página e aquece sob a tela de carregamento (utils/warmup.js):
+  // montada perto da tela, o fetch do .glb + PMREM + shaders travavam a entrada
+  // do NÓS por ~1 s. O render continua pausado fora da tela (tv3d.js).
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return undefined
-    let dispose = null
+    const instance = mountDitherTV(canvas, {
+      url: tvUrl, palette: TV_PALETTE, autoPlay: false, revealDuration: 2.8, spinDuration: 3.4, ...TV_MODEL,
+      // a tela sintoniza o logo pelo pin lateral; sem ele (mobile), já sintonizada
+      screenImage: TV_SCREEN_URL, tune: window.matchMedia(DESKTOP_QUERY).matches ? 0 : 1,
+    })
+    warmup(instance.ready)
+    sceneRef.current = instance
+    canvas.tv = instance // o pin lateral (useManifestoHorizontal) gira e sintoniza a TV
     // A intro (pontos se formando) não toca sozinha: começa escondida e só
     // toca uma vez, quando a entrada em combo da seção 2 dispara 's2:tv-play'
     // (useManifestoS2Enter) — mais lenta que a do protótipo, e subir não apaga.
-    let playRequested = false
-    const onPlay = () => {
-      playRequested = true
-      sceneRef.current?.play()
-    }
+    const onPlay = () => instance.play()
     canvas.addEventListener('s2:tv-play', onPlay)
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return
-      observer.disconnect()
-      const instance = mountDitherTV(canvas, {
-        url: tvUrl, palette: TV_PALETTE, autoPlay: false, revealDuration: 2.8, spinDuration: 3.4, ...TV_MODEL,
-        // a tela sintoniza o logo pelo pin lateral; sem ele (mobile), já sintonizada
-        screenImage: TV_SCREEN_URL, tune: window.matchMedia(DESKTOP_QUERY).matches ? 0 : 1,
-      })
-      sceneRef.current = instance
-      canvas.tv = instance // o pin lateral (useManifestoHorizontal) gira e sintoniza a TV
-      dispose = instance.dispose
-      if (playRequested) instance.play()
-      canvas.dispatchEvent(new Event('s2:tv-ready'))
-    }, { rootMargin: '50% 0px' })
-    observer.observe(canvas)
+    canvas.dispatchEvent(new Event('s2:tv-ready'))
     return () => {
       canvas.removeEventListener('s2:tv-play', onPlay)
-      observer.disconnect()
-      dispose?.()
+      instance.dispose()
       delete canvas.tv
       sceneRef.current = null
     }
@@ -324,6 +315,12 @@ export function Manifesto({ section3, useHorizontal = useManifestoHorizontal, wi
   useHorizontal(rootRef, lang) // idioma novo = seção 3 remontada com os textos dele
   useManifestoIntro(rootRef)
   useManifestoS2Enter(rootRef)
+  // os loops CSS da seção 2 (o degradê do NÓS repinta a cada quadro, o "online"
+  // do chat) e os cantos da cena A param quando saem da tela
+  useEffect(() => {
+    const q = (s) => rootRef.current?.querySelector(s)
+    return pauseOffscreen([q('.ms2'), q('.ma-a'), q('.ma-deco')])
+  }, [])
 
   return (
     <div className="manifesto" ref={rootRef}>
@@ -390,7 +387,8 @@ export function Manifesto({ section3, useHorizontal = useManifestoHorizontal, wi
 
       <div className="manifesto-grid" aria-hidden="true" />
       </div>
-      <Act2 act={t.manifesto.act2} />
+      <Act2 act={t.manifesto.act2} landing={t.skip.landing} />
+      <ManifestoSkip />
     </div>
   )
 }
